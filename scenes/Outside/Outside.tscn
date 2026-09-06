@@ -1,0 +1,123 @@
+[gd_scene load_steps=10 format=3]
+
+[ext_resource type="Script" path="res://scripts/outside.gd" id="1"]
+[ext_resource type="Material" path="res://assets/materials/graybox_floor.tres" id="2"]
+[ext_resource type="Material" path="res://assets/materials/graybox_wall.tres" id="3"]
+[ext_resource type="PackedScene" path="res://scenes/Match/Props/Crate.tscn" id="4"]
+[ext_resource type="PackedScene" path="res://scenes/Match/Props/Barrel.tscn" id="5"]
+
+[sub_resource type="BoxMesh" id="BoxMesh_ground"]
+size = Vector3(24, 0.2, 24)
+
+[sub_resource type="BoxShape3D" id="BoxShape3D_ground"]
+size = Vector3(24, 0.2, 24)
+
+[sub_resource type="BoxMesh" id="BoxMesh_perimeter"]
+size = Vector3(24, 1.4, 0.3)
+
+[sub_resource type="BoxShape3D" id="BoxShape3D_perimeter"]
+size = Vector3(24, 1.4, 0.3)
+
+[node name="Outside" type="Node3D"]
+script = ExtResource("1")
+
+[node name="DirectionalLight3D" type="DirectionalLight3D" parent="."]
+transform = Transform3D(0.85, -0.4, 0.35, 0, 0.66, 0.75, -0.53, -0.64, 0.56, 0, 25, 0)
+light_color = Color(0.8, 0.86, 1, 1)
+light_energy = 0.9
+shadow_enabled = true
+
+[node name="Ground" type="StaticBody3D" parent="."]
+collision_layer = 1
+collision_mask = 0
+
+[node name="MeshInstance3D" type="MeshInstance3D" parent="Ground"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -0.1, 0)
+mesh = SubResource("BoxMesh_ground")
+surface_material_override/0 = ExtResource("2")
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="Ground"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -0.1, 0)
+shape = SubResource("BoxShape3D_ground")
+
+[node name="PerimeterNorth" type="StaticBody3D" parent="."]
+collision_layer = 1
+collision_mask = 0
+
+[node name="MeshInstance3D" type="MeshInstance3D" parent="PerimeterNorth"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.7, -12)
+mesh = SubResource("BoxMesh_perimeter")
+surface_material_override/0 = ExtResource("3")
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="PerimeterNorth"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.7, -12)
+shape = SubResource("BoxShape3D_perimeter")
+
+[node name="PerimeterSouth" type="StaticBody3D" parent="."]
+collision_layer = 1
+collision_mask = 0
+
+[node name="MeshInstance3D" type="MeshInstance3D" parent="PerimeterSouth"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.7, 12)
+mesh = SubResource("BoxMesh_perimeter")
+surface_material_override/0 = ExtResource("3")
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="PerimeterSouth"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.7, 12)
+shape = SubResource("BoxShape3D_perimeter")
+
+[node name="PerimeterEast" type="StaticBody3D" parent="."]
+transform = Transform3D(0, 0, 1, 0, 1, 0, -1, 0, 0, 12, 0, 0)
+collision_layer = 1
+collision_mask = 0
+
+[node name="MeshInstance3D" type="MeshInstance3D" parent="PerimeterEast"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.7, 0)
+mesh = SubResource("BoxMesh_perimeter")
+surface_material_override/0 = ExtResource("3")
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="PerimeterEast"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.7, 0)
+shape = SubResource("BoxShape3D_perimeter")
+
+[node name="PerimeterWest" type="StaticBody3D" parent="."]
+transform = Transform3D(0, 0, 1, 0, 1, 0, -1, 0, 0, -12, 0, 0)
+collision_layer = 1
+collision_mask = 0
+
+[node name="MeshInstance3D" type="MeshInstance3D" parent="PerimeterWest"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.7, 0)
+mesh = SubResource("BoxMesh_perimeter")
+surface_material_override/0 = ExtResource("3")
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="PerimeterWest"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.7, 0)
+shape = SubResource("BoxShape3D_perimeter")
+
+[node name="Decor" type="Node3D" parent="."]
+
+[node name="Crate1" parent="Decor" instance=ExtResource("4")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -6, 0, -6)
+
+[node name="Crate2" parent="Decor" instance=ExtResource("4")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 5, 0, 7)
+
+[node name="Barrel1" parent="Decor" instance=ExtResource("5")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 7, 0, -5)
+
+[node name="Barrel2" parent="Decor" instance=ExtResource("5")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -7, 0, 5)
+
+[node name="RoamSpawnPoints" type="Node3D" parent="."]
+
+[node name="Point1" type="Marker3D" parent="RoamSpawnPoints"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.1, 0)
+
+[node name="Point2" type="Marker3D" parent="RoamSpawnPoints"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 4, 0.1, -4)
+
+[node name="Point3" type="Marker3D" parent="RoamSpawnPoints"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -4, 0.1, 4)
+
+[node name="Point4" type="Marker3D" parent="RoamSpawnPoints"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -4, 0.1, -4)
