@@ -20,66 +20,242 @@ grow_horizontal = 2
 grow_vertical = 2
 color = Color(0.07, 0.075, 0.08, 1)
 
-[node name="VBoxContainer" type="VBoxContainer" parent="."]
+[node name="HomePanel" type="Control" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="VBoxContainer" type="VBoxContainer" parent="HomePanel"]
 layout_mode = 1
 anchors_preset = 8
 anchor_left = 0.5
 anchor_top = 0.5
 anchor_right = 0.5
 anchor_bottom = 0.5
-offset_left = -200.0
-offset_top = -160.0
-offset_right = 200.0
-offset_bottom = 160.0
+offset_left = -140.0
+offset_top = -170.0
+offset_right = 140.0
+offset_bottom = 170.0
 grow_horizontal = 2
 grow_vertical = 2
 theme_override_constants/separation = 14
 
-[node name="TitleLabel" type="Label" parent="VBoxContainer"]
+[node name="TitleLabel" type="Label" parent="HomePanel/VBoxContainer"]
 layout_mode = 2
-theme_override_font_sizes/font_size = 40
+theme_override_font_sizes/font_size = 44
 horizontal_alignment = 1
 text = "VOUCH"
 
-[node name="SubtitleLabel" type="Label" parent="VBoxContainer"]
+[node name="SubtitleLabel" type="Label" parent="HomePanel/VBoxContainer"]
 layout_mode = 2
 theme_override_colors/font_color = Color(0.7, 0.72, 0.76, 1)
 horizontal_alignment = 1
 text = "Trust no one. Escape together."
 autowrap_mode = 3
 
-[node name="HSeparator" type="HSeparator" parent="VBoxContainer"]
+[node name="HSeparator" type="HSeparator" parent="HomePanel/VBoxContainer"]
 layout_mode = 2
 
-[node name="HostButton" type="Button" parent="VBoxContainer"]
+[node name="PlayButton" type="Button" parent="HomePanel/VBoxContainer"]
+layout_mode = 2
+custom_minimum_size = Vector2(0, 44)
+text = "Play"
+
+[node name="SettingsButton" type="Button" parent="HomePanel/VBoxContainer"]
+layout_mode = 2
+custom_minimum_size = Vector2(0, 44)
+text = "Settings"
+
+[node name="CharacterButton" type="Button" parent="HomePanel/VBoxContainer"]
+layout_mode = 2
+custom_minimum_size = Vector2(0, 44)
+text = "Character"
+
+[node name="ExitButton" type="Button" parent="HomePanel/VBoxContainer"]
+layout_mode = 2
+custom_minimum_size = Vector2(0, 44)
+text = "Exit"
+
+[node name="PlayPanel" type="Control" parent="."]
+visible = false
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="VBoxContainer" type="VBoxContainer" parent="PlayPanel"]
+layout_mode = 1
+anchors_preset = 8
+anchor_left = 0.5
+anchor_top = 0.0
+anchor_right = 0.5
+anchor_bottom = 0.0
+offset_left = -200.0
+offset_top = 40.0
+offset_right = 200.0
+offset_bottom = 320.0
+grow_horizontal = 2
+theme_override_constants/separation = 10
+
+[node name="TitleLabel" type="Label" parent="PlayPanel/VBoxContainer"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 26
+horizontal_alignment = 1
+text = "Host or Join"
+
+[node name="HostButton" type="Button" parent="PlayPanel/VBoxContainer"]
 layout_mode = 2
 text = "Host Match"
 
-[node name="JoinRow" type="HBoxContainer" parent="VBoxContainer"]
+[node name="JoinRow" type="HBoxContainer" parent="PlayPanel/VBoxContainer"]
 layout_mode = 2
 theme_override_constants/separation = 8
 
-[node name="IPInput" type="LineEdit" parent="VBoxContainer/JoinRow"]
+[node name="IPInput" type="LineEdit" parent="PlayPanel/VBoxContainer/JoinRow"]
 layout_mode = 2
 size_flags_horizontal = 3
 placeholder_text = "Host IP (blank = 127.0.0.1)"
 
-[node name="JoinButton" type="Button" parent="VBoxContainer/JoinRow"]
+[node name="JoinButton" type="Button" parent="PlayPanel/VBoxContainer/JoinRow"]
 layout_mode = 2
 text = "Join"
 
-[node name="StartMatchButton" type="Button" parent="VBoxContainer"]
+[node name="StartMatchButton" type="Button" parent="PlayPanel/VBoxContainer"]
 layout_mode = 2
 text = "Start Match (host only)"
 
-[node name="PlayerCountLabel" type="Label" parent="VBoxContainer"]
-layout_mode = 2
-horizontal_alignment = 1
-text = "Players connected: 0"
-
-[node name="StatusLabel" type="Label" parent="VBoxContainer"]
+[node name="StatusLabel" type="Label" parent="PlayPanel/VBoxContainer"]
 layout_mode = 2
 theme_override_colors/font_color = Color(0.6, 0.85, 0.95, 1)
 horizontal_alignment = 1
 autowrap_mode = 3
 text = "Host to start a lobby, or join a friend's IP."
+
+[node name="BackButton" type="Button" parent="PlayPanel/VBoxContainer"]
+layout_mode = 2
+text = "Back"
+
+[node name="PlayerListPanel" type="Panel" parent="PlayPanel"]
+layout_mode = 1
+anchors_preset = 12
+anchor_top = 0.68
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = 40.0
+offset_top = 0.0
+offset_right = -40.0
+offset_bottom = -30.0
+grow_horizontal = 2
+grow_vertical = 0
+
+[node name="VBoxContainer" type="VBoxContainer" parent="PlayPanel/PlayerListPanel"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+offset_left = 12.0
+offset_top = 8.0
+offset_right = -12.0
+offset_bottom = -8.0
+
+[node name="PlayerCountLabel" type="Label" parent="PlayPanel/PlayerListPanel/VBoxContainer"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 16
+text = "Players connected: 0"
+
+[node name="PlayerListScroll" type="ScrollContainer" parent="PlayPanel/PlayerListPanel/VBoxContainer"]
+layout_mode = 2
+size_flags_vertical = 3
+
+[node name="PlayerListBox" type="VBoxContainer" parent="PlayPanel/PlayerListPanel/VBoxContainer/PlayerListScroll"]
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="SettingsPanel" type="Control" parent="."]
+visible = false
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="VBoxContainer" type="VBoxContainer" parent="SettingsPanel"]
+layout_mode = 1
+anchors_preset = 8
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+offset_left = -180.0
+offset_top = -100.0
+offset_right = 180.0
+offset_bottom = 100.0
+grow_horizontal = 2
+grow_vertical = 2
+theme_override_constants/separation = 14
+
+[node name="TitleLabel" type="Label" parent="SettingsPanel/VBoxContainer"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 26
+horizontal_alignment = 1
+text = "Settings"
+
+[node name="StubLabel" type="Label" parent="SettingsPanel/VBoxContainer"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.7, 0.72, 0.76, 1)
+horizontal_alignment = 1
+autowrap_mode = 3
+text = "Coming soon: mouse sensitivity, audio volume, key bindings. Stub panel for now."
+
+[node name="BackButton" type="Button" parent="SettingsPanel/VBoxContainer"]
+layout_mode = 2
+text = "Back"
+
+[node name="CharacterPanel" type="Control" parent="."]
+visible = false
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="VBoxContainer" type="VBoxContainer" parent="CharacterPanel"]
+layout_mode = 1
+anchors_preset = 8
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+offset_left = -180.0
+offset_top = -100.0
+offset_right = 180.0
+offset_bottom = 100.0
+grow_horizontal = 2
+grow_vertical = 2
+theme_override_constants/separation = 14
+
+[node name="TitleLabel" type="Label" parent="CharacterPanel/VBoxContainer"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 26
+horizontal_alignment = 1
+text = "Character"
+
+[node name="StubLabel" type="Label" parent="CharacterPanel/VBoxContainer"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.7, 0.72, 0.76, 1)
+horizontal_alignment = 1
+autowrap_mode = 3
+text = "Coming soon: cosmetic customization. Faction color is never player-chosen, by design. Stub panel for now."
+
+[node name="BackButton" type="Button" parent="CharacterPanel/VBoxContainer"]
+layout_mode = 2
+text = "Back"
