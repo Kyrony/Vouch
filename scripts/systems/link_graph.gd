@@ -51,6 +51,24 @@ func server_register_effect(effect_id: String, node: Node, owner_peer_id: int) -
 	_effect_owner[effect_id] = owner_peer_id
 
 
+## Exposed so other trusted server systems (e.g. PuppetMasterSystem's
+## sabotage action) can reuse the same registered effect props instead of
+## keeping a second parallel registry. Deliberately untyped - see the note
+## on `server_handle_activation` below.
+func server_get_effect_node(effect_id: String):
+	return _effect_nodes.get(effect_id)
+
+
+## Exposed so other trusted server systems can send the same "your prop was
+## affected" local event LinkGraph itself would send for a normal mystery
+## link (e.g. when Puppet Master sabotage - not a LightSwitch - triggers
+## the same effect prop).
+func notify_room_affected(peer_id: int, effect_id: String) -> void:
+	if not multiplayer.is_server():
+		return
+	_notify_effect(peer_id, effect_id)
+
+
 ## Called once by the Match director (server-only) after every room/prop has
 ## registered itself. Randomly pairs every control with an effect, rotating
 ## the shuffled effect list so nothing is trivially self-linked when there's
