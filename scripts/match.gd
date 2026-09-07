@@ -71,6 +71,7 @@ func _server_build_match() -> void:
 	PuzzleSystem.reset()
 	PuppetMasterSystem.reset()
 	PhoneSystem.reset()
+	RoomUtilities.reset()
 
 	var peer_ids: Array = GameState.players.keys()
 	peer_ids.shuffle()
@@ -168,11 +169,18 @@ func _server_spawn_room(room_index: int, owner_peer_id: int, is_pm: bool, puzzle
 		"clue_kind": puzzle_plan.get("clue_kind", "") if puzzle_plan.get("clue_index", -1) == room_index else "",
 		"clue_code": puzzle_plan.get("code", "") if puzzle_plan.get("clue_index", -1) == room_index else "",
 	}
-	# Anything gated by a host-configurable spawn odd (MatchSettings) must
-	# be resolved HERE, server-side, and baked into `data` - see
-	# RoomPod.plan_recipe()'s doc comment for why `configure()` itself
-	# must never read MatchSettings directly.
-	data.merge(RoomPod.plan_recipe(is_pm))
+	data.merge(RoomPod.plan_recipe(is_pm, _rooms.size() + 1))
+	if data.get("has_electrical_box", false):
+		var targets: Array = []
+		var candidates: Array = []
+		for idx in _rooms.keys():
+			if idx != room_index:
+				candidates.append(idx)
+		candidates.shuffle()
+		for j in range(mini(3, candidates.size())):
+			targets.append(candidates[j])
+		data["wire_targets"] = targets
+	RoomUtilities.server_init_room(room_index)
 	var room: Node = rooms_spawner.spawn(data)
 	_rooms[room_index] = room
 

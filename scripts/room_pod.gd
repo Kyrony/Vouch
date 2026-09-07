@@ -70,10 +70,12 @@ const THEMES: Array[Dictionary] = [
 ]
 
 enum EscapeKind { DOOR, VENT, NONE }
-## The optional second "module" chained onto the main room. VENT is a
-## modular connector distinct from CLOSET/HALLWAY (see class doc) that
-## can join any of the three main room categories, same as hallway/closet.
-enum ConnectorKind { NONE, CLOSET, HALLWAY, VENT }
+## Which wall of a module hosts a connector opening.
+enum OpeningWall { NORTH, SOUTH, EAST, WEST, CEILING }
+## Optional connector modules chained onto the main room. SLIDE is a
+## one-way tunnel - you can enter from the main room but cannot return
+## through the slide path (see `_add_slide_blocker`).
+enum ConnectorKind { NONE, CLOSET, HALLWAY, VENT, SLIDE }
 
 const CRATE_SCENE: PackedScene = preload("res://scenes/Match/Props/Crate.tscn")
 const SHELF_SCENE: PackedScene = preload("res://scenes/Match/Props/Shelf.tscn")
@@ -91,6 +93,9 @@ const MOVABLE_PROP_SCRIPT: Script = preload("res://scripts/interactables/movable
 const WATER_VALVE_SCRIPT: Script = preload("res://scripts/interactables/water_valve.gd")
 const BROKEN_PIPE_SCRIPT: Script = preload("res://scripts/interactables/broken_pipe.gd")
 const LADDER_SCENE: PackedScene = preload("res://scenes/Match/Interactables/Ladder.tscn")
+const ELECTRICAL_BOX_SCRIPT: Script = preload("res://scripts/interactables/electrical_box.gd")
+const GAS_VALVE_SCRIPT: Script = preload("res://scripts/interactables/gas_valve.gd")
+const GAS_LEAK_SCRIPT: Script = preload("res://scripts/interactables/gas_leak.gd")
 
 var room_index: int = 0
 var owner_peer_id: int = -1
@@ -117,25 +122,67 @@ var _theme: Dictionary = THEMES[0]
 ## desync from what the host (and everyone else) actually built. So
 ## anything gated by a host-configurable odd is decided ONCE here and
 ## baked into the replicated spawn `data` dict instead.
-static func plan_recipe(is_pm: bool) -> Dictionary:
-	var connector := ConnectorKind.NONE
+static func plan_recipe(is_pm: bool, room_count: int = 8) -> Dictionary:
+	var module_chain: Array = []
+	var total_modules := 1
 	if not is_pm:
-		var feature_roll := randf()
-		if feature_roll < 0.28:
-			connector = ConnectorKind.CLOSET
-		elif feature_roll < 0.28 + MatchSettings.hidden_hallway_chance * 0.4:
-			connector = ConnectorKind.HALLWAY
-		elif feature_roll < 0.28 + MatchSettings.hidden_hallway_chance * 0.4 + 0.15:
-			connector = ConnectorKind.VENT
+		if randf() < 0.80:
+			total_modules += 1
+			if randf() < 0.20:
+				total_modules += 1
+				if randf() < 0.01:
+					total_modules += 1
 
-	var hallway_hidden := connector == ConnectorKind.HALLWAY and randf() < MatchSettings.hidden_hallway_chance
+	for i in range(total_modules - 1):
+		var connector := _pick_connector_kind()
+		var opening_wall := _pick_opening_wall(connector, i == 0)
+		var hidden := connector == ConnectorKind.HALLWAY and randf() < MatchSettings.hidden_hallway_chance
+		module_chain.append({
+			"connector": connector,
+			"opening_wall": opening_wall,
+			"hidden": hidden,
+		})
+
 	var has_valve := not is_pm and randf() < MatchSettings.flood_valve_chance
+	var has_electrical_box := not is_pm and randf() < 0.35
 
+	# Wire targets for electrical box: three other room indices (filled in by Match).
+	var wire_targets: Array = []
+
+	var first: Dictionary = module_chain[0] if not module_chain.is_empty() else {}
 	return {
-		"connector": connector,
-		"hallway_hidden": hallway_hidden,
+		"module_chain": module_chain,
 		"has_valve": has_valve,
+		"has_electrical_box": has_electrical_box,
+		"wire_targets": wire_targets,
+		# Legacy fields for headless connector tests.
+		"connector": first.get("connector", ConnectorKind.NONE),
+		"hallway_hidden": first.get("hidden", false),
 	}
+
+
+static func _pick_connector_kind() -> ConnectorKind:
+	var roll := randf()
+	if roll < 0.22:
+		return ConnectorKind.CLOSET
+	if roll < 0.22 + MatchSettings.hidden_hallway_chance * 0.35:
+		return ConnectorKind.HALLWAY
+	if roll < 0.22 + MatchSettings.hidden_hallway_chance * 0.35 + 0.18:
+		return ConnectorKind.VENT
+	return ConnectorKind.SLIDE
+
+
+static func _pick_opening_wall(connector: ConnectorKind, is_first: bool) -> int:
+	if not is_first:
+		return OpeningWall.NORTH
+	if connector == ConnectorKind.VENT and randf() < 0.35:
+		return OpeningWall.CEILING
+	var side_roll := randf()
+	if side_roll < 0.45:
+		return OpeningWall.NORTH
+	if side_roll < 0.725:
+		return OpeningWall.EAST
+	return OpeningWall.WEST
 
 
 ## Called by the Match director's spawn_function BEFORE this node is
@@ -174,16 +221,23 @@ func configure(data: Dictionary) -> void:
 		escape_kind = EscapeKind.VENT
 
 	# Pre-resolved server-side by plan_recipe() - see its doc comment.
-	var connector: ConnectorKind = data.get("connector", ConnectorKind.NONE)
-	var hallway_hidden: bool = data.get("hallway_hidden", false)
+	var module_chain: Array = data.get("module_chain", [])
+	if module_chain.is_empty() and data.get("connector", ConnectorKind.NONE) != ConnectorKind.NONE:
+		module_chain = [{
+			"connector": data.get("connector", ConnectorKind.NONE),
+			"opening_wall": OpeningWall.NORTH,
+			"hidden": data.get("hallway_hidden", false),
+		}]
 	var has_valve: bool = data.get("has_valve", false)
+	var has_electrical_box: bool = data.get("has_electrical_box", false)
+	var wire_targets: Array = data.get("wire_targets", [])
 
 	var has_pipes := rng.randf() < 0.5
 	var has_wires := rng.randf() < 0.4
 
-	_build_shell(rng, theme, escape_kind, connector, hallway_hidden)
+	_build_shell(rng, theme, escape_kind, module_chain)
 	_build_decor(rng, theme, has_pipes, has_wires)
-	_build_interactables(rng, theme, escape_kind, has_valve)
+	_build_interactables(rng, theme, escape_kind, has_valve, has_electrical_box, wire_targets)
 	_build_prop_scatter(rng)
 
 	if is_puppet_master_room:
@@ -279,7 +333,7 @@ func add_clue_prop(kind: String, code: String) -> void:
 # Shell construction (floor / ceiling / walls with optional gaps)
 # ---------------------------------------------------------------------
 
-func _build_shell(rng: RandomNumberGenerator, theme: Dictionary, escape_kind: EscapeKind, connector: ConnectorKind, hallway_hidden: bool) -> void:
+func _build_shell(_rng: RandomNumberGenerator, theme: Dictionary, escape_kind: EscapeKind, module_chain: Array) -> void:
 	var wall_mat := _wall_material(theme["wall_color"])
 	var floor_mat := _wall_material(theme["floor_color"])
 
@@ -292,41 +346,300 @@ func _build_shell(rng: RandomNumberGenerator, theme: Dictionary, escape_kind: Es
 	ceiling.position = Vector3(0, HEIGHT + WALL_THICK / 2.0, 0)
 	add_child(ceiling)
 
-	# South wall (positive Z) always hosts the escape point, unless this
-	# is the Puppet Master's room (EscapeKind.NONE -> fully solid wall).
 	var south_gap := 0.0 if escape_kind == EscapeKind.NONE else (1.2 if escape_kind == EscapeKind.DOOR else 0.9)
 	_build_wall(true, depth / 2.0, width, south_gap, 0.0, wall_mat, HEIGHT)
 
-	# North wall optionally hosts a closet, hallway, or vent opening.
 	var north_gap := 0.0
 	var north_gap_height := HEIGHT
-	match connector:
-		ConnectorKind.CLOSET:
-			north_gap = 1.2
-		ConnectorKind.HALLWAY:
-			north_gap = 1.6
-		ConnectorKind.VENT:
-			north_gap = 0.9
-			north_gap_height = 2.0
+	var east_gap := 0.0
+	var east_gap_height := HEIGHT
+	var west_gap := 0.0
+	var west_gap_height := HEIGHT
+	var ceiling_gap := 0.0
+
+	if not module_chain.is_empty():
+		var first: Dictionary = module_chain[0]
+		var kind: ConnectorKind = first["connector"]
+		var opening: int = first.get("opening_wall", OpeningWall.NORTH)
+		var gw := _gap_width_for(kind)
+		var gh := _gap_height_for(kind)
+		match opening:
+			OpeningWall.NORTH:
+				north_gap = gw
+				north_gap_height = gh
+			OpeningWall.EAST:
+				east_gap = gw
+				east_gap_height = gh
+			OpeningWall.WEST:
+				west_gap = gw
+				west_gap_height = gh
+			OpeningWall.CEILING:
+				ceiling_gap = gw
+
 	_build_wall(true, -depth / 2.0, width, north_gap, 0.0, wall_mat, north_gap_height)
+	_build_wall(false, width / 2.0, depth, east_gap, 0.0, wall_mat, east_gap_height)
+	_build_wall(false, -width / 2.0, depth, west_gap, 0.0, wall_mat, west_gap_height)
 
-	# East/west walls are always solid - they host the light switch and
-	# phone respectively.
-	_build_wall(false, width / 2.0, depth, 0.0, 0.0, wall_mat, HEIGHT)
-	_build_wall(false, -width / 2.0, depth, 0.0, 0.0, wall_mat, HEIGHT)
+	if ceiling_gap > 0.01:
+		_build_ceiling_opening(ceiling_gap, wall_mat)
 
-	match connector:
-		ConnectorKind.CLOSET:
-			_build_connector_wing(wall_mat, floor_mat, theme, 1.4, 1.3, 3.0, HEIGHT, false)
-		ConnectorKind.HALLWAY:
-			_build_connector_wing(wall_mat, floor_mat, theme, 1.6, 3.5, 3.2, HEIGHT, hallway_hidden)
-		ConnectorKind.VENT:
-			_build_connector_wing(wall_mat, floor_mat, theme, 0.9, 3.0, 2.2, 2.0, false, "vent")
+	_build_module_chain(wall_mat, floor_mat, theme, module_chain)
 
 	spawn_point = Marker3D.new()
 	spawn_point.name = "SpawnPoint"
 	spawn_point.position = Vector3(0, 0.1, depth / 2.0 - 1.2)
 	add_child(spawn_point)
+
+
+func _gap_width_for(kind: ConnectorKind) -> float:
+	match kind:
+		ConnectorKind.CLOSET:
+			return 1.2
+		ConnectorKind.HALLWAY:
+			return 1.6
+		ConnectorKind.VENT:
+			return 1.0
+		ConnectorKind.SLIDE:
+			return 1.4
+		_:
+			return 0.0
+
+
+func _gap_height_for(kind: ConnectorKind) -> float:
+	if kind == ConnectorKind.VENT:
+		return 2.2
+	return HEIGHT
+
+
+func _connector_dims(kind: ConnectorKind) -> Dictionary:
+	match kind:
+		ConnectorKind.CLOSET:
+			return {"width": 1.4, "length": 1.3, "chamber": 3.0, "ceiling": HEIGHT}
+		ConnectorKind.HALLWAY:
+			return {"width": 1.6, "length": 3.5, "chamber": 3.2, "ceiling": HEIGHT}
+		ConnectorKind.VENT:
+			return {"width": 1.0, "length": 3.0, "chamber": 2.2, "ceiling": 2.2}
+		ConnectorKind.SLIDE:
+			return {"width": 1.4, "length": 4.0, "chamber": 2.8, "ceiling": HEIGHT}
+		_:
+			return {"width": 1.4, "length": 1.3, "chamber": 0.0, "ceiling": HEIGHT}
+
+
+func _build_ceiling_opening(gap_width: float, material: Material) -> void:
+	# Cut a vent hatch in the ceiling mesh by adding header segments around it.
+	var half_w := width / 2.0
+	var seg1_len := half_w - gap_width / 2.0
+	if seg1_len > 0.05:
+		add_child(_make_box_body(Vector3(seg1_len, WALL_THICK, depth), Vector3(-half_w + seg1_len / 2.0, HEIGHT + WALL_THICK / 2.0, 0), material, 0))
+	var seg2_len := half_w - gap_width / 2.0
+	if seg2_len > 0.05:
+		add_child(_make_box_body(Vector3(seg2_len, WALL_THICK, depth), Vector3(half_w - seg2_len / 2.0, HEIGHT + WALL_THICK / 2.0, 0), material, 0))
+
+
+func _build_module_chain(wall_mat: Material, floor_mat: Material, theme: Dictionary, module_chain: Array) -> void:
+	if module_chain.is_empty():
+		return
+
+	var chain_dir := Vector3(0, 0, -1)
+	var chain_right := Vector3(1, 0, 0)
+	var chain_origin := Vector3.ZERO
+
+	for i in range(module_chain.size()):
+		var spec: Dictionary = module_chain[i]
+		var kind: ConnectorKind = spec["connector"]
+		var hidden: bool = spec.get("hidden", false)
+		var opening: int = spec.get("opening_wall", OpeningWall.NORTH)
+
+		if i == 0:
+			match opening:
+				OpeningWall.NORTH:
+					chain_dir = Vector3(0, 0, -1)
+					chain_right = Vector3(1, 0, 0)
+					chain_origin = Vector3(0, 0, -depth / 2.0)
+				OpeningWall.EAST:
+					chain_dir = Vector3(1, 0, 0)
+					chain_right = Vector3(0, 0, 1)
+					chain_origin = Vector3(width / 2.0, 0, 0)
+				OpeningWall.WEST:
+					chain_dir = Vector3(-1, 0, 0)
+					chain_right = Vector3(0, 0, -1)
+					chain_origin = Vector3(-width / 2.0, 0, 0)
+				OpeningWall.CEILING:
+					chain_dir = Vector3(0, 1, 0)
+					chain_right = Vector3(1, 0, 0)
+					chain_origin = Vector3(0, HEIGHT, 0)
+		else:
+			# Subsequent modules always extend from the far end of the chain.
+			pass
+
+		var end_origin: Vector3
+		if opening == OpeningWall.CEILING and i == 0:
+			end_origin = _build_ceiling_connector(wall_mat, floor_mat, theme, kind, hidden, chain_origin)
+		elif chain_dir.z < 0:
+			var z_start := chain_origin.z if i > 0 else -depth / 2.0
+			end_origin = _build_connector_along_z(wall_mat, floor_mat, theme, _connector_dims(kind), hidden, kind == ConnectorKind.SLIDE, z_start, -1)
+		elif chain_dir.x > 0:
+			var x_start := chain_origin.x if i > 0 else width / 2.0
+			end_origin = _build_connector_along_x(wall_mat, floor_mat, theme, _connector_dims(kind), hidden, kind == ConnectorKind.SLIDE, x_start, 1)
+		else:
+			var x_start := chain_origin.x if i > 0 else -width / 2.0
+			end_origin = _build_connector_along_x(wall_mat, floor_mat, theme, _connector_dims(kind), hidden, kind == ConnectorKind.SLIDE, x_start, -1)
+
+		chain_origin = end_origin
+
+
+func _build_connector_along_z(wall_mat: Material, floor_mat: Material, theme: Dictionary, dims: Dictionary, hidden: bool, is_slide: bool, z0: float, sign: int) -> Vector3:
+	var corridor_width: float = dims["width"]
+	var corridor_length: float = dims["length"]
+	var chamber_size: float = dims["chamber"]
+	var ceiling_height: float = dims["ceiling"]
+	var corridor_mat: Material
+	var corridor_floor_mat: Material
+	if is_slide:
+		corridor_mat = _slide_material()
+		corridor_floor_mat = corridor_mat
+	elif dims["ceiling"] < HEIGHT - 0.01:
+		corridor_mat = _vent_material()
+		corridor_floor_mat = corridor_mat
+	else:
+		corridor_mat = wall_mat
+		corridor_floor_mat = floor_mat
+	var overlap := SEAM_OVERLAP
+	var z1 := z0 + sign * corridor_length
+
+	add_child(_make_box_body(Vector3(corridor_width, WALL_THICK, corridor_length + overlap), Vector3(0, -WALL_THICK / 2.0, z0 + sign * (corridor_length / 2.0 - overlap / 2.0)), corridor_floor_mat, 1))
+	if ceiling_height < HEIGHT - 0.01:
+		add_child(_make_box_body(Vector3(corridor_width, WALL_THICK, corridor_length + overlap), Vector3(0, ceiling_height + WALL_THICK / 2.0, z0 + sign * (corridor_length / 2.0 - overlap / 2.0)), corridor_mat, 0))
+	add_child(_make_box_body(Vector3(WALL_THICK, ceiling_height, corridor_length), Vector3(-corridor_width / 2.0, ceiling_height / 2.0, z0 + sign * corridor_length / 2.0), corridor_mat, 1))
+	add_child(_make_box_body(Vector3(WALL_THICK, ceiling_height, corridor_length), Vector3(corridor_width / 2.0, ceiling_height / 2.0, z0 + sign * corridor_length / 2.0), corridor_mat, 1))
+
+	if chamber_size <= 0.0:
+		return Vector3(0, 0, z1)
+
+	var chamber_center_z := z1 + sign * chamber_size / 2.0
+	add_child(_make_box_body(Vector3(chamber_size, WALL_THICK, chamber_size + overlap), Vector3(0, -WALL_THICK / 2.0, chamber_center_z + sign * (-overlap / 2.0)), corridor_floor_mat, 1))
+	add_child(_make_box_body(Vector3(chamber_size, ceiling_height, WALL_THICK), Vector3(0, ceiling_height / 2.0, z1 + sign * chamber_size), corridor_mat, 1))
+	if ceiling_height < HEIGHT - 0.01:
+		add_child(_make_box_body(Vector3(chamber_size, WALL_THICK, chamber_size + overlap), Vector3(0, ceiling_height + WALL_THICK / 2.0, chamber_center_z + sign * (-overlap / 2.0)), corridor_mat, 0))
+	else:
+		var chamber_ceiling := MeshInstance3D.new()
+		var cc_mesh := BoxMesh.new()
+		cc_mesh.size = Vector3(chamber_size, WALL_THICK, chamber_size)
+		chamber_ceiling.mesh = cc_mesh
+		chamber_ceiling.set_surface_override_material(0, corridor_mat)
+		chamber_ceiling.position = Vector3(0, HEIGHT + WALL_THICK / 2.0, chamber_center_z)
+		add_child(chamber_ceiling)
+	add_child(_make_box_body(Vector3(WALL_THICK, ceiling_height, chamber_size + overlap), Vector3(-chamber_size / 2.0, ceiling_height / 2.0, chamber_center_z + sign * (-overlap / 2.0)), corridor_mat, 1))
+	add_child(_make_box_body(Vector3(WALL_THICK, ceiling_height, chamber_size + overlap), Vector3(chamber_size / 2.0, ceiling_height / 2.0, chamber_center_z + sign * (-overlap / 2.0)), corridor_mat, 1))
+
+	if is_slide:
+		_add_slide_blocker_axis_z(z1 + sign * 0.2, sign, corridor_width)
+
+	if hidden:
+		var bookcase := _make_interactable(MOVABLE_PROP_SCRIPT, Vector3(corridor_width - 0.1, ceiling_height * 0.85, 0.3), Vector3(0, ceiling_height * 0.85 / 2.0, z0), _accent_material(theme["accent_color"]), "Move bookcase")
+		var bookcase_script: MovableProp = bookcase
+		bookcase_script.move_offset = Vector3(corridor_width, 0.0, 0.0)
+		bookcase.name = "SecretBookcase"
+		add_child(bookcase)
+
+	return Vector3(0, 0, z1 + sign * chamber_size)
+
+
+func _build_connector_along_x(wall_mat: Material, floor_mat: Material, theme: Dictionary, dims: Dictionary, hidden: bool, is_slide: bool, x0: float, sign: int) -> Vector3:
+	var corridor_width: float = dims["width"]
+	var corridor_length: float = dims["length"]
+	var chamber_size: float = dims["chamber"]
+	var ceiling_height: float = dims["ceiling"]
+	var corridor_mat: Material
+	var corridor_floor_mat: Material
+	if is_slide:
+		corridor_mat = _slide_material()
+		corridor_floor_mat = corridor_mat
+	elif dims["ceiling"] < HEIGHT - 0.01:
+		corridor_mat = _vent_material()
+		corridor_floor_mat = corridor_mat
+	else:
+		corridor_mat = wall_mat
+		corridor_floor_mat = floor_mat
+	var overlap := SEAM_OVERLAP
+	var x1 := x0 + sign * corridor_length
+
+	add_child(_make_box_body(Vector3(corridor_length + overlap, WALL_THICK, corridor_width), Vector3(x0 + sign * (corridor_length / 2.0 - overlap / 2.0), -WALL_THICK / 2.0, 0), corridor_floor_mat, 1))
+	if ceiling_height < HEIGHT - 0.01:
+		add_child(_make_box_body(Vector3(corridor_length + overlap, WALL_THICK, corridor_width), Vector3(x0 + sign * (corridor_length / 2.0 - overlap / 2.0), ceiling_height + WALL_THICK / 2.0, 0), corridor_mat, 0))
+	add_child(_make_box_body(Vector3(corridor_length, ceiling_height, WALL_THICK), Vector3(x0 + sign * corridor_length / 2.0, ceiling_height / 2.0, -corridor_width / 2.0), corridor_mat, 1))
+	add_child(_make_box_body(Vector3(corridor_length, ceiling_height, WALL_THICK), Vector3(x0 + sign * corridor_length / 2.0, ceiling_height / 2.0, corridor_width / 2.0), corridor_mat, 1))
+
+	if is_slide:
+		_add_slide_blocker_axis_x(x1, sign, corridor_width)
+
+	if chamber_size <= 0.0:
+		return Vector3(x1, 0, 0)
+
+	var chamber_center_x := x1 + sign * chamber_size / 2.0
+	add_child(_make_box_body(Vector3(chamber_size + overlap, WALL_THICK, chamber_size), Vector3(chamber_center_x + sign * (-overlap / 2.0), -WALL_THICK / 2.0, 0), corridor_floor_mat, 1))
+	add_child(_make_box_body(Vector3(WALL_THICK, ceiling_height, chamber_size), Vector3(x1 + sign * chamber_size, ceiling_height / 2.0, 0), corridor_mat, 1))
+	add_child(_make_box_body(Vector3(chamber_size, WALL_THICK, chamber_size + overlap), Vector3(chamber_center_x + sign * (-overlap / 2.0), ceiling_height + WALL_THICK / 2.0, 0), corridor_mat, 0))
+	add_child(_make_box_body(Vector3(chamber_size, ceiling_height, WALL_THICK), Vector3(chamber_center_x + sign * (-overlap / 2.0), ceiling_height / 2.0, -chamber_size / 2.0), corridor_mat, 1))
+	add_child(_make_box_body(Vector3(chamber_size, ceiling_height, WALL_THICK), Vector3(chamber_center_x + sign * (-overlap / 2.0), ceiling_height / 2.0, chamber_size / 2.0), corridor_mat, 1))
+
+	if is_slide:
+		_add_slide_blocker_axis_x(x1 + sign * 0.2, sign, corridor_width)
+
+	return Vector3(x1 + sign * chamber_size, 0, 0)
+
+
+func _add_slide_blocker_axis_z(z_pos: float, sign: int, corridor_width: float) -> void:
+	var area := Area3D.new()
+	area.set_script(preload("res://scripts/interactables/slide_blocker.gd"))
+	area.block_direction = Vector3(0, 0, -sign)
+	var shape := CollisionShape3D.new()
+	var box := BoxShape3D.new()
+	box.size = Vector3(corridor_width, 2.0, 0.4)
+	shape.shape = box
+	area.add_child(shape)
+	area.position = Vector3(0, 1.0, z_pos)
+	add_child(area)
+
+
+func _add_slide_blocker_axis_x(x_pos: float, sign: int, corridor_width: float) -> void:
+	var area := Area3D.new()
+	area.set_script(preload("res://scripts/interactables/slide_blocker.gd"))
+	area.block_direction = Vector3(-sign, 0, 0)
+	var shape := CollisionShape3D.new()
+	var box := BoxShape3D.new()
+	box.size = Vector3(0.4, 2.0, corridor_width)
+	shape.shape = box
+	area.add_child(shape)
+	area.position = Vector3(x_pos, 1.0, 0)
+	add_child(area)
+
+
+func _build_ceiling_connector(wall_mat: Material, floor_mat: Material, _theme: Dictionary, kind: ConnectorKind, _hidden: bool, _origin: Vector3) -> Vector3:
+	var dims := _connector_dims(kind)
+	var shaft_height := 1.8
+	var shaft_width: float = dims["width"]
+	var chamber_size: float = maxf(dims["chamber"], 2.0)
+	var ceiling_height: float = dims["ceiling"]
+
+	var shaft_mat := _vent_material() if kind == ConnectorKind.VENT else wall_mat
+	add_child(_make_box_body(Vector3(shaft_width, shaft_height, shaft_width), Vector3(0, HEIGHT + shaft_height / 2.0, 0), shaft_mat, 1))
+	var platform_y := HEIGHT + shaft_height
+	add_child(_make_box_body(Vector3(shaft_width + 0.4, WALL_THICK, shaft_width + 0.4), Vector3(0, platform_y, 0), floor_mat, 1))
+	add_child(_make_box_body(Vector3(chamber_size, WALL_THICK, chamber_size), Vector3(0, platform_y, -chamber_size / 2.0 - shaft_width / 2.0), floor_mat, 1))
+	add_child(_make_box_body(Vector3(chamber_size, WALL_THICK, WALL_THICK), Vector3(0, platform_y + ceiling_height / 2.0, -chamber_size - shaft_width / 2.0), shaft_mat, 1))
+	add_child(_make_box_body(Vector3(WALL_THICK, ceiling_height, chamber_size), Vector3(-chamber_size / 2.0, platform_y + ceiling_height / 2.0, -chamber_size / 2.0 - shaft_width / 2.0), shaft_mat, 1))
+	add_child(_make_box_body(Vector3(WALL_THICK, ceiling_height, chamber_size), Vector3(chamber_size / 2.0, platform_y + ceiling_height / 2.0, -chamber_size / 2.0 - shaft_width / 2.0), shaft_mat, 1))
+	add_child(_make_box_body(Vector3(chamber_size, WALL_THICK, chamber_size), Vector3(0, platform_y + ceiling_height + WALL_THICK / 2.0, -chamber_size / 2.0 - shaft_width / 2.0), shaft_mat, 0))
+	return Vector3(0, platform_y, -chamber_size - shaft_width / 2.0)
+
+
+func _slide_material() -> StandardMaterial3D:
+	var mat := StandardMaterial3D.new()
+	mat.albedo_color = Color(0.35, 0.38, 0.42)
+	mat.metallic = 0.3
+	mat.roughness = 0.55
+	return mat
 
 
 ## `is_x_axis` true = wall runs along X (north/south); false = along Z
@@ -366,61 +679,6 @@ func _build_wall(is_x_axis: bool, wall_offset: float, span: float, gap_width: fl
 		add_child(_make_box_body(size3, pos3, material, 1))
 
 
-## Builds ANY of the closet/hallway/vent connector modules - they're all
-## the same shape (a corridor optionally ending in a small chamber),
-## differing only in width/length/chamber size/ceiling height/material
-## flavor. `kind_flavor` picks a distinct wall material for "vent" so it
-## visually reads as a crawlspace rather than a normal-room hallway, even
-## though (for simplicity/scope) it uses the same walkable collision as
-## everywhere else - see class doc for why we don't implement crouching.
-func _build_connector_wing(wall_mat: Material, floor_mat: Material, theme: Dictionary, corridor_width: float, corridor_length: float, chamber_size: float, ceiling_height: float, hidden: bool, kind_flavor: String = "") -> void:
-	var corridor_mat := wall_mat
-	var corridor_floor_mat := floor_mat
-	if kind_flavor == "vent":
-		corridor_mat = _vent_material()
-		corridor_floor_mat = _vent_material()
-
-	var z0 := -depth / 2.0
-	var z1 := z0 - corridor_length
-	var overlap := SEAM_OVERLAP
-
-	# Floor/ceiling overlap slightly INTO the main room so there's never a
-	# hairline seam at the doorway threshold.
-	add_child(_make_box_body(Vector3(corridor_width, WALL_THICK, corridor_length + overlap), Vector3(0, -WALL_THICK / 2.0, z0 - corridor_length / 2.0 + overlap / 2.0), corridor_floor_mat, 1))
-	if ceiling_height < HEIGHT - 0.01:
-		add_child(_make_box_body(Vector3(corridor_width, WALL_THICK, corridor_length + overlap), Vector3(0, ceiling_height + WALL_THICK / 2.0, z0 - corridor_length / 2.0 + overlap / 2.0), corridor_mat, 0))
-	add_child(_make_box_body(Vector3(WALL_THICK, ceiling_height, corridor_length), Vector3(-corridor_width / 2.0, ceiling_height / 2.0, z0 - corridor_length / 2.0), corridor_mat, 1))
-	add_child(_make_box_body(Vector3(WALL_THICK, ceiling_height, corridor_length), Vector3(corridor_width / 2.0, ceiling_height / 2.0, z0 - corridor_length / 2.0), corridor_mat, 1))
-
-	if not chamber_size > 0.0:
-		return
-
-	# End chamber, fully enclosing the far end of the corridor - no dead
-	# opening to the void.
-	var chamber_center_z := z1 - chamber_size / 2.0
-	add_child(_make_box_body(Vector3(chamber_size, WALL_THICK, chamber_size + overlap), Vector3(0, -WALL_THICK / 2.0, chamber_center_z - overlap / 2.0), corridor_floor_mat, 1))
-	add_child(_make_box_body(Vector3(chamber_size, ceiling_height, WALL_THICK), Vector3(0, ceiling_height / 2.0, z1 - chamber_size), corridor_mat, 1))
-	if ceiling_height < HEIGHT - 0.01:
-		add_child(_make_box_body(Vector3(chamber_size, WALL_THICK, chamber_size + overlap), Vector3(0, ceiling_height + WALL_THICK / 2.0, chamber_center_z - overlap / 2.0), corridor_mat, 0))
-	else:
-		var chamber_ceiling := MeshInstance3D.new()
-		var cc_mesh := BoxMesh.new()
-		cc_mesh.size = Vector3(chamber_size, WALL_THICK, chamber_size)
-		chamber_ceiling.mesh = cc_mesh
-		chamber_ceiling.set_surface_override_material(0, corridor_mat)
-		chamber_ceiling.position = Vector3(0, HEIGHT + WALL_THICK / 2.0, chamber_center_z)
-		add_child(chamber_ceiling)
-	add_child(_make_box_body(Vector3(WALL_THICK, ceiling_height, chamber_size + overlap), Vector3(-chamber_size / 2.0, ceiling_height / 2.0, chamber_center_z - overlap / 2.0), corridor_mat, 1))
-	add_child(_make_box_body(Vector3(WALL_THICK, ceiling_height, chamber_size + overlap), Vector3(chamber_size / 2.0, ceiling_height / 2.0, chamber_center_z - overlap / 2.0), corridor_mat, 1))
-
-	if hidden:
-		var bookcase := _make_interactable(MOVABLE_PROP_SCRIPT, Vector3(corridor_width - 0.1, ceiling_height * 0.85, 0.3), Vector3(0, ceiling_height * 0.85 / 2.0, z0), _accent_material(theme["accent_color"]), "Move bookcase")
-		var bookcase_script: MovableProp = bookcase
-		bookcase_script.move_offset = Vector3(corridor_width, 0.0, 0.0)
-		bookcase.name = "SecretBookcase"
-		add_child(bookcase)
-
-
 func _vent_material() -> StandardMaterial3D:
 	var mat := StandardMaterial3D.new()
 	mat.albedo_color = Color(0.3, 0.32, 0.34)
@@ -433,7 +691,7 @@ func _vent_material() -> StandardMaterial3D:
 # Interactables (light switch, escape point, phone, room light, camera)
 # ---------------------------------------------------------------------
 
-func _build_interactables(rng: RandomNumberGenerator, theme: Dictionary, escape_kind: EscapeKind, has_valve: bool) -> void:
+func _build_interactables(rng: RandomNumberGenerator, theme: Dictionary, escape_kind: EscapeKind, has_valve: bool, has_electrical_box: bool, wire_targets: Array) -> void:
 	var accent := _accent_material(theme["accent_color"])
 	var control_id := "room_%d_light_switch" % room_index
 	var effect_id := "room_%d_room_light" % room_index
@@ -476,14 +734,13 @@ func _build_interactables(rng: RandomNumberGenerator, theme: Dictionary, escape_
 	camera.name = "SecurityCamera"
 	add_child(camera)
 
-	# A camera mounted near the ceiling needs a ladder to reach - see
-	# SecurityCamera.min_elevation_y (checked by Player.gd's hold-to-
-	# destroy flow) and Ladder.gd's climbing physics.
-	var ladder := LADDER_SCENE.instantiate()
+	# Movable ladder - grabbable and placeable against nearest wall.
+	var ladder := LADDER_SCENE.instantiate() as Ladder
 	ladder.position = Vector3(width / 2.0 - 0.15, 0, -depth / 2.0 + 0.9)
 	ladder.rotation.y = PI
 	if ladder.has_method("configure"):
-		ladder.configure(camera_mount_y + 0.3)
+		ladder.configure(camera_mount_y + 0.3, room_index)
+	ladder.prompt_text = "Pick up ladder"
 	add_child(ladder)
 
 	if has_valve:
@@ -494,6 +751,22 @@ func _build_interactables(rng: RandomNumberGenerator, theme: Dictionary, escape_
 		valve_script.room_index = room_index
 		valve.name = "WaterValve"
 		add_child(valve)
+
+	if theme_id == "utility" and rng.randf() < 0.5:
+		var gas_control_id := "room_%d_gas_valve" % room_index
+		var gas_valve := _make_interactable(GAS_VALVE_SCRIPT, Vector3(0.14, 0.14, 0.1), Vector3(-width / 2.0 + 0.1, 1.4, -depth * 0.15), accent, "Turn gas valve")
+		var gas_valve_script: GasValve = gas_valve
+		gas_valve_script.control_id = gas_control_id
+		gas_valve_script.room_index = room_index
+		gas_valve.name = "GasValve"
+		add_child(gas_valve)
+
+	if has_electrical_box and not wire_targets.is_empty():
+		var box := _make_interactable(ELECTRICAL_BOX_SCRIPT, Vector3(0.35, 0.45, 0.12), Vector3(-width / 2.0 + 0.15, 0.9, -depth * 0.25), accent, "Electrical box")
+		var box_script: ElectricalBox = box
+		box_script.configure(room_index, wire_targets)
+		box.name = "ElectricalBox"
+		add_child(box)
 
 	var room_light := Node3D.new()
 	room_light.set_script(ROOM_LIGHT_SCRIPT)
@@ -543,6 +816,17 @@ func _build_interactables(rng: RandomNumberGenerator, theme: Dictionary, escape_
 	pipe_script.room_index = room_index
 	pipe_script.room_height = HEIGHT
 	add_child(pipe)
+
+	var gas_effect_id := "room_%d_gas_leak" % room_index
+	var gas_leak := Node3D.new()
+	gas_leak.set_script(GAS_LEAK_SCRIPT)
+	gas_leak.name = "GasLeak"
+	gas_leak.position = Vector3(-width / 2.0 + 0.2, HEIGHT - 0.5, depth / 2.0 - 0.3)
+	var gas_leak_script: GasLeak = gas_leak
+	gas_leak_script.effect_id = gas_effect_id
+	gas_leak_script.owner_peer_id = owner_peer_id
+	gas_leak_script.room_index = room_index
+	add_child(gas_leak)
 
 
 func _build_monitors(theme: Dictionary) -> void:
