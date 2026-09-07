@@ -1,11 +1,9 @@
 extends Node
 ## EscapePathSettings
 ##
-## Friends-MVP gate: bunker-only match (sealed box, center spawn, no props).
-##
-## Default: bunker-only ON whenever escape path is OFF.
-## Override: `VOUCH_BUNKER_ONLY=0` allows item populate without escape (dev only).
-## Full loop: `VOUCH_ESCAPE_PATH=1` enables tunnels, hub, and item populate.
+## Default play path is **horror bunker escape** (see HorrorModeSettings).
+## Friends-MVP sealed bunker: set `VOUCH_BUNKER_ONLY=1`.
+## Legacy multi-room escape loop: set `VOUCH_ESCAPE_PATH=1`.
 ##
 ## TODO(post-MVP): reattach short flat hall + minimal interactables when re-enabled.
 

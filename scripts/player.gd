@@ -107,6 +107,20 @@ var _walkie_partner_label: Label
 ## faction color (that would leak the mystery/social-deduction info).
 var faction_id: String = ""
 
+var horror_mode: bool = false
+var is_horror_puppet_master: bool = false
+
+var _pm_controller: Node = null
+var _health_bar: ProgressBar = null
+var _stamina_bar: ProgressBar = null
+var _fear_bar: ProgressBar = null
+var _hotbar_labels: Array[Label] = []
+var _neon_hud: Control = null
+var _local_health: float = 100.0
+var _local_max_health: float = 100.0
+var _inventory_slots: Array = []
+var _inventory_selected: int = 0
+
 
 func _ready() -> void:
 	add_to_group("players")
@@ -117,6 +131,10 @@ func _ready() -> void:
 	if is_multiplayer_authority():
 		camera.current = true
 		hud.visible = true
+		if horror_mode or HorrorModeSettings.is_horror_mode():
+			horror_mode = true
+		if is_horror_puppet_master:
+			GameState.local_is_puppet_master = true
 		Input.mouse_mode = Input.MOUSE_MODE_CAPTURED
 		GameState.local_player_node = self
 
@@ -134,11 +152,17 @@ func _ready() -> void:
 
 		if not GameState.local_faction_id.is_empty():
 			_on_faction_assigned(GameState.local_faction_id)
-		if GameState.local_is_puppet_master:
+		if GameState.local_is_puppet_master or is_horror_puppet_master:
 			faction_label.text = "PUPPET MASTER"
 			faction_label.add_theme_color_override("font_color", Color(0.85, 0.15, 0.85))
 		_build_binary_panel()
-		_build_walkie_panel()
+		if not horror_mode:
+			_build_walkie_panel()
+		_build_horror_hud()
+		if horror_mode:
+			PlayerHealth.local_health_changed.connect(_on_local_health_changed)
+			PlayerInventory.local_inventory_changed.connect(_on_local_inventory_changed)
+			PlayerEffects.local_meters_changed.connect(_on_local_meters_changed)
 		_pause_menu = get_node_or_null("/root/Main/PauseMenu")
 	else:
 		camera.current = false
@@ -186,6 +210,14 @@ func _unhandled_input(event: InputEvent) -> void:
 
 	if event.is_action_pressed("interact"):
 		_try_interact()
+	elif horror_mode and not is_horror_puppet_master:
+		if event.is_action_pressed("use_item"):
+			_request_use_item()
+		if event.is_action_pressed("drop_item"):
+			_request_drop_item()
+		for i in range(8):
+			if event.is_action_pressed("hotbar_%d" % (i + 1)):
+				_request_select_slot(i)
 	elif event.is_action_pressed("fire") and has_gun and DebugBuild.enabled and Input.mouse_mode == Input.MOUSE_MODE_CAPTURED:
 		_fire_gun()
 
@@ -207,11 +239,18 @@ func _physics_process(delta: float) -> void:
 		else:
 			_apply_ground_velocity(delta, locked)
 
+		if horror_mode and is_horror_puppet_master:
+			_pm_controller = get_node_or_null("PuppetMasterController")
+			if _pm_controller:
+				_pm_controller.call("process_movement", delta, locked)
+
 		move_and_slide()
 
 		_update_interact_prompt()
 		_process_destroy_hold(delta)
 		_process_held_paper(delta)
+		if horror_mode and _neon_hud:
+			_neon_hud.set_tower_strength(TowerRules.nearest_tower_strength(global_position))
 
 
 func _apply_ground_velocity(delta: float, locked: bool) -> void:
@@ -278,6 +317,11 @@ func _update_interact_prompt() -> void:
 		return
 	if interact_ray.is_colliding():
 		var collider := interact_ray.get_collider()
+		if horror_mode and not is_horror_puppet_master and collider.is_in_group("world_pickups"):
+			var hint: String = collider.call("get_prompt") if collider.has_method("get_prompt") else "Pick up item"
+			prompt_label.text = "[E] %s" % hint
+			prompt_label.visible = true
+			return
 		if _PATHS.is_ladder(collider) and not collider.is_carried:
 			var hint: String = collider.prompt_text
 			if collider.is_placed and not collider.is_leaning and not collider.is_leaning_anim:
@@ -315,9 +359,31 @@ func _update_interact_prompt() -> void:
 
 
 func _try_interact() -> void:
+	if horror_mode and not is_horror_puppet_master:
+		var child_pos := ChildSpawnRNG.get_spawn_position()
+		if child_pos != Vector3.ZERO and global_position.distance_to(child_pos) < 3.5:
+			if multiplayer.is_server():
+				if ChildSpawnRNG.server_try_pickup_child(multiplayer.get_unique_id(), global_position):
+					_show_toast("You found the missing child — reach the escape zone!")
+			else:
+				_rpc_try_child_pickup.rpc_id(1, global_position)
+			return
+		if interact_ray.is_colliding():
+			var hit: Object = interact_ray.get_collider()
+			if hit and (_PATHS.is_radio_tower(hit) or _PATHS.is_signal_phone(hit)):
+				_try_open_signal_slate(hit)
+				return
+
 	if not interact_ray.is_colliding():
 		return
 	var collider := interact_ray.get_collider()
+
+	if horror_mode and not is_horror_puppet_master and collider.is_in_group("world_pickups"):
+		if multiplayer.is_server():
+			collider.call("server_try_pickup", multiplayer.get_unique_id())
+		else:
+			PlayerInventory.request_pickup.rpc_id(1, collider.get_path())
+		return
 
 	var ladder_target: Node = collider if _PATHS.is_ladder(collider) else null
 	if ladder_target:
@@ -494,12 +560,40 @@ func _close_active_modal() -> void:
 
 
 func _open_phone_panel() -> void:
+	if horror_mode and not TowerRules.can_use_signal(global_position, _holding_phone(), false):
+		_show_toast("The line is dead here. Find a live mast.")
+		return
 	_active_modal = Modal.PHONE
 	phone_panel.visible = true
 	rename_row.visible = false
 	phone_input.grab_focus()
 	Input.mouse_mode = Input.MOUSE_MODE_VISIBLE
 	_refresh_contacts_list()
+
+
+func _try_open_signal_slate(target: Node) -> void:
+	var at_tower: bool = _PATHS.is_radio_tower(target)
+	if at_tower and not bool(target.get("is_tower_active")):
+		_show_toast("The mast is silent.")
+		return
+	if not TowerRules.can_use_signal(global_position, _holding_phone(), at_tower):
+		_show_toast("The scratch won't carry. Stay near a live mast.")
+		return
+	if target.has_method("interact"):
+		target.interact(multiplayer.get_unique_id())
+	_active_modal = Modal.PHONE
+	phone_panel.visible = true
+	rename_row.visible = false
+	phone_input.grab_focus()
+	Input.mouse_mode = Input.MOUSE_MODE_VISIBLE
+	_refresh_contacts_list()
+
+
+func _holding_phone() -> bool:
+	for slot in _inventory_slots:
+		if str(slot) == "phone":
+			return true
+	return false
 
 
 func _close_phone_panel() -> void:
@@ -532,6 +626,9 @@ func _update_crouch_state() -> void:
 
 
 func open_walkie_panel() -> void:
+	if horror_mode or _walkie_panel == null:
+		_show_toast("The old masts carry the scratch now.")
+		return
 	_active_modal = Modal.WALKIE
 	_walkie_panel.visible = true
 	if multiplayer.is_server():
@@ -544,7 +641,8 @@ func open_walkie_panel() -> void:
 
 func _close_walkie_panel() -> void:
 	_active_modal = Modal.NONE
-	_walkie_panel.visible = false
+	if _walkie_panel:
+		_walkie_panel.visible = false
 	Input.mouse_mode = Input.MOUSE_MODE_CAPTURED
 
 
@@ -603,23 +701,36 @@ func _on_walkie_send_pressed() -> void:
 
 
 func _on_walkie_received(from_label: String, message: String) -> void:
-	_walkie_log.append_text("[b]%s:[/b] %s\n" % [from_label, message])
-	_show_toast("Walkie: %s" % message)
+	if _walkie_log:
+		_walkie_log.append_text("[b]%s:[/b] %s\n" % [from_label, message])
+	if not horror_mode:
+		_show_toast("Walkie: %s" % message)
 
 
 func _on_walkie_sent() -> void:
-	_walkie_log.append_text("[i]-- sent to partner --[/i]\n")
+	if _walkie_log:
+		_walkie_log.append_text("[i]-- sent to partner --[/i]\n")
 
 
 func _on_phone_send_pressed() -> void:
 	var message := phone_input.text.strip_edges()
 	if message.is_empty():
 		return
+	if horror_mode and not TowerRules.can_use_signal(global_position, _holding_phone(), _near_active_tower()):
+		_show_toast("The scratch faded. Stay near a live mast.")
+		return
 	if multiplayer.is_server():
 		PhoneSystem.server_handle_send_text(multiplayer.get_unique_id(), message)
 	else:
 		PhoneSystem.request_send_text.rpc_id(1, message)
 	phone_input.text = ""
+
+
+func _near_active_tower() -> bool:
+	for node in get_tree().get_nodes_in_group("active_towers"):
+		if node is Node3D and global_position.distance_to((node as Node3D).global_position) < 4.0:
+			return true
+	return false
 
 
 func _on_text_received(from_label: String, message: String) -> void:
@@ -629,7 +740,10 @@ func _on_text_received(from_label: String, message: String) -> void:
 
 
 func _on_text_sent_confirmation() -> void:
-	phone_log.append_text("[i]-- sent into the unknown --[/i]\n")
+	if horror_mode:
+		phone_log.append_text("[i]-- mark left on the slate --[/i]\n")
+	else:
+		phone_log.append_text("[i]-- sent into the unknown --[/i]\n")
 
 
 ## Rebuilds the clickable contacts list. Each contact is a focusable
@@ -943,3 +1057,103 @@ func _show_toast(text: String) -> void:
 
 func _on_toast_timer_timeout() -> void:
 	toast_label.visible = false
+
+
+# --- Horror mode: neon HUD + phone signal --------------------------------
+
+func _build_horror_hud() -> void:
+	if not horror_mode:
+		_health_bar = ProgressBar.new()
+		_health_bar.name = "HealthBar"
+		_health_bar.visible = false
+		hud.add_child(_health_bar)
+		return
+	_style_horror_phone_panel()
+	var hud_script: GDScript = load("res://scripts/horror/ui/neon_hud.gd")
+	_neon_hud = hud_script.new()
+	hud.add_child(_neon_hud)
+	_neon_hud.set_meters(100.0, 100.0, 100.0, 0.0)
+	if is_horror_puppet_master:
+		_neon_hud.call("set_steal", false, 0.0, 1.0)
+	faction_label.add_theme_color_override("font_color", Color(1.0, 0.22, 0.48) if is_horror_puppet_master else Color(0.2, 0.92, 1.0))
+	if not is_horror_puppet_master:
+		faction_label.text = "Family"
+
+
+func _style_horror_phone_panel() -> void:
+	var title := phone_panel.get_node_or_null("VBoxContainer/TitleLabel") as Label
+	if title:
+		title.text = "Unknown line"
+		title.add_theme_color_override("font_color", Color(0.2, 0.92, 1.0))
+	var sub := phone_panel.get_node_or_null("VBoxContainer/SubLabel") as Label
+	if sub:
+		sub.text = "You'll never know who hears the scratch — or who leaves one for you."
+	phone_input.placeholder_text = "Scratch a short note..."
+	var send := phone_panel.get_node_or_null("VBoxContainer/ComposeRow/SendButton") as Button
+	if send:
+		send.text = "Leave mark"
+	var contacts := phone_panel.get_node_or_null("VBoxContainer/ContactsLabel") as Label
+	if contacts:
+		contacts.text = "Lines you remember — rename one for yourself only"
+
+
+func _on_local_health_changed(hp: float, cap: float) -> void:
+	_local_health = hp
+	_local_max_health = cap
+	if _neon_hud:
+		_neon_hud.set_meters(hp, cap, _stamina_bar.value if _stamina_bar else 100.0, _fear_bar.value if _fear_bar else 0.0)
+
+
+func _on_local_meters_changed(hp: float, stamina: float, fear: float) -> void:
+	_local_health = hp
+	if _neon_hud:
+		_neon_hud.set_meters(hp, _local_max_health, stamina, fear)
+		_neon_hud.set_tower_strength(TowerRules.nearest_tower_strength(global_position))
+
+
+@rpc("any_peer", "call_remote", "reliable")
+func _rpc_try_child_pickup(pos: Vector3) -> void:
+	if not multiplayer.is_server():
+		return
+	var sender := multiplayer.get_remote_sender_id()
+	if ChildSpawnRNG.server_try_pickup_child(sender, pos):
+		pass
+
+
+func _on_local_inventory_changed(slots: Array, selected: int) -> void:
+	_inventory_slots = slots
+	_inventory_selected = selected
+	_refresh_hotbar()
+
+
+func _refresh_hotbar() -> void:
+	if _neon_hud:
+		_neon_hud.set_hotbar(_inventory_slots, _inventory_selected)
+		return
+	for i in range(mini(_hotbar_labels.size(), 8)):
+		var item := ""
+		if i < _inventory_slots.size():
+			item = str(_inventory_slots[i])
+		var prefix := ">" if i == _inventory_selected else ""
+		_hotbar_labels[i].text = "%s[%d] %s" % [prefix, i + 1, item if not item.is_empty() else "-"]
+
+
+func _request_use_item() -> void:
+	if multiplayer.is_server():
+		PlayerInventory.request_use_selected()
+	else:
+		PlayerInventory.request_use_selected.rpc_id(1)
+
+
+func _request_drop_item() -> void:
+	if multiplayer.is_server():
+		PlayerInventory.request_drop_selected()
+	else:
+		PlayerInventory.request_drop_selected.rpc_id(1)
+
+
+func _request_select_slot(index: int) -> void:
+	if multiplayer.is_server():
+		PlayerInventory.server_set_selected(multiplayer.get_unique_id(), index)
+	else:
+		PlayerInventory.request_select_slot.rpc_id(1, index)

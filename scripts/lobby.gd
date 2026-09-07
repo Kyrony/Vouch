@@ -319,6 +319,22 @@ func _refresh_settings_labels() -> void:
 
 
 func _apply_ui_theme() -> void:
+	var bg := $Background as ColorRect
+	if bg and HorrorModeSettings.is_horror_mode():
+		bg.color = Color(0.04, 0.035, 0.045, 1)
+	var title := home_panel.get_node_or_null("VBoxContainer/TitleLabel") as Label
+	if title and HorrorModeSettings.is_horror_mode():
+		title.text = "VOUCH"
+		title.add_theme_font_size_override("font_size", 48)
+		title.add_theme_color_override("font_color", Color(0.72, 0.18, 0.16))
+	var subtitle := home_panel.get_node_or_null("VBoxContainer/SubtitleLabel") as Label
+	if subtitle and HorrorModeSettings.is_horror_mode():
+		subtitle.text = "Find the missing child. The old man is watching."
+		subtitle.add_theme_color_override("font_color", Color(0.62, 0.68, 0.78))
+	if HorrorModeSettings.is_horror_mode():
+		var neon: GDScript = load("res://scripts/horror/ui/neon_menu.gd")
+		neon.call("apply", self)
+		start_match_button.text = "Start Match"
 	for panel in [home_panel, play_panel, settings_panel, character_panel]:
 		if panel.get_node_or_null("VBoxContainer"):
 			pass

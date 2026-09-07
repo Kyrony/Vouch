@@ -70,6 +70,27 @@ field as a placeholder — session codes are post-MVP.
 
 ## Controls
 
+### Horror neighborhood chase (default)
+
+| Role | Action | Key |
+| --- | --- | --- |
+| All | Move / Look / Jump | `W A S D` / Mouse / `Space` |
+| Survivor | Pick up item | `E` |
+| Survivor | Find missing child (near glow marker) | `E` |
+| Survivor | Use selected hotbar item | `R` |
+| Survivor | Drop selected item | `G` |
+| Survivor | Select hotbar slot | `1`–`8` |
+| Puppet Master | Possess dead family body / body swap (near target) | `Q` |
+| Puppet Master | Float upward (hold) | `Space` (in air) |
+| Puppet Master | Life steal aura (radius, then cooldown) | `E` |
+| All | Pause / release mouse | `Esc` |
+
+**Goal:** Each **family team** spawns in their own **1-story house bedroom** (A–D around the cul-de-sac). One missing child is hidden at a random location among **11 alive-only spawn pins** (Leonardo L2 SoT ids). Find the child marker, then reach the **soft-gated field exit** (west yard, unmarked — master sheet has no escape routes). Trust tools are **phone + live radio masts** (service / weak / dead radii, 3 active per match, one forced near the PM). The **Puppet Master** hunts from the **east PM mansion** — radius life-steal aura with neon ring + recharge. PM wins if all survivors are drained before families escape with the child.
+
+Legacy sealed-room / tunnel modes: `VOUCH_BUNKER_ONLY=1` or `VOUCH_ESCAPE_PATH=1`.
+
+### Legacy controls
+
 | Action | Key (remappable in Settings) |
 | --- | --- |
 | Move | `W A S D` |
@@ -209,6 +230,30 @@ persists locally between sessions.
 Every stub above has a `TODO(post-MVP)` comment at its definition site
 pointing at what's missing.
 
+## Horror child spawn points (11, alive-only)
+
+Host RNG picks **one** per match (`ChildSpawnRNG`). Teams map to **families** A–D (cul-de-sac bedroom spawns). All pins are living hides — no grave sites. IDs are Leonardo L2 SoT **eng short names**. Art map labels are deferred.
+
+| # | `spawn_id` | Callout | Location |
+| --- | --- | --- | --- |
+| 1 | `pm_attic` | PM ATTIC | PM mansion attic |
+| 2 | `master_bedroom` | PM MASTER BEDROOM | PM mansion master bedroom |
+| 3 | `bunker_utility` | PM BUNKER UTILITY CLOSET | PM bunker utility closet |
+| 4 | `basement` | PM BASEMENT | PM basement |
+| 5 | `uncle_bedroom` | UNCLE BEDROOM | Uncle house bedroom |
+| 6 | `uncle_garage` | UNCLE GARAGE | Uncle garage |
+| 7 | `family_shed` | FAMILY SHED | Shed by family houses |
+| 8 | `storm_drain` | STORM DRAIN | Street storm drain |
+| 9 | `under_porch_crawl` | UNDER-PORCH CRAWL / DIRT HIDE | House A porch crawl (no grave) |
+| 10 | `garden_well` | GARDEN WELL / CRAWLSPACE | Garden well / crawlspace |
+| 11 | `car_trunk` | CAR TRUNK (CURB) | Parked car trunk at curb |
+
+See [`docs/blueprints/v0.5/`](docs/blueprints/v0.5/) for Leonardo v0.5 sheets.
+
+**Towers (soft-go):** many candidate masts; **3 active per match**; **1 forced near the PM**. Phone + mast use **service / weak / dead** radii. Scratch on the slate only (not a voice or SMS line).
+
+**HUD:** neon heart (health), cyan bar (stamina), violet bar (fear), phone + spotty signal.
+
 ## Friends-ready playtest (James checklist)
 
 Use this before a friends session. Each item maps to a GDD MVP check:
@@ -269,7 +314,12 @@ VOUCH_PLAYER_SCRIPT_TEST=1 godot4 --headless --path .
 rm -rf .godot
 godot4 --headless --path . -s res://scripts/vouch_player_spawn_probe.gd
 
-# Playable loop (phone/walkie) — bunker-only by default; full escape path needs VOUCH_ESCAPE_PATH=1:
+VOUCH_HORROR_MATCH_TEST=1 godot4 --headless --path .
+
+# Horror neighborhood smoke (standalone probe):
+godot4 --headless --path . -s res://scripts/vouch_horror_match_probe.gd
+
+# Playable loop (phone/walkie) — bunker-only: VOUCH_BUNKER_ONLY=1; full escape path needs VOUCH_ESCAPE_PATH=1:
 VOUCH_PLAYABLE_LOOP_TEST=1 godot4 --headless --path .
 VOUCH_ESCAPE_PATH=1 VOUCH_PLAYABLE_LOOP_TEST=1 godot4 --headless --path .
 godot4 --headless --path . -s res://scripts/vouch_playable_loop_probe.gd
@@ -300,6 +350,16 @@ damage model, no gameplay purpose. Before shipping, remove:
 
 ```
 project.godot              Godot 4 project config (autoloads, input map, etc.)
+scripts/horror/            Horror neighborhood factory (default play mode)
+  characters/              PuppetMasterData, possession constants
+  environment/             FamilyHouse, PMMansion, UncleHouse, Outdoor graybox builders
+  items/                   EffectDefinitions, PlayerEffects (meter stacks)
+  world/                   NeighborhoodV05, NeighborhoodLayout, ChildSpawnRNG (11 L2 SoT pins), TowerRules
+  ui/                      Neon HUD (heart / cyan / violet / phone signal) + neon menu
+  horror_world.gd          World orchestrator
+  match_horror.gd          Host-authoritative horror match builder
+  puppet_master_controller.gd  PM float, possession, radius life-steal
+scenes/Horror/             HorrorWorld.tscn, WorldPickup, PMChaseAI
 scenes/
   Main.tscn                 Actual main scene: composes Lobby (Home) + World (Match+Outside)
   Lobby/Lobby.tscn           Home screen: Play/Settings/Character/Exit, joined-player list,
@@ -329,6 +389,7 @@ assets/
   brand/                       Small in-engine copy of the Vouch icon
 docs/
   MVP_GDD.md                  Design locks / what's in vs. out of MVP
+  blueprints/v0.5/            Leonardo Neighborhood Layout v0.5 sheets + L2 SoT
   brand/                       Reference copies of the Vouch logo/lockup
 ```
 
@@ -351,6 +412,11 @@ Registered in `project.godot` under `[autoload]`:
   locks, flame paper, flood valves, hidden hallways).
 - **RoomUtilities** - per-room power/water/gas/comms state, replicated
   for local feedback.
+- **PlayerHealth** - horror mode HP drain/heal (host-authoritative).
+- **PlayerInventory** - horror survivor 8-slot hotbar.
+- **PlayerEffects** - fear/stamina meters + timed effect stacks (life-steal aura cooldown).
+- **ChildSpawnRNG** - per-match missing-child location (1 of 11 alive-only pins).
+- **TowerRules** - 3 live masts per match (1 forced near PM); phone + tower radii.
 - **LinkGraph** - mystery control/effect registry and guaranteed-no-
   self-link resolution.
 - **PhoneSystem** - random-recipient text routing + per-match line ids.
