@@ -1,25 +1,29 @@
 extends Node3D
+class_name Match
 ## Match
 ##
 ## Director for the "Match" phase: builds one RoomPod per connected player
-## (host-authoritative), assigns each player their spawn point, and wires
-## up LinkGraph's mystery-control graph. Room/player nodes are created via
-## MultiplayerSpawner.spawn(data) so the same instantiation replicates
-## consistently to every client - the standard Godot 4 pattern for
-## host-authoritative spawning.
+## (host-authoritative), assigns each player their spawn point, wires up
+## LinkGraph's mystery-control graph, plans the (optional) code-lock
+## puzzle placement, and grants the Puppet Master their camera/sabotage
+## targets. Room/player nodes are created via MultiplayerSpawner.spawn(data)
+## so the same instantiation replicates consistently to every client - the
+## standard Godot 4 pattern for host-authoritative spawning.
 ##
-## TODO(post-MVP): actual varied room layouts (today every room reuses the
-## same RoomPod template with randomized props/seed), mid-match
-## reconnection handling, and support for uneven faction sizes.
+## TODO(post-MVP): mid-match reconnection handling, and support for
+## uneven faction sizes.
 
 const ROOM_POD_SCENE: PackedScene = preload("res://scenes/Match/RoomPod.tscn")
 const PLAYER_SCENE: PackedScene = preload("res://scenes/Player/Player.tscn")
 
 ## Rooms are laid out on a simple grid, far enough apart that one player's
-## room doesn't visually bleed into another's. Good enough for a graybox;
-## a real level would hand-place these instead.
-const GRID_SPACING: float = 12.0
+## room (plus its optional hallway extension) doesn't visually bleed into
+## the next. Good enough for a graybox; a real level would hand-place these.
+const GRID_SPACING: float = 16.0
 const GRID_COLUMNS: int = 4
+
+## How many camera/sabotage targets the Puppet Master is granted.
+const PUPPET_MASTER_TARGET_COUNT: int = 2
 
 @onready var rooms_container: Node3D = $RoomsContainer
 @onready var rooms_spawner: MultiplayerSpawner = $RoomsContainer/RoomsSpawner
@@ -28,6 +32,15 @@ const GRID_COLUMNS: int = 4
 
 ## Server-only bookkeeping: room_index -> RoomPod node.
 var _rooms: Dictionary = {}
+
+
+## World position of a room's grid cell. Static so PM camera-feed UI
+## (Player.gd) can compute a target room's world position without needing
+## a live reference to this Match instance.
+static func room_grid_position(index: int) -> Vector3:
+	var col := index % GRID_COLUMNS
+	var row := index / GRID_COLUMNS
+	return Vector3(col * GRID_SPACING, 0.0, row * GRID_SPACING)
 
 
 func _ready() -> void:
@@ -45,29 +58,103 @@ func _on_match_started() -> void:
 func _server_build_match() -> void:
 	_rooms.clear()
 	LinkGraph.reset()
+	PuzzleSystem.reset()
+	PuppetMasterSystem.reset()
+	PhoneSystem.reset()
 
 	var peer_ids: Array = GameState.players.keys()
 	peer_ids.shuffle()
 
 	for i in range(peer_ids.size()):
+		GameState.server_set_room(peer_ids[i], i)
+
+	# Puzzle placement is decided BEFORE any room is spawned so it can be
+	# baked into each room's deterministic spawn data (see RoomPod.configure).
+	var puzzle_plan := _plan_puzzle(peer_ids.size())
+
+	for i in range(peer_ids.size()):
 		var peer_id: int = peer_ids[i]
-		GameState.server_set_room(peer_id, i)
-		_server_spawn_room(i, peer_id)
+		var is_pm: bool = GameState.players[peer_id]["is_puppet_master"]
+		_server_spawn_room(i, peer_id, is_pm, puzzle_plan)
 
 	# Links must be built AFTER every room has registered its control/effect
 	# nodes with LinkGraph.
 	LinkGraph.server_build_links()
+
+	if not puzzle_plan.is_empty():
+		PuzzleSystem.server_register_lock(puzzle_plan["locked_index"], puzzle_plan["code"])
+
+	_grant_puppet_master_targets(peer_ids)
 
 	for i in range(peer_ids.size()):
 		var peer_id: int = peer_ids[i]
 		_server_spawn_player(peer_id, i)
 
 
-func _server_spawn_room(room_index: int, owner_peer_id: int) -> void:
+## Decides whether this match has a code-locked escape and, if so, which
+## room is locked and which (different) room holds the clue. Returns {}
+## if there aren't enough rooms to make that interesting (needs at least
+## 2, and at least 1 non-Puppet-Master room to lock).
+func _plan_puzzle(room_count: int) -> Dictionary:
+	if room_count < 2:
+		return {}
+
+	var lockable: Array = []
+	for i in range(room_count):
+		var pid := GameState.server_get_peer_by_room(i)
+		if pid != GameState.puppet_master_peer_id:
+			lockable.append(i)
+	if lockable.is_empty():
+		return {}
+
+	var locked_index: int = lockable[randi() % lockable.size()]
+	var clue_candidates: Array = []
+	for i in range(room_count):
+		if i != locked_index:
+			clue_candidates.append(i)
+	if clue_candidates.is_empty():
+		return {}
+
+	var clue_index: int = clue_candidates[randi() % clue_candidates.size()]
+	var code := "%04d" % (randi() % 10000)
+	var clue_kind := "book" if randf() < 0.5 else "flame_paper"
+	return {
+		"locked_index": locked_index,
+		"clue_index": clue_index,
+		"code": code,
+		"clue_kind": clue_kind,
+	}
+
+
+func _grant_puppet_master_targets(peer_ids: Array) -> void:
+	var pm_peer_id: int = GameState.puppet_master_peer_id
+	if pm_peer_id == -1:
+		return
+
+	var all_other_rooms: Array = []
+	for peer_id in peer_ids:
+		if peer_id != pm_peer_id:
+			all_other_rooms.append(GameState.players[peer_id]["room_id"])
+
+	var shuffled_rooms: Array = all_other_rooms.duplicate()
+	shuffled_rooms.shuffle()
+	var camera_targets: Array = shuffled_rooms.slice(0, mini(PUPPET_MASTER_TARGET_COUNT, shuffled_rooms.size()))
+
+	# Elimination is deliberately NOT limited to the camera/sabotage set -
+	# "kill everyone" would be impossible otherwise. See
+	# PuppetMasterSystem's header comment for the full reasoning.
+	PuppetMasterSystem.server_grant_targets(pm_peer_id, camera_targets, all_other_rooms)
+
+
+func _server_spawn_room(room_index: int, owner_peer_id: int, is_pm: bool, puzzle_plan: Dictionary) -> void:
 	var data := {
 		"room_index": room_index,
 		"owner_peer_id": owner_peer_id,
 		"rng_seed": randi(),
+		"is_puppet_master": is_pm,
+		"requires_code": puzzle_plan.get("locked_index", -1) == room_index,
+		"clue_kind": puzzle_plan.get("clue_kind", "") if puzzle_plan.get("clue_index", -1) == room_index else "",
+		"clue_code": puzzle_plan.get("code", "") if puzzle_plan.get("clue_index", -1) == room_index else "",
 	}
 	var room: Node = rooms_spawner.spawn(data)
 	_rooms[room_index] = room
@@ -93,13 +180,8 @@ func _server_spawn_player(peer_id: int, room_index: int) -> void:
 ## deterministic given identical `data`.
 func _spawn_room_pod(data: Dictionary) -> Node:
 	var room := ROOM_POD_SCENE.instantiate() as RoomPod
-	room.configure(data["room_index"], data["owner_peer_id"], data["rng_seed"])
-
-	var room_index: int = data["room_index"]
-	var col := room_index % GRID_COLUMNS
-	var row := room_index / GRID_COLUMNS
-	room.position = Vector3(col * GRID_SPACING, 0.0, row * GRID_SPACING)
-
+	room.configure(data)
+	room.position = room_grid_position(data["room_index"])
 	return room
 
 

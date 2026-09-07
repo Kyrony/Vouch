@@ -11,6 +11,7 @@ extends Node
 
 signal escaped_locally
 signal match_won(faction_id: String)
+signal escape_locked(feedback: String)
 
 ## Server-only: peer_id -> Player node, used to validate a player is still
 ## actually present before we bother teleporting them.
@@ -54,10 +55,15 @@ func server_handle_escape_request(peer_id: int) -> void:
 		return
 	if not GameState.players.has(peer_id):
 		return
-	if GameState.players[peer_id]["escaped"]:
+	if GameState.players[peer_id]["escaped"] or GameState.players[peer_id]["eliminated"]:
 		return
 	if not is_instance_valid(_player_nodes.get(peer_id)):
 		push_warning("EscapeSystem: no live player node for peer %d" % peer_id)
+		return
+
+	var room_index: int = GameState.players[peer_id]["room_id"]
+	if PuzzleSystem.server_requires_code(room_index) and not PuzzleSystem.server_is_unlocked(room_index):
+		_notify_escape_locked(peer_id)
 		return
 
 	GameState.server_mark_escaped(peer_id)
@@ -72,6 +78,20 @@ func server_handle_escape_request(peer_id: int) -> void:
 	GameState.player_escaped.emit(peer_id, faction_id)
 
 	_check_for_win()
+
+
+func _notify_escape_locked(peer_id: int) -> void:
+	if peer_id == multiplayer.get_unique_id():
+		_client_escape_locked()
+	else:
+		_client_escape_locked.rpc_id(peer_id)
+
+
+@rpc("authority", "call_remote", "reliable")
+func _client_escape_locked() -> void:
+	var msg := "It's locked. Find the code."
+	print("[EscapeSystem] %s" % msg)
+	escape_locked.emit(msg)
 
 
 func _teleport_player(peer_id: int, spawn_position: Vector3, spawn_rotation_y: float) -> void:

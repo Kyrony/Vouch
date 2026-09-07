@@ -13,6 +13,10 @@ class_name Phone
 var owner_peer_id: int = -1
 
 
+func _init() -> void:
+	destroyable = true
+
+
 func _ready() -> void:
 	if multiplayer.is_server():
 		PhoneSystem.server_register_phone(owner_peer_id, self)
