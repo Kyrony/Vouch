@@ -87,7 +87,7 @@ func _two_player_room_specs() -> Array:
 	var specs: Array = []
 	for room_index in range(2):
 		var recipe: Dictionary = _ROOM_POD.call("plan_recipe", false)
-		recipe["room_scene_id"] = 4 if room_index == 0 else 12
+		recipe["room_scene_id"] = 1 if room_index == 0 else 3
 		var data := {
 			"room_index": room_index,
 			"owner_peer_id": room_index + 1,

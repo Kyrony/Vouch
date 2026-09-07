@@ -4,12 +4,12 @@ class_name RoomMap
 
 const _LAYOUTS: GDScript = preload("res://scripts/rooms/room_layouts.gd")
 const _INTERACTABLE_BASE: GDScript = preload("res://scripts/interactables/interactable.gd")
-const _GEOMETRY: GDScript = preload("res://scripts/rooms/room_geometry.gd")
 const _ITEMS: GDScript = preload("res://scripts/rooms/item_spawn_system.gd")
 const _PLAYABLE: GDScript = preload("res://scripts/rooms/playable_loop_spawns.gd")
 const _SLOT_SCRIPT: GDScript = preload("res://scripts/rooms/item_spawn_slot.gd")
 const _TUNNEL: GDScript = preload("res://scripts/rooms/tunnel_kit.gd")
 const _NEON: GDScript = preload("res://scripts/rooms/neon_theme.gd")
+const _SPAWN_VALIDATOR: GDScript = preload("res://scripts/rooms/graybox_spawn_validator.gd")
 
 const WALL: float = WorldScale.WALL_THICK
 
@@ -77,8 +77,9 @@ func _ensure_built() -> void:
 	_theme = theme
 	theme_id = theme["id"]
 	theme_name = theme["name"]
-	_GEOMETRY.call("build", self, _layout, theme)
+	_use_authored_geometry()
 	_ensure_markers()
+	_apply_layout_markers()
 
 
 func configure(data: Dictionary) -> void:
@@ -132,11 +133,12 @@ func configure(data: Dictionary) -> void:
 
 	_ITEMS.call("spawn_room_effects", self, ctx)
 
-	var escape_pos: Vector3 = _layout["escape"]
+	var escape_pos: Vector3 = _escape_position()
 	if escape_kind == EscapeKind.VENT:
 		escape_pos = _vent_escape_position()
 	_ITEMS.call("spawn_escape", self, ctx, escape_pos, escape_kind == EscapeKind.VENT)
-	_build_escape_corridor(_layout["corridor_out"], data["room_index"])
+	if not is_puppet_master:
+		_build_escape_corridor(_corridor_out_position(), data["room_index"])
 
 	if data.get("requires_code", false):
 		mark_escape_locked()
@@ -181,6 +183,40 @@ func add_clue_prop(kind: String, code: String, in_fireplace: bool = false) -> vo
 		add_child(book)
 
 
+func _use_authored_geometry() -> void:
+	var geometry := get_node_or_null("Geometry") as Node3D
+	if geometry == null:
+		push_error("RoomMap: %s missing authored Geometry node (friends-MVP requires hand-sealed .tscn)" % name)
+		return
+	if geometry.get_child_count() < 1:
+		push_error("RoomMap: %s Geometry is empty — bake sealed graybox walls in the scene" % name)
+
+
+func _apply_layout_markers() -> void:
+	var door := get_node_or_null("EscapeDoor") as Marker3D
+	if door:
+		_layout["escape"] = door.position
+	var attach := get_node_or_null("EscapeAttach") as Marker3D
+	if attach:
+		_layout["corridor_out"] = attach.position
+
+
+func _escape_position() -> Vector3:
+	var door := get_node_or_null("EscapeDoor") as Marker3D
+	if door:
+		return door.position
+	return _layout.get("escape", Vector3.ZERO)
+
+
+func _corridor_out_position() -> Vector3:
+	var attach := get_node_or_null("EscapeAttach") as Marker3D
+	if attach:
+		return attach.position
+	return _layout.get("corridor_out", Vector3.ZERO)
+
+
+static func validate_spawn(room: Node3D) -> Array[String]:
+	return _SPAWN_VALIDATOR.call("validate", room)
 func _ensure_markers() -> void:
 	spawn_point = get_node_or_null("PlayerSpawn") as Marker3D
 	if spawn_point == null:
@@ -194,11 +230,13 @@ func _ensure_markers() -> void:
 		slots_root = Node3D.new()
 		slots_root.name = "ItemSpawns"
 		add_child(slots_root)
-		var slot_defs: Array = _layout.get("slots", [])
-		for i in range(mini(16, slot_defs.size())):
-			var data: Dictionary = slot_defs[i]
-			var slot: Marker3D = _SLOT_SCRIPT.call("from_dict", i + 1, data)
-			slots_root.add_child(slot)
+	if slots_root.get_child_count() >= 16:
+		return
+	var slot_defs: Array = _layout.get("slots", [])
+	for i in range(mini(16, slot_defs.size())):
+		var data: Dictionary = slot_defs[i]
+		var slot: Marker3D = _SLOT_SCRIPT.call("from_dict", i + 1, data)
+		slots_root.add_child(slot)
 
 
 func _vent_escape_position() -> Vector3:
@@ -224,18 +262,7 @@ func _configure_pm(data: Dictionary, _rng: RandomNumberGenerator) -> void:
 
 
 func _pm_layout() -> Dictionary:
-	return {
-		"width": 6.0,
-		"depth": 6.0,
-		"height": 2.6,
-		"theme": "basement",
-		"partitions": [],
-		"props": [],
-		"spawn": Vector3(0, 0.1, 1.5),
-		"escape": Vector3.ZERO,
-		"corridor_out": Vector3.ZERO,
-		"slots": _LAYOUTS.call("slot_layout", 99, 6.0, 6.0),
-	}
+	return _LAYOUTS.call("get_layout", 0)
 
 
 func _theme_for_layout(layout: Dictionary) -> Dictionary:
