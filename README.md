@@ -58,9 +58,9 @@ machine:
    below the host/join controls fill in, then click **Start Match**. With
    4+ players there's a 50% chance one of you becomes the secret Puppet
    Master.
-5. Both instances load into the Match scene. Each player spawns alone in
-   their own procedurally-built room (size/theme/layout/escape all vary -
-   see the controls table and docs/MVP_GDD.md for details).
+5. Both instances load into the Match scene. Each player spawns **dead center**
+   inside a clean empty graybox bunker (`PlayerSpawn` at local `(0, 0, 0)` —
+   feet on floor). Escape door is on the **+Z** wall.
 
 To test across two real machines on the same network instead: host on
 one machine, then on the other type the host's LAN IP into the Join
@@ -101,11 +101,11 @@ persists locally between sessions.
   list** visible to everyone before the match starts, and host-only
   **match spawn odds** sliders (`scripts/autoload/match_settings.gd`)
   for code locks / flame paper / flood valves / hidden hallways.
-- **Fixed room maps**: each player gets one of **20 complete authored room scenes**
-  (`scenes/Rooms/Room_01.tscn` … `Room_20.tscn`) — sealed human-scale spaces with
-  unique layouts (not modular kits, not CSG plan extrusion). Puppet Master uses
-  `Room_PM.tscn`. Layout data in `scripts/rooms/room_layouts.gd`; geometry in
-  `scripts/rooms/room_geometry.gd`.
+- **Hand-sealed graybox rooms (friends-MVP)**: six perfect axis-aligned bunker
+  boxes (`Room_01`–`Room_06`) + sealed `Room_PM`. Floor/walls/ceiling only;
+  one **+Z** door opening; `PlayerSpawn` at geometric center `(0, 0, 0)`.
+  Mesh = collision on every piece. **Bunker-only default:** no tunnels, hub,
+  item props, phone, or walkie (`VOUCH_ESCAPE_PATH=1` for full loop).
 - **16-slot item spawn**: every room has **16 fixed `ItemSpawnSlot` markers**.
   At match start `ItemSpawnSystem` shuffles which slot each interactable
   (phone, switch, camera, valve, ladder, props, etc.) occupies — no free-float
@@ -230,7 +230,7 @@ Use this before a friends session. Each item maps to a GDD MVP check:
 
 | Task | Feature | Owner script(s) |
 | --- | --- | --- |
-| 1 | Stairs → valid landings | `scripts/rooms/room_geometry.gd`, `scripts/rooms/room_layouts.gd` |
+| 1 | Stairs → valid landings | *(frozen — graybox rooms have no stairs)* |
 | 2 | Puzzle / RPC audit | `scripts/systems/link_graph.gd`, `scripts/interactables/*` (switches, valves, terminal, electrical) |
 | 3 | Verticality (ramps, mezz) | `scripts/rooms/tunnel_kit.gd`, `scripts/rooms/room_map.gd`, `scripts/systems/escape_hub.gd`, `scripts/rooms/room_layouts.gd` |
 | 4 | UI skin | `scripts/ui/ui_theme.gd`, `scripts/lobby.gd`, `scripts/rooms/neon_theme.gd` |
@@ -248,15 +248,16 @@ Each concern lives in one script/class. Brief map for the 10 interior-polish sys
 | # | Feature | Owner script(s) |
 | --- | --- | --- |
 | 1 | Attachment headless tests | `scripts/main.gd` (`VOUCH_*` flags), `scripts/rooms/spawn_attachment_validator.gd` |
-| 2 | Room scale / climbable stairs | `scripts/world_scale.gd`, `scripts/rooms/room_geometry.gd`, `scripts/rooms/room_layouts.gd` |
+| 2 | Room scale / climbable stairs | `scripts/world_scale.gd`, `scripts/rooms/graybox_layouts.gd` |
 | 3 | Hover / target highlight | `scripts/interactables/interactable.gd` (`set_highlighted`), `scripts/player.gd` (`_set_highlight`) |
-| 4 | Retro neon accents | `scripts/rooms/neon_theme.gd`, wired via `room_geometry.gd` trim + `room_map.gd` accent materials |
+| 4 | Retro neon accents | `scripts/rooms/neon_theme.gd`, accent materials via `room_map.gd` |
 | 5 | Spawn / slot orchestration | `scripts/rooms/item_spawn_system.gd`, `scripts/rooms/item_spawn_slot.gd`, `scripts/rooms/room_map.gd` |
 | 6 | Camera ceiling/wall slots | `scripts/rooms/item_spawn_slot.gd` (`ceiling`), `scripts/rooms/item_spawn_system.gd` (camera → ceiling) |
 | 7 | Player crouch | `scripts/player.gd`, `scripts/autoload/settings_manager.gd`, `project.godot` `crouch` action |
 | 8 | Walkie-talkie comms | `scripts/systems/walkie_system.gd` (autoload), `scripts/interactables/walkie_talkie.gd`, `scripts/player.gd` (HUD panel), `scripts/match.gd` (pairing) |
 | 9 | Visible pipes / gas lines | `scripts/rooms/room_utilities_visual.gd`, called from `item_spawn_system.gd` |
 | 10 | Pipe bandage repair | `scripts/interactables/pipe_bandage.gd`, `broken_pipe.gd` / `gas_leak.gd` (`server_repair`) |
+| 11 | Graybox spawn inside AABB | `scripts/rooms/graybox_spawn_validator.gd`, `PlayerSpawn` markers in each `Room_XX.tscn` |
 
 Headless validation:
 
@@ -268,8 +269,9 @@ VOUCH_PLAYER_SCRIPT_TEST=1 godot4 --headless --path .
 rm -rf .godot
 godot4 --headless --path . -s res://scripts/vouch_player_spawn_probe.gd
 
-# Playable loop (phone/walkie/hub ramp) — mirrors live Match._spawn_room_pod path:
+# Playable loop (phone/walkie) — bunker-only by default; full escape path needs VOUCH_ESCAPE_PATH=1:
 VOUCH_PLAYABLE_LOOP_TEST=1 godot4 --headless --path .
+VOUCH_ESCAPE_PATH=1 VOUCH_PLAYABLE_LOOP_TEST=1 godot4 --headless --path .
 godot4 --headless --path . -s res://scripts/vouch_playable_loop_probe.gd
 
 VOUCH_ROOM_SPAWN_TEST=1 godot4 --headless --path .
@@ -304,8 +306,8 @@ scenes/
                              match spawn odds, key remap + sensitivity + volume controls
   Match/Match.tscn           Match director (spawns rooms + players)
   Match/RoomPod.tscn         Multiplayer shell — instances scenes/Rooms/Room_XX.tscn
-  scenes/Rooms/              20 fixed room maps + Room_PM.tscn
-  scripts/rooms/             RoomMap, layouts, geometry, 16-slot item spawn
+  scenes/Rooms/              6 hand-sealed graybox rooms + Room_PM.tscn
+  scripts/rooms/             RoomMap, graybox layouts, 16-slot item spawn
   Match/Props/               Small graybox decoration scenes (crate/shelf/barrel)
   Match/Interactables/       Ladder.tscn (climbable + movable)
   DebugGui.tscn              Dev/host debug panel (Home key — remove before release)

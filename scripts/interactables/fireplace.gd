@@ -59,40 +59,31 @@ func _update_flame() -> void:
 
 
 static func build(parent: Node3D, local_pos: Vector3, accent: Material, room_idx: int) -> Node3D:
-	var fp: Node3D = load("res://scripts/interactables/fireplace.gd").new()
+	var fp: StaticBody3D = StaticBody3D.new()
+	fp.set_script(load("res://scripts/interactables/fireplace.gd"))
 	fp.name = "Fireplace"
-	fp.position = local_pos
+	fp.collision_layer = 2
+	fp.collision_mask = 0
+	fp.position = local_pos + Vector3(0, 0.55, 0)
 	fp.configure(room_idx)
 
-	var hearth := MeshInstance3D.new()
-	var hearth_mesh := BoxMesh.new()
-	hearth_mesh.size = Vector3(1.0, 0.35, 0.42)
-	hearth.mesh = hearth_mesh
-	hearth.position = Vector3(0, 0.18, 0)
-	hearth.set_surface_override_material(0, accent)
-	fp.add_child(hearth)
+	var size := Vector3(1.0, 1.1, 0.42)
+	var mesh_instance := MeshInstance3D.new()
+	var box := BoxMesh.new()
+	box.size = size
+	mesh_instance.mesh = box
+	mesh_instance.set_surface_override_material(0, accent)
+	fp.add_child(mesh_instance)
 
-	var stack := MeshInstance3D.new()
-	var stack_mesh := BoxMesh.new()
-	stack_mesh.size = Vector3(0.65, 0.95, 0.28)
-	stack.mesh = stack_mesh
-	stack.position = Vector3(0, 0.72, -0.04)
-	stack.set_surface_override_material(0, accent)
-	fp.add_child(stack)
-
-	var pipe := MeshInstance3D.new()
-	var pipe_mesh := CylinderMesh.new()
-	pipe_mesh.top_radius = 0.05
-	pipe_mesh.bottom_radius = 0.05
-	pipe_mesh.height = 0.55
-	pipe.mesh = pipe_mesh
-	pipe.position = Vector3(0.38, 0.28, 0.12)
-	pipe.set_surface_override_material(0, accent)
-	fp.add_child(pipe)
+	var collision := CollisionShape3D.new()
+	var shape := BoxShape3D.new()
+	shape.size = size
+	collision.shape = shape
+	fp.add_child(collision)
 
 	fp._flame = Node3D.new()
 	fp._flame.set_script(load("res://scripts/interactables/flame.gd"))
-	fp._flame.position = Vector3(0, 0.42, 0.04)
+	fp._flame.position = Vector3(0, -0.15, 0.04)
 	fp._flame.add_to_group("flames")
 	var cone := MeshInstance3D.new()
 	var cm := CylinderMesh.new()
@@ -113,12 +104,12 @@ static func build(parent: Node3D, local_pos: Vector3, accent: Material, room_idx
 	fp._flame_light.light_color = Color(1.0, 0.55, 0.2)
 	fp._flame_light.light_energy = 1.4
 	fp._flame_light.omni_range = 4.0
-	fp._flame_light.position = Vector3(0, 0.6, 0.1)
+	fp._flame_light.position = Vector3(0, 0.1, 0.1)
 	fp.add_child(fp._flame_light)
 
 	var slot := Marker3D.new()
 	slot.name = "ClueSlot"
-	slot.position = Vector3(0, 0.45, 0.15)
+	slot.position = Vector3(0, -0.05, 0.15)
 	fp.add_child(slot)
 
 	fp._update_flame()

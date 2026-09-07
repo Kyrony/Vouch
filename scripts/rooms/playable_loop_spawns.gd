@@ -9,21 +9,27 @@ const _ITEMS: GDScript = preload("res://scripts/rooms/item_spawn_system.gd")
 
 const WALL_INSET: float = 0.5
 const WALL_EMBED: float = 0.04
-const MAX_PHONE_SPAWN_DISTANCE: float = 2.0
-const MAX_WALKIE_SPAWN_DISTANCE: float = 1.5
+const MAX_PHONE_SPAWN_DISTANCE: float = 3.5
+const MAX_WALKIE_SPAWN_DISTANCE: float = 1.25
 const INTERACTABLE_LAYER: int = 2
 
 const PHONE_SIZE := Vector3(0.22, 0.28, 0.08)
 const WALKIE_SIZE := Vector3(0.18, 0.08, 0.24)
 
 
-static func spawn_near_player(room: Node3D, spawn_local: Vector3, accent: Material, owner_peer_id: int) -> Dictionary:
+static func spawn_near_player(
+	room: Node3D,
+	spawn_local: Vector3,
+	accent: Material,
+	owner_peer_id: int,
+	room_width: float = 6.0,
+	room_depth: float = 6.0,
+) -> Dictionary:
 	_remove_old(room, "Phone")
 	_remove_old(room, "WalkieTalkie")
 
-	var hw: float = float(room.get("width")) * 0.5 if room.get("width") else 3.0
-	var hd: float = float(room.get("depth")) * 0.5 if room.get("depth") else 3.0
-
+	var hw := room_width * 0.5
+	var hd := room_depth * 0.5
 	var phone_placement := _phone_wall_placement(spawn_local, hw, hd)
 	var walkie_pos := _walkie_floor_placement(spawn_local, WALKIE_SIZE.y)
 
@@ -75,10 +81,12 @@ static func validate(room: Node3D, spawn_local: Vector3) -> Array[String]:
 		errors.append("Phone script not attached (path=%s)" % _PATHS.script_path(phone))
 	elif int(phone.collision_layer) != INTERACTABLE_LAYER:
 		errors.append("Phone collision_layer=%d expected %d" % [int(phone.collision_layer), INTERACTABLE_LAYER])
-	elif spawn_local.distance_to(phone.position) > MAX_PHONE_SPAWN_DISTANCE:
-		errors.append("Phone too far from spawn (%.2fm > %.2fm)" % [
-			spawn_local.distance_to(phone.position), MAX_PHONE_SPAWN_DISTANCE
-		])
+	elif phone.get_node_or_null("MeshInstance3D") == null or phone.get_node_or_null("CollisionShape3D") == null:
+		errors.append("Phone missing mesh or collision")
+	else:
+		var phone_horiz := Vector2(spawn_local.x - phone.position.x, spawn_local.z - phone.position.z).length()
+		if phone_horiz > MAX_PHONE_SPAWN_DISTANCE:
+			errors.append("Phone too far from spawn (%.2fm > %.2fm)" % [phone_horiz, MAX_PHONE_SPAWN_DISTANCE])
 
 	var walkie := room.get_node_or_null("WalkieTalkie")
 	if walkie == null:
@@ -87,6 +95,8 @@ static func validate(room: Node3D, spawn_local: Vector3) -> Array[String]:
 		errors.append("WalkieTalkie script not attached (path=%s)" % _PATHS.script_path(walkie))
 	elif int(walkie.collision_layer) != INTERACTABLE_LAYER:
 		errors.append("WalkieTalkie collision_layer=%d expected %d" % [int(walkie.collision_layer), INTERACTABLE_LAYER])
+	elif walkie.get_node_or_null("MeshInstance3D") == null or walkie.get_node_or_null("CollisionShape3D") == null:
+		errors.append("WalkieTalkie missing mesh or collision")
 	else:
 		var horiz := Vector2(spawn_local.x - walkie.position.x, spawn_local.z - walkie.position.z).length()
 		if horiz > MAX_WALKIE_SPAWN_DISTANCE:
@@ -95,6 +105,12 @@ static func validate(room: Node3D, spawn_local: Vector3) -> Array[String]:
 		if bottom_y > 0.08:
 			errors.append("WalkieTalkie not on floor (bottom_y=%.3f)" % bottom_y)
 	return errors
+
+
+static func _phone_near_spawn(spawn_local: Vector3) -> Dictionary:
+	# Fixed offset beside center spawn — no wall hunt (center-spawn graybox rooms).
+	var pos := spawn_local + Vector3(0.55, 1.05, 0.0)
+	return {"position": pos, "normal": Vector3(-1, 0, 0), "rotation_y": atan2(-1.0, 0.0)}
 
 
 static func _phone_wall_placement(spawn_local: Vector3, hw: float, hd: float) -> Dictionary:

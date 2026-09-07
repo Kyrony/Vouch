@@ -9,6 +9,7 @@ static func box(size: Vector3, pos: Vector3, mat: Material, collision_layer: int
 	body.collision_mask = 0
 	body.position = pos
 	var mi := MeshInstance3D.new()
+	mi.name = "MeshInstance3D"
 	var bm := BoxMesh.new()
 	bm.size = size
 	mi.mesh = bm
@@ -16,6 +17,7 @@ static func box(size: Vector3, pos: Vector3, mat: Material, collision_layer: int
 	body.add_child(mi)
 	if collision_layer != 0:
 		var col := CollisionShape3D.new()
+		col.name = "CollisionShape3D"
 		var sh := BoxShape3D.new()
 		sh.size = size
 		col.shape = sh

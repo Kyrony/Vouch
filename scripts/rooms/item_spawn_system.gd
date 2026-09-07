@@ -458,12 +458,14 @@ static func _make_interactable(script: Script, size: Vector3, local_pos: Vector3
 	body.position = local_pos
 	body.prompt_text = prompt
 	var mesh_instance := MeshInstance3D.new()
+	mesh_instance.name = "MeshInstance3D"
 	var box := BoxMesh.new()
 	box.size = size
 	mesh_instance.mesh = box
 	mesh_instance.set_surface_override_material(0, material)
 	body.add_child(mesh_instance)
 	var collision := CollisionShape3D.new()
+	collision.name = "CollisionShape3D"
 	var shape := BoxShape3D.new()
 	shape.size = size
 	collision.shape = shape

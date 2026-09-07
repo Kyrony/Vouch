@@ -5,6 +5,9 @@ const _ATTACHMENT: GDScript = preload("res://scripts/rooms/spawn_attachment_vali
 const _ROOM_POD: GDScript = preload("res://scripts/room_pod.gd")
 const _PLAYABLE: GDScript = preload("res://scripts/rooms/playable_loop_spawns.gd")
 const _PATH: GDScript = preload("res://scripts/rooms/escape_path_validator.gd")
+const _SPAWN: GDScript = preload("res://scripts/rooms/graybox_spawn_validator.gd")
+const _BUNKER: GDScript = preload("res://scripts/rooms/graybox_bunker_validator.gd")
+const _ESCAPE_SETTINGS: GDScript = preload("res://scripts/autoload/escape_path_settings.gd")
 const EXPECTED_SLOT_COUNT: int = 16
 
 @onready var lobby: Control = $Lobby
@@ -50,29 +53,20 @@ func _probe_playable_loop_match_path() -> String:
 	var match_node = $World/Match
 	if not match_node.is_node_ready():
 		await match_node.ready
-	var specs: Array = []
-	for room_index in range(2):
-		var recipe: Dictionary = _ROOM_POD.call("plan_recipe", false)
-		recipe["room_scene_id"] = 4 if room_index == 0 else 12
-		var data := {
-			"room_index": room_index,
-			"owner_peer_id": room_index + 1,
-			"rng_seed": 7000 + room_index * 999,
-			"is_puppet_master": false,
-			"total_rooms": 2,
-			"has_valve": true,
-			"has_fireplace": true,
-			"has_drain": true,
-			"has_exhaust": true,
-		}
-		data.merge(recipe)
-		specs.append(data)
+	var specs: Array = _playable_loop_room_specs()
 	var spawn_err: String = _PATH.call("spawn_rooms_like_live", match_node, specs)
 	if not spawn_err.is_empty():
 		return spawn_err
 	await get_tree().process_frame
 	await get_tree().physics_frame
-	await get_tree().physics_frame
+	if _ESCAPE_SETTINGS.bunker_only():
+		return _probe_playable_loop_bunker_only(match_node)
+	if EscapePathSettings.is_enabled():
+		return _probe_playable_loop_escape_path(match_node)
+	return _probe_playable_loop_bunker_only(match_node)
+
+
+func _probe_playable_loop_escape_path(match_node: Node) -> String:
 	var hub := match_node.get_node_or_null("EscapeHub")
 	if hub == null:
 		return "EscapeHub missing"
@@ -91,11 +85,39 @@ func _probe_playable_loop_match_path() -> String:
 	var path_errors: Array = _PATH.call("validate", match_node)
 	if not path_errors.is_empty():
 		return "; ".join(path_errors)
-	var room0: Node = null
-	for c in match_node.get_node("RoomsContainer").get_children():
-		if str(c.name).begins_with("RoomPod"):
-			room0 = c
-			break
+	return _probe_playable_loop_comms(match_node, mouths.size(), ramp_count)
+
+
+func _probe_playable_loop_bunker_only(match_node: Node) -> String:
+	if match_node.get_node_or_null("EscapeHub") != null:
+		return "EscapeHub must not exist when escape path is disabled"
+	var mouths: Array = _PATH.call("_collect_tunnel_mouths", match_node)
+	if not mouths.is_empty():
+		return "tunnel mouths should not exist when escape path disabled (got %d)" % mouths.size()
+	var room_pods := _count_room_pods(match_node)
+	if room_pods != 1:
+		return "bunker-only expects 1 room pod, got %d" % room_pods
+	var room0: Node = _first_room_pod(match_node)
+	if room0 == null:
+		return "no RoomPod spawned"
+	var map: Node = room0.get_child(0)
+	var spawn_errors: Array = _SPAWN.call("validate", map)
+	if not spawn_errors.is_empty():
+		return "; ".join(spawn_errors)
+	var bunker_errors: Array = _BUNKER.call("validate", map)
+	if not bunker_errors.is_empty():
+		return "; ".join(bunker_errors)
+	var spawn_local: Vector3 = map.get_node("PlayerSpawn").position
+	print("  playable loop (bunker-only): spawn=%s phone_dist=%.2fm walkie_dist=%.2fm" % [
+		spawn_local,
+		spawn_local.distance_to(map.get_node("Phone").position),
+		Vector2(spawn_local.x - map.get_node("WalkieTalkie").position.x, spawn_local.z - map.get_node("WalkieTalkie").position.z).length(),
+	])
+	return ""
+
+
+func _probe_playable_loop_comms(match_node: Node, mouth_count: int, ramp_count: int) -> String:
+	var room0: Node = _first_room_pod(match_node)
 	if room0 == null:
 		return "no RoomPod spawned"
 	var map: Node = room0.get_child(0)
@@ -103,12 +125,55 @@ func _probe_playable_loop_match_path() -> String:
 	var comms_errors: Array = _PLAYABLE.call("validate", map, spawn_local)
 	if not comms_errors.is_empty():
 		return "; ".join(comms_errors)
-	print("  playable loop: mouths=%d hub_ramps=%d phone_dist=%.2f" % [
-		mouths.size(),
-		ramp_count,
-		spawn_local.distance_to(map.get_node("Phone").position),
-	])
+	if EscapePathSettings.is_enabled():
+		print("  playable loop: mouths=%d hub_ramps=%d phone_dist=%.2f" % [
+			mouth_count,
+			ramp_count,
+			spawn_local.distance_to(map.get_node("Phone").position),
+		])
+	else:
+		print("  playable loop (bunker-only): phone_dist=%.2f spawn=%s" % [
+			spawn_local.distance_to(map.get_node("Phone").position),
+			spawn_local,
+		])
 	return ""
+
+
+func _first_room_pod(match_node: Node) -> Node:
+	for c in match_node.get_node("RoomsContainer").get_children():
+		if str(c.name).begins_with("RoomPod"):
+			return c
+	return null
+
+
+func _count_room_pods(match_node: Node) -> int:
+	var n := 0
+	for c in match_node.get_node("RoomsContainer").get_children():
+		if str(c.name).begins_with("RoomPod"):
+			n += 1
+	return n
+
+
+func _playable_loop_room_specs() -> Array:
+	var room_count := 1 if _ESCAPE_SETTINGS.bunker_only() else 2
+	var specs: Array = []
+	for room_index in range(room_count):
+		var recipe: Dictionary = _ROOM_POD.call("plan_recipe", false)
+		recipe["room_scene_id"] = 1 if room_index == 0 else 3
+		var data := {
+			"room_index": room_index,
+			"owner_peer_id": room_index + 1,
+			"rng_seed": 7000 + room_index * 999,
+			"is_puppet_master": false,
+			"total_rooms": room_count,
+			"has_valve": true,
+			"has_fireplace": true,
+			"has_drain": true,
+			"has_exhaust": true,
+		}
+		data.merge(recipe)
+		specs.append(data)
+	return specs
 
 
 func _run_player_script_test() -> void:
@@ -160,9 +225,15 @@ func _probe_player_spawn() -> String:
 
 func _run_match_spawn_test() -> void:
 	world.visible = true
+	call_deferred("_run_match_spawn_test_async")
+
+
+func _run_match_spawn_test_async() -> void:
 	var match_node = $World/Match
+	if not match_node.is_node_ready():
+		await match_node.ready
 	var recipe: Dictionary = _ROOM_POD.call("plan_recipe", false)
-	recipe["room_scene_id"] = 4
+	recipe["room_scene_id"] = 2
 	var data := {
 		"room_index": 0,
 		"owner_peer_id": 1,
@@ -181,6 +252,8 @@ func _run_match_spawn_test() -> void:
 		push_error("MATCH SPAWN TEST FAILED: _spawn_room_pod returned null")
 		get_tree().quit(1)
 		return
+	match_node.get_node("RoomsContainer").add_child(room)
+	await get_tree().process_frame
 	var err := _assert_room_map_built(room, "MATCH SPAWN")
 	if not err.is_empty():
 		push_error(err)
@@ -188,13 +261,35 @@ func _run_match_spawn_test() -> void:
 		return
 	var map = room.get_child(0)
 	var slots = map.get_node("ItemSpawns")
-	print("MATCH SPAWN TEST OK children=%d slots=%d" % [room.get_child_count(), slots.get_child_count()])
+	var spawn_xform: Transform3D = room.get_spawn_transform()
+	var player: Node = match_node._spawn_player({
+		"peer_id": 1,
+		"faction_id": "spawn_test",
+		"spawn_position": spawn_xform.origin,
+		"spawn_rotation_y": spawn_xform.basis.get_euler().y,
+	})
+	if player == null:
+		push_error("MATCH SPAWN TEST FAILED: player spawn returned null")
+		get_tree().quit(1)
+		return
+	match_node.get_node("PlayersContainer").add_child(player)
+	await get_tree().physics_frame
+	var global_errors: Array = _SPAWN.call("validate_global", map, player as Node3D)
+	if not global_errors.is_empty():
+		push_error("MATCH SPAWN TEST FAILED: %s" % "; ".join(global_errors))
+		get_tree().quit(1)
+		return
+	print("MATCH SPAWN TEST OK children=%d slots=%d spawn_global=%s" % [
+		room.get_child_count(),
+		slots.get_child_count(),
+		spawn_xform.origin,
+	])
 	get_tree().quit(0)
 
 
 func _run_room_spawn_test() -> void:
-	print("=== ROOM MAP SPAWN TEST START ===")
-	for room_id in [1, 4, 12, 15, 16, 17, 18, 20]:
+	print("=== GRAYBOX ROOM SPAWN TEST START ===")
+	for room_id in [1, 2, 3, 4, 5, 6]:
 		var room = _spawn_test_room(room_id)
 		if room == null:
 			push_error("ROOM SPAWN TEST FAILED room=%02d" % room_id)
@@ -206,23 +301,27 @@ func _run_room_spawn_test() -> void:
 			push_error("ROOM SPAWN TEST FAILED %s" % err)
 			get_tree().quit(1)
 			return
+		var spawn_errors: Array = _SPAWN.call("validate", map)
+		if not spawn_errors.is_empty():
+			push_error("ROOM SPAWN TEST FAILED room=%02d spawn: %s" % [room_id, "; ".join(spawn_errors)])
+			get_tree().quit(1)
+			return
 		var slots = map.get_node("ItemSpawns")
 		var slot_count = slots.get_child_count()
 		print("  room %02d OK footprint=%.0fx%.0f slots=%d" % [room_id, room.width, room.depth, slot_count])
-		var stair_err := _validate_stairs(map)
-		if not stair_err.is_empty():
-			push_error("ROOM STAIR TEST FAILED room=%02d: %s" % [room_id, stair_err])
-			get_tree().quit(1)
-			return
 		room.queue_free()
 		await get_tree().process_frame
-	print("=== ROOM MAP SPAWN TEST: ALL OK ===")
+	print("=== GRAYBOX ROOM SPAWN TEST: ALL OK ===")
 	get_tree().quit(0)
 
 
 func _run_attachment_test() -> void:
+	if _ESCAPE_SETTINGS.bunker_only():
+		print("=== ATTACHMENT TEST SKIPPED (bunker-only friends-MVP) ===")
+		get_tree().quit(0)
+		return
 	print("=== ATTACHMENT TEST START ===")
-	for room_id in [1, 4, 12, 15, 20]:
+	for room_id in [1, 3, 5, 6]:
 		var room = _spawn_test_room(room_id, true)
 		if room == null:
 			push_error("ATTACHMENT TEST FAILED room=%02d (spawn)" % room_id)
@@ -270,6 +369,16 @@ func _assert_room_map_built(room_pod: Node, label: String) -> String:
 		return "%s: child missing configure() — room_map.gd did not attach" % label
 	if map.get_node_or_null("Geometry") == null:
 		return "%s: map has no Geometry node" % label
+	if map.get_node_or_null("PlayerSpawn") == null:
+		return "%s: PlayerSpawn marker missing" % label
+	var spawn_errors: Array = _SPAWN.call("validate", map)
+	if not spawn_errors.is_empty():
+		return "%s: %s" % [label, "; ".join(spawn_errors)]
+	if _ESCAPE_SETTINGS.bunker_only():
+		var bunker_errors: Array = _BUNKER.call("validate", map)
+		if not bunker_errors.is_empty():
+			return "%s: %s" % [label, "; ".join(bunker_errors)]
+		return ""
 	var slots = map.get_node_or_null("ItemSpawns")
 	if slots == null:
 		return "%s: map has no ItemSpawns" % label
@@ -277,6 +386,10 @@ func _assert_room_map_built(room_pod: Node, label: String) -> String:
 		return "%s: expected %d item slots, got %d" % [label, EXPECTED_SLOT_COUNT, slots.get_child_count()]
 	if map.get_node_or_null("LightSwitch") == null:
 		return "%s: LightSwitch missing (ItemSpawnSystem.populate did not run)" % label
+	if map.get_node_or_null("EscapeDoor") == null:
+		return "%s: EscapeDoor marker missing" % label
+	if map.get_node_or_null("EscapeAttach") == null:
+		return "%s: EscapeAttach marker missing" % label
 	var spawn_local: Vector3 = map.get_node("PlayerSpawn").position if map.has_node("PlayerSpawn") else Vector3.ZERO
 	var comms_errors: Array = _PLAYABLE.call("validate", map, spawn_local)
 	if not comms_errors.is_empty():
