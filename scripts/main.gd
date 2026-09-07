@@ -48,29 +48,31 @@ func _run_playable_loop_test_async() -> void:
 
 func _probe_playable_loop_match_path() -> String:
 	var match_node = $World/Match
-	var recipe: Dictionary = _ROOM_POD.call("plan_recipe", false)
-	recipe["room_scene_id"] = 1
-	var data := {
-		"room_index": 0,
-		"owner_peer_id": 1,
-		"rng_seed": 777,
-		"is_puppet_master": false,
-		"total_rooms": 2,
-		"has_valve": true,
-		"has_fireplace": true,
-	}
-	data.merge(recipe)
-	var room_pod: Node = match_node._spawn_room_pod(data)
-	if room_pod == null:
-		return "Match._spawn_room_pod returned null"
-	match_node.add_child(room_pod)
-	if room_pod.get_child_count() < 1:
-		return "RoomPod has no map child"
-	var map: Node = room_pod.get_child(0)
-	var spawn_local: Vector3 = map.get_node("PlayerSpawn").position if map.has_node("PlayerSpawn") else Vector3.ZERO
-	var comms_errors: Array = _PLAYABLE.call("validate", map, spawn_local)
-	if not comms_errors.is_empty():
-		return "; ".join(comms_errors)
+	if not match_node.is_node_ready():
+		await match_node.ready
+	var specs: Array = []
+	for room_index in range(2):
+		var recipe: Dictionary = _ROOM_POD.call("plan_recipe", false)
+		recipe["room_scene_id"] = 4 if room_index == 0 else 12
+		var data := {
+			"room_index": room_index,
+			"owner_peer_id": room_index + 1,
+			"rng_seed": 7000 + room_index * 999,
+			"is_puppet_master": false,
+			"total_rooms": 2,
+			"has_valve": true,
+			"has_fireplace": true,
+			"has_drain": true,
+			"has_exhaust": true,
+		}
+		data.merge(recipe)
+		specs.append(data)
+	var spawn_err: String = _PATH.call("spawn_rooms_like_live", match_node, specs)
+	if not spawn_err.is_empty():
+		return spawn_err
+	await get_tree().process_frame
+	await get_tree().physics_frame
+	await get_tree().physics_frame
 	var hub := match_node.get_node_or_null("EscapeHub")
 	if hub == null:
 		return "EscapeHub missing"
@@ -82,17 +84,29 @@ func _probe_playable_loop_match_path() -> String:
 		return "EscapeHub has no ramp collision (found %d)" % ramp_count
 	if hub.get_node_or_null("OutsideEscapeZone") == null:
 		return "OutsideEscapeZone missing"
-	await get_tree().process_frame
-	await get_tree().physics_frame
-	await get_tree().physics_frame
+	var mouths: Array = _PATH.call("_collect_tunnel_mouths", match_node)
+	if mouths.size() < 2:
+		return "expected 2 tunnel mouths, got %d" % mouths.size()
 	_PATH.call("log_path_nodes", match_node)
 	var path_errors: Array = _PATH.call("validate", match_node)
 	if not path_errors.is_empty():
 		return "; ".join(path_errors)
-	print("  playable loop: phone_dist=%.2f walkie_dist=%.2f hub_ramps=%d" % [
-		spawn_local.distance_to(map.get_node("Phone").position),
-		spawn_local.distance_to(map.get_node("WalkieTalkie").position),
+	var room0: Node = null
+	for c in match_node.get_node("RoomsContainer").get_children():
+		if str(c.name).begins_with("RoomPod"):
+			room0 = c
+			break
+	if room0 == null:
+		return "no RoomPod spawned"
+	var map: Node = room0.get_child(0)
+	var spawn_local: Vector3 = map.get_node("PlayerSpawn").position if map.has_node("PlayerSpawn") else Vector3.ZERO
+	var comms_errors: Array = _PLAYABLE.call("validate", map, spawn_local)
+	if not comms_errors.is_empty():
+		return "; ".join(comms_errors)
+	print("  playable loop: mouths=%d hub_ramps=%d phone_dist=%.2f" % [
+		mouths.size(),
 		ramp_count,
+		spawn_local.distance_to(map.get_node("Phone").position),
 	])
 	return ""
 
@@ -305,6 +319,9 @@ func _on_match_started() -> void:
 
 func _on_pause_exit() -> void:
 	get_tree().paused = false
+	var match_node: Node = world.get_node_or_null("Match")
+	if match_node and match_node.has_method("teardown_match_geometry"):
+		match_node.teardown_match_geometry()
 	GameState.phase = GameState.Phase.LOBBY
 	world.visible = false
 	lobby.visible = true

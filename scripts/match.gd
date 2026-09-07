@@ -14,6 +14,8 @@ class_name Match
 ## uneven faction sizes.
 
 const _ROOM_POD: GDScript = preload("res://scripts/room_pod.gd")
+const _PATH: GDScript = preload("res://scripts/rooms/escape_path_validator.gd")
+const _ESCAPE_HUB: GDScript = preload("res://scripts/systems/escape_hub.gd")
 
 const ROOM_POD_SCENE_PATH: String = "res://scenes/Match/RoomPod.tscn"
 const PLAYER_SCENE_PATH: String = "res://scenes/Player/Player.tscn"
@@ -78,6 +80,7 @@ func _get_player_scene() -> PackedScene:
 
 
 func _on_match_started() -> void:
+	_teardown_match_geometry()
 	if not multiplayer.is_server():
 		return
 	_server_build_match()
@@ -85,6 +88,7 @@ func _on_match_started() -> void:
 
 func _server_build_match() -> void:
 	_rooms.clear()
+	EscapeSystem.reset()
 	LinkGraph.reset()
 	PuzzleSystem.reset()
 	PuppetMasterSystem.reset()
@@ -123,6 +127,8 @@ func _server_build_match() -> void:
 	for i in range(peer_ids.size()):
 		var peer_id: int = peer_ids[i]
 		_server_spawn_player(peer_id, i)
+
+	call_deferred("_log_live_escape_path")
 
 
 ## Decides whether this match has a code-locked escape and, if so, which
@@ -284,12 +290,14 @@ func _spawn_room_pod(data: Dictionary) -> Node:
 	var grid_pos: Vector3 = room_grid_position(data["room_index"])
 	var to_hub := Vector3(-grid_pos.x, 0.0, -grid_pos.z)
 	if to_hub.length() < 0.5:
-		to_hub = Vector3(0.0, 0.0, 1.0)
+		# Room sits on the hub shaft — tunnel must run back toward world origin.
+		to_hub = Vector3(0.0, 0.0, -1.0)
 	else:
 		to_hub = to_hub.normalized()
 	room.rotation.y = atan2(to_hub.x, to_hub.z)
 	room.configure(data)
 	room.position = grid_pos
+	call_deferred("_maybe_log_escape_path", int(data.get("total_rooms", 1)))
 	return room
 
 
@@ -297,10 +305,62 @@ func _ensure_escape_hub(room_count: int) -> void:
 	if is_instance_valid(_escape_hub):
 		return
 	_escape_hub = Node3D.new()
-	_escape_hub.set_script(preload("res://scripts/systems/escape_hub.gd"))
+	_escape_hub.set_script(_ESCAPE_HUB)
 	_escape_hub.name = "EscapeHub"
 	add_child(_escape_hub)
 	_escape_hub.call("build", room_count)
+	print("LIVE_ESCAPE EscapeHub built room_count=%d path=%s" % [room_count, _escape_hub.get_path()])
+
+
+func teardown_match_geometry() -> void:
+	_teardown_match_geometry()
+
+
+func _teardown_match_geometry() -> void:
+	_rooms.clear()
+	if is_instance_valid(_escape_hub):
+		_escape_hub.queue_free()
+		_escape_hub = null
+	if not is_node_ready():
+		return
+	for child in rooms_container.get_children():
+		if child == rooms_spawner:
+			continue
+		child.queue_free()
+	for child in players_container.get_children():
+		if child == players_spawner:
+			continue
+		child.queue_free()
+
+
+func _maybe_log_escape_path(total_rooms: int) -> void:
+	if not is_node_ready():
+		return
+	var room_count := 0
+	for child in rooms_container.get_children():
+		if child != rooms_spawner:
+			room_count += 1
+	if room_count < total_rooms:
+		return
+	_log_live_escape_path()
+
+
+func _log_live_escape_path() -> void:
+	var hub := get_node_or_null("EscapeHub")
+	if hub != null and hub.has_method("log_live_debug"):
+		hub.call("log_live_debug")
+	elif hub == null:
+		print("LIVE_ESCAPE hub=MISSING")
+	_PATH.call("log_path_nodes", self)
+	var mouths: Array = _PATH.call("_collect_tunnel_mouths", self)
+	print("LIVE_ESCAPE tunnel_mouths=%d rooms=%d" % [mouths.size(), rooms_container.get_child_count() - 1])
+	for mouth: Node in mouths:
+		if mouth is Node3D:
+			print("LIVE_ESCAPE mouth %s global=%s" % [mouth.name, (mouth as Node3D).global_transform.origin])
+	if OS.get_environment("VOUCH_PLAYABLE_LOOP_TEST") == "1":
+		var path_errors: Array = _PATH.call("validate", self)
+		if not path_errors.is_empty():
+			push_error("LIVE_ESCAPE path validation failed: %s" % "; ".join(path_errors))
 
 
 ## Runs on EVERY peer, same determinism requirement as `_spawn_room_pod`.

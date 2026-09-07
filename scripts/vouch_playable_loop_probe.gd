@@ -1,5 +1,5 @@
 extends SceneTree
-## Mirrors live Match._spawn_room_pod + EscapeHub.build — proves playable loop geometry.
+## Uses the same Match.tscn + RoomsSpawner.spawn path as live Start Match.
 ## Run: godot4 --headless --path . -s res://scripts/vouch_playable_loop_probe.gd
 
 const _PLAYABLE: GDScript = preload("res://scripts/rooms/playable_loop_spawns.gd")
@@ -13,83 +13,100 @@ func _initialize() -> void:
 
 func _run_probe() -> void:
 	await process_frame
-	await process_frame
-	await physics_frame
-	await physics_frame
 	var err: String = await _probe()
 	if err.is_empty():
-		print("PLAYABLE LOOP PROBE OK")
+		print("PLAYABLE LOOP PROBE OK (live Match API, 2 rooms)")
 		quit(0)
 	push_error("PLAYABLE LOOP PROBE FAILED: %s" % err)
 	quit(1)
 
 
 func _probe() -> String:
-	var match_root := Node3D.new()
-	match_root.set_script(load("res://scripts/match.gd"))
-	root.add_child(match_root)
+	var main: Node = load("res://scenes/Main.tscn").instantiate()
+	root.add_child(main)
+	await process_frame
+	var match_node: Node = main.get_node("World/Match")
+	if not match_node.is_node_ready():
+		await match_node.ready
 
-	var recipe: Dictionary = _ROOM_POD.call("plan_recipe", false)
-	recipe["room_scene_id"] = 4
-	var data := {
-		"room_index": 0,
-		"owner_peer_id": 1,
-		"rng_seed": 4242,
-		"is_puppet_master": false,
-		"total_rooms": 2,
-		"has_valve": true,
-		"has_electrical_box": true,
-		"has_fireplace": true,
-		"has_drain": true,
-		"has_exhaust": true,
-	}
-	data.merge(recipe)
-
-	var room_pod: Node = match_root.call("_spawn_room_pod", data)
-	if room_pod == null:
-		match_root.queue_free()
-		return "Match._spawn_room_pod returned null"
-	match_root.add_child(room_pod)
-	if room_pod.get_child_count() < 1:
-		match_root.queue_free()
-		return "RoomPod has no map child"
+	var specs: Array = _two_player_room_specs()
+	var spawn_err: String = _PATH.call("spawn_rooms_like_live", match_node, specs)
+	if not spawn_err.is_empty():
+		main.queue_free()
+		return spawn_err
 
 	await process_frame
+	await physics_frame
+	await physics_frame
 
-	var map: Node = room_pod.get_child(0)
-	var spawn_local: Vector3 = Vector3.ZERO
-	if map.has_node("PlayerSpawn"):
-		spawn_local = map.get_node("PlayerSpawn").position
-
-	var comms_errors: Array = _PLAYABLE.call("validate", map, spawn_local)
-	if not comms_errors.is_empty():
-		match_root.queue_free()
-		return "; ".join(comms_errors)
-
-	var hub := match_root.get_node_or_null("EscapeHub")
+	var hub := match_node.get_node_or_null("EscapeHub")
 	if hub == null:
-		match_root.queue_free()
-		return "EscapeHub node missing after _spawn_room_pod"
+		main.queue_free()
+		return "EscapeHub missing after RoomsSpawner.spawn"
 
-	var ramp_steps: Array = []
+	var ramp_count := 0
 	for c in hub.get_children():
 		if c.is_in_group("escape_hub_ramp"):
-			ramp_steps.append(c)
-	if ramp_steps.is_empty():
-		match_root.queue_free()
-		return "EscapeHub has no escape_hub_ramp collision segments"
+			ramp_count += 1
+	if ramp_count < 1:
+		main.queue_free()
+		return "EscapeHub has no escape_hub_ramp segments"
 
-	_PATH.call("log_path_nodes", match_root)
+	var mouths: Array = _PATH.call("_collect_tunnel_mouths", match_node)
+	if mouths.size() < 2:
+		main.queue_free()
+		return "expected 2 tunnel mouths, got %d" % mouths.size()
 
-	var path_errors: Array = _PATH.call("validate", match_root)
+	_PATH.call("log_path_nodes", match_node)
+	var path_errors: Array = _PATH.call("validate", match_node)
 	if not path_errors.is_empty():
-		match_root.queue_free()
+		main.queue_free()
 		return "; ".join(path_errors)
 
-	print("  Phone dist=%.2fm Walkie dist=%.2fm ramp_segments=%d" % [
-		spawn_local.distance_to(map.get_node("Phone").position),
-		spawn_local.distance_to(map.get_node("WalkieTalkie").position),
-		ramp_steps.size(),
+	var room0: Node = _first_room_pod(match_node)
+	if room0 == null:
+		main.queue_free()
+		return "no RoomPod under RoomsContainer"
+	var map0: Node = room0.get_child(0)
+	var spawn_local: Vector3 = map0.get_node("PlayerSpawn").position
+	var comms_errors: Array = _PLAYABLE.call("validate", map0, spawn_local)
+	if not comms_errors.is_empty():
+		main.queue_free()
+		return "room0 comms: %s" % "; ".join(comms_errors)
+
+	print("  ramp_segments=%d tunnel_mouths=%d room0_phone=%.2fm" % [
+		ramp_count,
+		mouths.size(),
+		spawn_local.distance_to(map0.get_node("Phone").position),
 	])
-	match_root.queue_free()
+	main.queue_free()
 	return ""
+
+
+func _two_player_room_specs() -> Array:
+	var specs: Array = []
+	for room_index in range(2):
+		var recipe: Dictionary = _ROOM_POD.call("plan_recipe", false)
+		recipe["room_scene_id"] = 4 if room_index == 0 else 12
+		var data := {
+			"room_index": room_index,
+			"owner_peer_id": room_index + 1,
+			"rng_seed": 9000 + room_index * 1111,
+			"is_puppet_master": false,
+			"total_rooms": 2,
+			"has_valve": true,
+			"has_electrical_box": true,
+			"has_fireplace": true,
+			"has_drain": true,
+			"has_exhaust": true,
+		}
+		data.merge(recipe)
+		specs.append(data)
+	return specs
+
+
+func _first_room_pod(match_node: Node) -> Node:
+	for c in match_node.get_node("RoomsContainer").get_children():
+		if str(c.name).begins_with("RoomPod"):
+			return c
+	return null

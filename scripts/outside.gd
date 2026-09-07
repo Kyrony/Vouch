@@ -15,6 +15,8 @@ const _GEOM: GDScript = preload("res://scripts/rooms/geometry_util.gd")
 func _ready() -> void:
 	_build_mountain_graybox()
 	_gate_test_range()
+	if has_node("Ground"):
+		$Ground.add_to_group("escape_outside_floor")
 	if multiplayer.is_server():
 		EscapeSystem.server_register_outside(self)
 

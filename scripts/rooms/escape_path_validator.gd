@@ -66,12 +66,17 @@ static func _collect_tunnel_mouths(match_root: Node3D) -> Array[Node3D]:
 
 
 static func _collect_floor_bodies(match_root: Node3D) -> Array[StaticBody3D]:
+	var roots: Array[Node] = [match_root]
+	var parent := match_root.get_parent()
+	if parent != null and parent.has_node("Outside"):
+		roots.append(parent.get_node("Outside"))
 	var out: Array[StaticBody3D] = []
-	for n: Node in match_root.find_children("*", "StaticBody3D", true, false):
-		if not n is StaticBody3D:
-			continue
-		if n.is_in_group("escape_hub_ramp") or n.is_in_group("escape_tunnel_floor"):
-			out.append(n as StaticBody3D)
+	for root in roots:
+		for n: Node in root.find_children("*", "StaticBody3D", true, false):
+			if not n is StaticBody3D:
+				continue
+			if n.is_in_group("escape_hub_ramp") or n.is_in_group("escape_tunnel_floor") or n.is_in_group("escape_outside_floor"):
+				out.append(n as StaticBody3D)
 	return out
 
 
@@ -137,3 +142,17 @@ static func _shape_top_y_at_xz(body: StaticBody3D, col: CollisionShape3D, xz: Ve
 		var top_local: float = shape_origin.y + half.y
 		return (gt * Vector3(0.0, top_local, 0.0)).y
 	return NAN
+
+
+static func spawn_rooms_like_live(match_node: Node, room_specs: Array) -> String:
+	if not match_node.has_method("teardown_match_geometry"):
+		return "node is not Match"
+	if not match_node.is_node_ready():
+		return "Match not ready — await ready before spawn"
+	match_node.teardown_match_geometry()
+	var spawner: MultiplayerSpawner = match_node.get_node("RoomsContainer/RoomsSpawner")
+	for spec: Dictionary in room_specs:
+		var room: Node = spawner.spawn(spec)
+		if room == null:
+			return "RoomsSpawner.spawn failed for room_index=%s" % str(spec.get("room_index", "?"))
+	return ""
