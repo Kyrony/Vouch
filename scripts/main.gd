@@ -71,17 +71,17 @@ func _probe_horror_match() -> String:
 		return "HorrorWorld missing"
 	var spawn_count: int = world_node.call("get_spawn_point_count")
 	if spawn_count < 4:
-		return "expected >= 4 spawns, got %d" % spawn_count
+		return "expected >= 4 family spawns, got %d" % spawn_count
 	var pickups := world_node.get_node_or_null("Pickups")
 	if pickups == null or pickups.get_child_count() < 1:
 		return "no pickups"
-	if world_node.get_node_or_null("Bunker") == null:
-		return "Bunker missing"
-	if world_node.get_node_or_null("SurfaceHouse") == null:
-		return "SurfaceHouse missing"
-	if world_node.get_node_or_null("Field") == null:
-		return "Field missing"
-	print("  horror spawns=%d pickups=%d" % [spawn_count, pickups.get_child_count()])
+	for node_name in ["FamilyHouses", "PMMansion", "UncleHouse", "Outdoor"]:
+		if world_node.get_node_or_null(node_name) == null:
+			return "neighborhood node missing: %s" % node_name
+	var child_points := world_node.get_tree().get_nodes_in_group("child_spawn_points")
+	if child_points.size() < 12:
+		return "expected >= 12 child spawn points, got %d" % child_points.size()
+	print("  horror spawns=%d pickups=%d child_points=%d" % [spawn_count, pickups.get_child_count(), child_points.size()])
 	return ""
 
 

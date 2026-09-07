@@ -468,8 +468,9 @@ func _spawn_player(data: Dictionary) -> Node:
 
 
 func _log_horror_match_ready(player_count: int, spawn_count: int) -> void:
-	print("HORROR summary players=%d bunker_spawns=%d world=%s" % [
+	print("HORROR summary players=%d family_spawns=%d child_points=%d world=%s" % [
 		player_count,
 		spawn_count,
+		get_tree().get_nodes_in_group("child_spawn_points").size(),
 		get_node_or_null("HorrorWorld") != null,
 	])

@@ -1,10 +1,11 @@
 extends RefCounted
 class_name MatchHorror
-## Host-authoritative horror match builder (shared bunker, scattered spawns).
+## Host-authoritative horror neighborhood match (family spawns + child hunt).
 
 const HORROR_WORLD_SCENE: String = "res://scenes/Horror/HorrorWorld.tscn"
 const PM_AI_SCENE: String = "res://scenes/Horror/PMChaseAI.tscn"
 const PLAYER_SCENE_PATH: String = "res://scenes/Player/Player.tscn"
+
 
 static func server_build(match_node: Node) -> void:
 	if not match_node.multiplayer.is_server():
@@ -15,6 +16,8 @@ static func server_build(match_node: Node) -> void:
 
 	PlayerHealth.reset()
 	PlayerInventory.reset()
+	PlayerEffects.reset()
+	ChildSpawnRNG.reset()
 	EscapeSystem.reset()
 	PuppetMasterSystem.reset()
 
@@ -30,20 +33,27 @@ static func server_build(match_node: Node) -> void:
 		push_error("MatchHorror: HorrorWorld missing")
 		return
 
-	var spawns: Array = _collect_spawn_transforms(world)
-	spawns.shuffle()
+	if world.has_method("server_init_match"):
+		world.call("server_init_match", peer_ids.size())
 
-	var spawn_idx := 0
+	var family_count: int = world.call("get_family_count") if world.has_method("get_family_count") else survivors.size()
+	var survivor_idx := 0
 	for peer_id in peer_ids:
-		var xform: Transform3D = spawns[spawn_idx % spawns.size()] if not spawns.is_empty() else Transform3D.IDENTITY
-		spawn_idx += 1
-		_server_spawn_horror_player(match_node, peer_id, xform, peer_id == pm_peer)
+		var is_pm: bool = peer_id == pm_peer
+		var xform: Transform3D
+		if is_pm:
+			xform = world.call("get_pm_spawn_transform") if world.has_method("get_pm_spawn_transform") else Transform3D.IDENTITY
+		else:
+			var fam := survivor_idx % maxi(family_count, 1)
+			survivor_idx += 1
+			xform = world.call("get_family_spawn_transform", fam) if world.has_method("get_family_spawn_transform") else world.call("get_random_spawn_transform")
+		_server_spawn_horror_player(match_node, peer_id, xform, is_pm, survivor_idx - 1 if not is_pm else -1)
 
 	if pm_peer == -1:
 		_spawn_pm_ai(match_node, world)
 
 	_grant_pm_horror(pm_peer)
-	match_node.call_deferred("_log_horror_match_ready", peer_ids.size(), spawns.size())
+	match_node.call_deferred("_log_horror_match_ready", peer_ids.size(), world.call("get_spawn_point_count"))
 
 
 static func _ensure_puppet_master(peer_ids: Array) -> int:
@@ -52,12 +62,10 @@ static func _ensure_puppet_master(peer_ids: Array) -> int:
 		return existing
 	if peer_ids.is_empty():
 		return -1
-	# Horror always tries to assign a human PM when 2+ players.
 	if peer_ids.size() >= 2:
 		var chosen: int = peer_ids[randi() % peer_ids.size()]
 		GameState.server_set_puppet_master(chosen)
 		return chosen
-	# Solo: AI PM stub — no human PM.
 	return -1
 
 
@@ -77,20 +85,9 @@ static func _spawn_world(match_node: Node) -> void:
 	match_node.add_child(world)
 
 
-static func _collect_spawn_transforms(world: Node) -> Array:
-	if world.has_method("get_random_spawn_transform"):
-		var transforms: Array = []
-		var count: int = world.call("get_spawn_point_count")
-		if count <= 0:
-			count = 8
-		for _i in count:
-			transforms.append(world.call("get_random_spawn_transform"))
-		return transforms
-	return [Transform3D.IDENTITY]
-
-
-static func _server_spawn_horror_player(match_node: Node, peer_id: int, xform: Transform3D, is_pm: bool) -> void:
+static func _server_spawn_horror_player(match_node: Node, peer_id: int, xform: Transform3D, is_pm: bool, family_index: int) -> void:
 	PlayerHealth.server_init_peer(peer_id)
+	PlayerEffects.server_init_peer(peer_id)
 	if not is_pm:
 		PlayerInventory.server_init_peer(peer_id)
 
@@ -102,6 +99,7 @@ static func _server_spawn_horror_player(match_node: Node, peer_id: int, xform: T
 		"spawn_rotation_y": xform.basis.get_euler().y,
 		"is_puppet_master": is_pm,
 		"horror_mode": true,
+		"family_index": family_index,
 	}
 	var player: Node = match_node.players_spawner.spawn(data)
 	if player == null:
@@ -128,7 +126,9 @@ static func _spawn_pm_ai(match_node: Node, world: Node) -> void:
 	var ai: Node = scene.instantiate()
 	ai.name = "PMChaseAI"
 	match_node.add_child(ai)
-	var spawn: Vector3 = world.global_position + Vector3(0, -16, 0)
+	var spawn: Vector3 = world.global_position + Vector3(0, 1.2, -48)
+	if world.has_method("get_pm_spawn_transform"):
+		spawn = world.call("get_pm_spawn_transform").origin + Vector3(0, 1.0, 0)
 	if ai.has_method("server_activate"):
 		ai.call("server_activate", spawn)
 

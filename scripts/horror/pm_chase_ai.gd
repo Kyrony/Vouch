@@ -2,8 +2,6 @@ extends CharacterBody3D
 ## PMChaseAI — simple chase stub when no human Puppet Master is active.
 
 const CHASE_SPEED: float = 5.5
-const STEAL_RANGE: float = 2.2
-const STEAL_RATE: float = 22.0
 
 var _active: bool = false
 var _target: Node3D = null
@@ -50,10 +48,11 @@ func _physics_process(delta: float) -> void:
 	else:
 		velocity = Vector3.ZERO
 	move_and_slide()
-	if dist <= STEAL_RANGE and _target != null:
+	var max_range := PuppetMasterData.LIFE_STEAL_MAX_RANGE
+	if dist <= max_range and _target != null:
 		var peer := int(str(_target.name))
 		if peer > 0:
-			PlayerHealth.server_apply_drain(peer, STEAL_RATE * delta, -1)
+			PlayerEffects.server_apply_life_steal(peer, -1, dist, max_range, delta)
 
 
 func _pick_target() -> Node3D:

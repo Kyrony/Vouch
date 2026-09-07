@@ -112,6 +112,8 @@ var is_horror_puppet_master: bool = false
 
 var _pm_controller: Node = null
 var _health_bar: ProgressBar = null
+var _stamina_bar: ProgressBar = null
+var _fear_bar: ProgressBar = null
 var _hotbar_labels: Array[Label] = []
 var _local_health: float = 100.0
 var _local_max_health: float = 100.0
@@ -158,6 +160,7 @@ func _ready() -> void:
 		if horror_mode:
 			PlayerHealth.local_health_changed.connect(_on_local_health_changed)
 			PlayerInventory.local_inventory_changed.connect(_on_local_inventory_changed)
+			PlayerEffects.local_meters_changed.connect(_on_local_meters_changed)
 		_pause_menu = get_node_or_null("/root/Main/PauseMenu")
 	else:
 		camera.current = false
@@ -352,6 +355,16 @@ func _update_interact_prompt() -> void:
 
 
 func _try_interact() -> void:
+	if horror_mode and not is_horror_puppet_master:
+		var child_pos := ChildSpawnRNG.get_spawn_position()
+		if child_pos != Vector3.ZERO and global_position.distance_to(child_pos) < 3.5:
+			if multiplayer.is_server():
+				if ChildSpawnRNG.server_try_pickup_child(multiplayer.get_unique_id(), global_position):
+					_show_toast("You found the missing child — reach the escape zone!")
+			else:
+				_rpc_try_child_pickup.rpc_id(1, global_position)
+			return
+
 	if not interact_ray.is_colliding():
 		return
 	var collider := interact_ray.get_collider()
@@ -994,12 +1007,32 @@ func _on_toast_timer_timeout() -> void:
 func _build_horror_hud() -> void:
 	_health_bar = ProgressBar.new()
 	_health_bar.name = "HealthBar"
-	_health_bar.custom_minimum_size = Vector2(220, 16)
+	_health_bar.custom_minimum_size = Vector2(220, 14)
 	_health_bar.position = Vector2(20, 44)
 	_health_bar.max_value = 100
 	_health_bar.value = 100
 	_health_bar.visible = false
 	hud.add_child(_health_bar)
+
+	_stamina_bar = ProgressBar.new()
+	_stamina_bar.name = "StaminaBar"
+	_stamina_bar.custom_minimum_size = Vector2(220, 12)
+	_stamina_bar.position = Vector2(20, 62)
+	_stamina_bar.max_value = 100
+	_stamina_bar.value = 100
+	_stamina_bar.modulate = Color(0.55, 0.75, 0.95)
+	_stamina_bar.visible = false
+	hud.add_child(_stamina_bar)
+
+	_fear_bar = ProgressBar.new()
+	_fear_bar.name = "FearBar"
+	_fear_bar.custom_minimum_size = Vector2(220, 12)
+	_fear_bar.position = Vector2(20, 78)
+	_fear_bar.max_value = 100
+	_fear_bar.value = 0
+	_fear_bar.modulate = Color(0.75, 0.35, 0.45)
+	_fear_bar.visible = false
+	hud.add_child(_fear_bar)
 
 	var hotbar := HBoxContainer.new()
 	hotbar.name = "Hotbar"
@@ -1023,6 +1056,25 @@ func _on_local_health_changed(hp: float, cap: float) -> void:
 		_health_bar.visible = horror_mode and not is_horror_puppet_master
 		_health_bar.max_value = cap
 		_health_bar.value = hp
+
+
+func _on_local_meters_changed(hp: float, stamina: float, fear: float) -> void:
+	_on_local_health_changed(hp, _local_max_health)
+	if _stamina_bar:
+		_stamina_bar.visible = horror_mode and not is_horror_puppet_master
+		_stamina_bar.value = stamina
+	if _fear_bar:
+		_fear_bar.visible = horror_mode and not is_horror_puppet_master
+		_fear_bar.value = fear
+
+
+@rpc("any_peer", "call_remote", "reliable")
+func _rpc_try_child_pickup(pos: Vector3) -> void:
+	if not multiplayer.is_server():
+		return
+	var sender := multiplayer.get_remote_sender_id()
+	if ChildSpawnRNG.server_try_pickup_child(sender, pos):
+		pass
 
 
 func _on_local_inventory_changed(slots: Array, selected: int) -> void:

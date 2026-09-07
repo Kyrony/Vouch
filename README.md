@@ -70,21 +70,22 @@ field as a placeholder — session codes are post-MVP.
 
 ## Controls
 
-### Horror bunker escape (default)
+### Horror neighborhood chase (default)
 
 | Role | Action | Key |
 | --- | --- | --- |
 | All | Move / Look / Jump | `W A S D` / Mouse / `Space` |
 | Survivor | Pick up item | `E` |
+| Survivor | Find missing child (near glow marker) | `E` |
 | Survivor | Use selected hotbar item | `R` |
 | Survivor | Drop selected item | `G` |
 | Survivor | Select hotbar slot | `1`–`8` |
-| Puppet Master | Body swap (near survivor) | `Q` |
+| Puppet Master | Possess dead family body / body swap (near target) | `Q` |
 | Puppet Master | Float upward (hold) | `Space` (in air) |
-| Puppet Master | Life steal (hold near survivor) | `E` (hold) |
+| Puppet Master | Life steal aura (radius, then cooldown) | `E` |
 | All | Pause / release mouse | `Esc` |
 
-**Goal:** Survivors spawn at random points in the **shared underground bunker**, loot items, climb the **surface house** stair shaft, and reach the **field escape zone** (+Z field). One **Puppet Master** hunts them — drain health with hold-interact or eliminate everyone. PM wins if all survivors are drained/eliminated before they escape.
+**Goal:** Each **family team** spawns in their own **1-story house bedroom**. One missing child is hidden at a random location among **12 spawn points** (see below). Find the child marker, then reach the **field escape zone** (+Z yard). The **Puppet Master** (old man) hunts from the **PM mansion** — activate a **radius life-steal aura** (stronger when closer) with duration + recharge cooldown. PM wins if all survivors are drained/eliminated before families escape with the child.
 
 Legacy sealed-room / tunnel modes: `VOUCH_BUNKER_ONLY=1` or `VOUCH_ESCAPE_PATH=1`.
 
@@ -229,6 +230,25 @@ persists locally between sessions.
 Every stub above has a `TODO(post-MVP)` comment at its definition site
 pointing at what's missing.
 
+## Horror child spawn points (12)
+
+Host RNG picks **one** per match (`ChildSpawnRNG`). Teams map to **families** (house bedroom spawns).
+
+| # | `spawn_id` | Location |
+| --- | --- | --- |
+| 1 | `uncle_bedroom` | Uncle house across the street |
+| 2 | `bunker_utility` | PM mansion underground bunker |
+| 3 | `master_bedroom` | PM mansion main floor |
+| 4 | `attic_crawlspace` | PM mansion attic |
+| 5 | `shallow_grave` | Outdoor yard (dead variant stub) |
+| 6 | `basement_storage` | PM mansion basement |
+| 7 | `duct_junction` | PM mansion crawlable duct hub |
+| 8 | `mansion_kitchen` | PM mansion main floor |
+| 9 | `mansion_library` | PM mansion main floor |
+| 10 | `family_closet` | First family house closet |
+| 11 | `outdoor_shed` | Yard shed stub |
+| 12 | `mansion_study` | PM mansion main floor |
+
 ## Friends-ready playtest (James checklist)
 
 Use this before a friends session. Each item maps to a GDD MVP check:
@@ -289,14 +309,15 @@ VOUCH_PLAYER_SCRIPT_TEST=1 godot4 --headless --path .
 rm -rf .godot
 godot4 --headless --path . -s res://scripts/vouch_player_spawn_probe.gd
 
-# Horror match smoke (default mode):
 VOUCH_HORROR_MATCH_TEST=1 godot4 --headless --path .
+
+# Horror neighborhood smoke (standalone probe):
+godot4 --headless --path . -s res://scripts/vouch_horror_match_probe.gd
 
 # Playable loop (phone/walkie) — bunker-only: VOUCH_BUNKER_ONLY=1; full escape path needs VOUCH_ESCAPE_PATH=1:
 VOUCH_PLAYABLE_LOOP_TEST=1 godot4 --headless --path .
 VOUCH_ESCAPE_PATH=1 VOUCH_PLAYABLE_LOOP_TEST=1 godot4 --headless --path .
 godot4 --headless --path . -s res://scripts/vouch_playable_loop_probe.gd
-godot4 --headless --path . -s res://scripts/vouch_horror_match_probe.gd
 
 VOUCH_ROOM_SPAWN_TEST=1 godot4 --headless --path .
 VOUCH_MATCH_SPAWN_TEST=1 godot4 --headless --path .
@@ -324,6 +345,15 @@ damage model, no gameplay purpose. Before shipping, remove:
 
 ```
 project.godot              Godot 4 project config (autoloads, input map, etc.)
+scripts/horror/            Horror neighborhood factory (default play mode)
+  characters/              PuppetMasterData, possession constants
+  environment/             FamilyHouse, PMMansion, UncleHouse, Outdoor graybox builders
+  items/                   EffectDefinitions, PlayerEffects (meter stacks)
+  world/                   NeighborhoodLayout, ChildSpawnRNG (12 spawn points)
+  horror_world.gd          World orchestrator
+  match_horror.gd          Host-authoritative horror match builder
+  puppet_master_controller.gd  PM float, possession, radius life-steal
+scenes/Horror/             HorrorWorld.tscn, WorldPickup, PMChaseAI
 scenes/
   Main.tscn                 Actual main scene: composes Lobby (Home) + World (Match+Outside)
   Lobby/Lobby.tscn           Home screen: Play/Settings/Character/Exit, joined-player list,
@@ -375,6 +405,10 @@ Registered in `project.godot` under `[autoload]`:
   locks, flame paper, flood valves, hidden hallways).
 - **RoomUtilities** - per-room power/water/gas/comms state, replicated
   for local feedback.
+- **PlayerHealth** - horror mode HP drain/heal (host-authoritative).
+- **PlayerInventory** - horror survivor 8-slot hotbar.
+- **PlayerEffects** - fear/stamina meters + timed effect stacks (life-steal aura cooldown).
+- **ChildSpawnRNG** - per-match missing-child location (1 of 12 spawn points).
 - **LinkGraph** - mystery control/effect registry and guaranteed-no-
   self-link resolution.
 - **PhoneSystem** - random-recipient text routing + per-match line ids.
