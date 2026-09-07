@@ -19,8 +19,9 @@ func _run_probe() -> void:
 	await process_frame
 	var err: String = await _probe()
 	if err.is_empty():
+		var room_count := 1 if _ESCAPE_SETTINGS.bunker_only() else 2
 		var mode := "escape path" if _ESCAPE_SETTINGS.escape_path_enabled() else "bunker-only"
-		print("PLAYABLE LOOP PROBE OK (live Match API, 2 rooms, %s)" % mode)
+		print("PLAYABLE LOOP PROBE OK (live Match API, %d room(s), %s)" % [room_count, mode])
 		quit(0)
 	push_error("PLAYABLE LOOP PROBE FAILED: %s" % err)
 	quit(1)
@@ -34,7 +35,7 @@ func _probe() -> String:
 	if not match_node.is_node_ready():
 		await match_node.ready
 
-	var specs: Array = _two_player_room_specs()
+	var specs: Array = _room_specs()
 	var spawn_err: String = _PATH.call("spawn_rooms_like_live", match_node, specs)
 	if not spawn_err.is_empty():
 		main.queue_free()
@@ -59,6 +60,10 @@ func _probe_bunker_only(match_node: Node, main: Node) -> String:
 	if not mouths.is_empty():
 		main.queue_free()
 		return "tunnel mouths forbidden in bunker-only mode"
+	var room_pods := _count_room_pods(match_node)
+	if room_pods != 1:
+		main.queue_free()
+		return "bunker-only expects 1 room pod, got %d" % room_pods
 	var room0: Node = _first_room_pod(match_node)
 	if room0 == null:
 		main.queue_free()
@@ -123,9 +128,10 @@ func _probe_escape_path(match_node: Node, main: Node) -> String:
 	return ""
 
 
-func _two_player_room_specs() -> Array:
+func _room_specs() -> Array:
+	var room_count := 1 if _ESCAPE_SETTINGS.bunker_only() else 2
 	var specs: Array = []
-	for room_index in range(2):
+	for room_index in range(room_count):
 		var recipe: Dictionary = _ROOM_POD.call("plan_recipe", false)
 		recipe["room_scene_id"] = 1 if room_index == 0 else 3
 		var data := {
@@ -133,7 +139,7 @@ func _two_player_room_specs() -> Array:
 			"owner_peer_id": room_index + 1,
 			"rng_seed": 9000 + room_index * 1111,
 			"is_puppet_master": false,
-			"total_rooms": 2,
+			"total_rooms": room_count,
 			"has_valve": true,
 			"has_electrical_box": true,
 			"has_fireplace": true,
@@ -143,6 +149,14 @@ func _two_player_room_specs() -> Array:
 		data.merge(recipe)
 		specs.append(data)
 	return specs
+
+
+func _count_room_pods(match_node: Node) -> int:
+	var n := 0
+	for c in match_node.get_node("RoomsContainer").get_children():
+		if str(c.name).begins_with("RoomPod"):
+			n += 1
+	return n
 
 
 func _first_room_pod(match_node: Node) -> Node:

@@ -53,23 +53,7 @@ func _probe_playable_loop_match_path() -> String:
 	var match_node = $World/Match
 	if not match_node.is_node_ready():
 		await match_node.ready
-	var specs: Array = []
-	for room_index in range(2):
-		var recipe: Dictionary = _ROOM_POD.call("plan_recipe", false)
-		recipe["room_scene_id"] = 1 if room_index == 0 else 3
-		var data := {
-			"room_index": room_index,
-			"owner_peer_id": room_index + 1,
-			"rng_seed": 7000 + room_index * 999,
-			"is_puppet_master": false,
-			"total_rooms": 2,
-			"has_valve": true,
-			"has_fireplace": true,
-			"has_drain": true,
-			"has_exhaust": true,
-		}
-		data.merge(recipe)
-		specs.append(data)
+	var specs: Array = _playable_loop_room_specs()
 	var spawn_err: String = _PATH.call("spawn_rooms_like_live", match_node, specs)
 	if not spawn_err.is_empty():
 		return spawn_err
@@ -110,6 +94,9 @@ func _probe_playable_loop_bunker_only(match_node: Node) -> String:
 	var mouths: Array = _PATH.call("_collect_tunnel_mouths", match_node)
 	if not mouths.is_empty():
 		return "tunnel mouths should not exist when escape path disabled (got %d)" % mouths.size()
+	var room_pods := _count_room_pods(match_node)
+	if room_pods != 1:
+		return "bunker-only expects 1 room pod, got %d" % room_pods
 	var room0: Node = _first_room_pod(match_node)
 	if room0 == null:
 		return "no RoomPod spawned"
@@ -153,6 +140,36 @@ func _first_room_pod(match_node: Node) -> Node:
 		if str(c.name).begins_with("RoomPod"):
 			return c
 	return null
+
+
+func _count_room_pods(match_node: Node) -> int:
+	var n := 0
+	for c in match_node.get_node("RoomsContainer").get_children():
+		if str(c.name).begins_with("RoomPod"):
+			n += 1
+	return n
+
+
+func _playable_loop_room_specs() -> Array:
+	var room_count := 1 if _ESCAPE_SETTINGS.bunker_only() else 2
+	var specs: Array = []
+	for room_index in range(room_count):
+		var recipe: Dictionary = _ROOM_POD.call("plan_recipe", false)
+		recipe["room_scene_id"] = 1 if room_index == 0 else 3
+		var data := {
+			"room_index": room_index,
+			"owner_peer_id": room_index + 1,
+			"rng_seed": 7000 + room_index * 999,
+			"is_puppet_master": false,
+			"total_rooms": room_count,
+			"has_valve": true,
+			"has_fireplace": true,
+			"has_drain": true,
+			"has_exhaust": true,
+		}
+		data.merge(recipe)
+		specs.append(data)
+	return specs
 
 
 func _run_player_script_test() -> void:

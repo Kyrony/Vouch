@@ -100,24 +100,38 @@ func _server_build_match() -> void:
 
 	var peer_ids: Array = GameState.players.keys()
 	peer_ids.shuffle()
-	_expected_room_count = peer_ids.size()
-	print("LIVE_ESCAPE match_start players=%d peer_ids=%s" % [_expected_room_count, peer_ids])
+	var bunker_only := EscapePathSettings.bunker_only()
+	_expected_room_count = 1 if bunker_only else peer_ids.size()
+	print("LIVE_ESCAPE match_start players=%d rooms=%d peer_ids=%s bunker_only=%s" % [
+		peer_ids.size(), _expected_room_count, peer_ids, bunker_only,
+	])
 
-	for i in range(peer_ids.size()):
-		GameState.server_set_room(peer_ids[i], i)
+	if bunker_only:
+		for peer_id in peer_ids:
+			GameState.server_set_room(peer_id, 0)
+	else:
+		for i in range(peer_ids.size()):
+			GameState.server_set_room(peer_ids[i], i)
 
 	WalkieSystem.server_pair_players(peer_ids)
 
 	# Puzzle placement is decided BEFORE any room is spawned so it can be
 	# baked into each room's deterministic spawn data (see RoomPod.configure).
-	var puzzle_plan := _plan_puzzle(peer_ids.size())
+	var puzzle_plan := _plan_puzzle(_expected_room_count)
 
-	for i in range(peer_ids.size()):
-		var peer_id: int = peer_ids[i]
-		var is_pm: bool = GameState.players[peer_id]["is_puppet_master"]
-		_server_spawn_room(i, peer_id, is_pm, puzzle_plan, peer_ids.size(), i == 0)
-
-	_ensure_flood_valve_in_match(peer_ids)
+	if bunker_only:
+		var owner_peer: int = peer_ids[0]
+		for pid in peer_ids:
+			if not GameState.players[pid]["is_puppet_master"]:
+				owner_peer = pid
+				break
+		_server_spawn_room(0, owner_peer, false, puzzle_plan, 1, false)
+	else:
+		for i in range(peer_ids.size()):
+			var peer_id: int = peer_ids[i]
+			var is_pm: bool = GameState.players[peer_id]["is_puppet_master"]
+			_server_spawn_room(i, peer_id, is_pm, puzzle_plan, peer_ids.size(), i == 0)
+		_ensure_flood_valve_in_match(peer_ids)
 
 	# Links must be built AFTER every room has registered its control/effect
 	# nodes with LinkGraph.
@@ -130,7 +144,8 @@ func _server_build_match() -> void:
 
 	for i in range(peer_ids.size()):
 		var peer_id: int = peer_ids[i]
-		_server_spawn_player(peer_id, i)
+		var room_idx := 0 if bunker_only else i
+		_server_spawn_player(peer_id, room_idx)
 
 	call_deferred("_log_live_escape_path_deferred")
 

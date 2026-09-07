@@ -11,6 +11,8 @@ const _TUNNEL: GDScript = preload("res://scripts/rooms/tunnel_kit.gd")
 const _NEON: GDScript = preload("res://scripts/rooms/neon_theme.gd")
 const _SPAWN_VALIDATOR: GDScript = preload("res://scripts/rooms/graybox_spawn_validator.gd")
 const _BUNKER: GDScript = preload("res://scripts/rooms/graybox_bunker_validator.gd")
+const _GEOM: GDScript = preload("res://scripts/rooms/geometry_util.gd")
+const _GRAYBOX_WALL: Material = preload("res://assets/materials/graybox_wall.tres")
 
 const WALL: float = WorldScale.WALL_THICK
 
@@ -96,6 +98,7 @@ func configure(data: Dictionary) -> void:
 		return
 
 	if EscapePathSettings.bunker_only():
+		_seal_posz_wall()
 		return
 
 	if _theme.is_empty():
@@ -227,6 +230,27 @@ static func validate_spawn(room: Node3D) -> Array[String]:
 
 static func validate_bunker(room: Node3D) -> Array[String]:
 	return _BUNKER.call("validate", room)
+
+
+func _seal_posz_wall() -> void:
+	var geometry := get_node_or_null("Geometry") as Node3D
+	if geometry == null:
+		return
+	for segment_name in ["WallPosZ_Left", "WallPosZ_Right", "WallPosZ_Header"]:
+		var segment := geometry.get_node_or_null(segment_name)
+		if segment == null:
+			continue
+		geometry.remove_child(segment)
+		segment.free()
+	if geometry.get_node_or_null("WallPosZ") != null:
+		return
+	var h := WorldScale.CEILING_H
+	var hd := depth * 0.5
+	var body: StaticBody3D = _GEOM.call("box", Vector3(width, h, WALL), Vector3(0, h * 0.5, hd), _GRAYBOX_WALL)
+	body.name = "WallPosZ"
+	geometry.add_child(body)
+
+
 func _ensure_markers() -> void:
 	spawn_point = get_node_or_null("PlayerSpawn") as Marker3D
 	if spawn_point == null:
