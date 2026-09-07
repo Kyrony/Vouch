@@ -28,7 +28,15 @@ exactly what is/isn't implemented yet.
 1. Launch Godot 4, click **Import**, and select this repository's
    `project.godot`.
 2. Open the project. Godot will import assets on first load (a few
-   seconds).
+   seconds). From a **fresh git clone** (no `.godot/` folder yet), run
+   once before Play:
+
+   ```bash
+   godot4 --headless --path . --import
+   ```
+
+   The editor normally builds this cache on first open; the command above
+   is the headless equivalent James/Kyle can use from CI or a terminal.
 3. Press **F5** (Run Project) - it opens on the **Home** screen.
 
 ## Trying it out locally (host + join on one machine)
@@ -253,6 +261,13 @@ Each concern lives in one script/class. Brief map for the 10 interior-polish sys
 Headless validation:
 
 ```bash
+# Player script + Match spawn path (catches parse-time class_name deps)
+VOUCH_PLAYER_SCRIPT_TEST=1 godot4 --headless --path .
+
+# Cold-clone check (no .godot cache) — should pass after player.gd hardening:
+rm -rf .godot
+godot4 --headless --path . -s res://scripts/vouch_player_spawn_probe.gd
+
 VOUCH_ROOM_SPAWN_TEST=1 godot4 --headless --path .
 VOUCH_MATCH_SPAWN_TEST=1 godot4 --headless --path .
 VOUCH_ATTACHMENT_TEST=1 godot4 --headless --path .

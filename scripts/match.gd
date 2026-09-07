@@ -257,6 +257,9 @@ func _server_spawn_player(peer_id: int, room_index: int) -> void:
 		"spawn_rotation_y": spawn_xform.basis.get_euler().y,
 	}
 	var player: Node = players_spawner.spawn(data)
+	if player == null:
+		push_error("Match: failed to spawn player for peer %d (Player.gd compile failure?)" % peer_id)
+		return
 	EscapeSystem.server_register_player_node(peer_id, player)
 
 
@@ -310,12 +313,25 @@ func _spawn_player(data: Dictionary) -> Node:
 	if player == null:
 		push_error("Match: Player scene instantiate returned null (path=%s)" % scene.resource_path)
 		return null
+	var attached: Script = player.get_script()
+	if attached == null:
+		push_error("Match: Player.tscn root has no script — player.gd likely failed to compile (run: godot4 --headless --path . --import)")
+		player.free()
+		return null
+	if not attached.resource_path.ends_with("player.gd"):
+		push_error("Match: Player.tscn has unexpected script %s" % attached.resource_path)
+		player.free()
+		return null
+	if not player.has_method("enter_ladder") or not "faction_id" in player:
+		push_error("Match: Player node missing expected API (script parse failure?)")
+		player.free()
+		return null
 	player.name = str(data["peer_id"])
 	# Must happen here (before add_child), NOT in Player._ready() - the
 	# MultiplayerSynchronizer child needs authority finalized before this
 	# node enters the tree, or its pending spawn silently fails on clients.
 	player.set_multiplayer_authority(data["peer_id"])
-	player.faction_id = data["faction_id"]
+	player.set("faction_id", data.get("faction_id", ""))
 	player.position = data["spawn_position"]
 	player.rotation.y = data["spawn_rotation_y"]
 	return player

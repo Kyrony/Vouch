@@ -17,12 +17,61 @@ func _ready() -> void:
 	pause_menu.exit_requested.connect(_on_pause_exit)
 	pause_menu.settings_requested.connect(_on_pause_settings)
 	pause_menu.debug_gui_requested.connect(_on_pause_debug)
-	if OS.get_environment("VOUCH_ROOM_SPAWN_TEST") == "1":
+	if OS.get_environment("VOUCH_PLAYER_SCRIPT_TEST") == "1":
+		call_deferred("_run_player_script_test")
+	elif OS.get_environment("VOUCH_ROOM_SPAWN_TEST") == "1":
 		call_deferred("_run_room_spawn_test")
 	elif OS.get_environment("VOUCH_ATTACHMENT_TEST") == "1":
 		call_deferred("_run_attachment_test")
 	if OS.get_environment("VOUCH_MATCH_SPAWN_TEST") == "1":
 		call_deferred("_run_match_spawn_test")
+
+
+func _run_player_script_test() -> void:
+	var err := _probe_player_spawn()
+	if not err.is_empty():
+		push_error("PLAYER SCRIPT TEST FAILED: %s" % err)
+		get_tree().quit(1)
+		return
+	print("PLAYER SCRIPT TEST OK")
+	get_tree().quit(0)
+
+
+func _probe_player_spawn() -> String:
+	var player_script: Script = load("res://scripts/player.gd") as Script
+	if player_script == null:
+		return "player.gd did not compile — run: godot4 --headless --path . --import"
+
+	var scene: PackedScene = load("res://scenes/Player/Player.tscn") as PackedScene
+	if scene == null:
+		return "Player.tscn failed to load"
+	var preview: Node = scene.instantiate()
+	if preview.get_script() == null:
+		preview.free()
+		return "Player.tscn root has no script attached"
+	if not preview.has_method("enter_ladder"):
+		preview.free()
+		return "Player node missing enter_ladder()"
+	preview.free()
+
+	var match_node := $World/Match
+	var data := {
+		"peer_id": 1,
+		"faction_id": "probe_faction",
+		"spawn_position": Vector3.ZERO,
+		"spawn_rotation_y": 0.0,
+	}
+	var player: Node = match_node._spawn_player(data)
+	if player == null:
+		return "Match._spawn_player returned null"
+	if player.get_script() == null:
+		player.free()
+		return "spawned player has no script (bare CharacterBody3D)"
+	if str(player.get("faction_id")) != "probe_faction":
+		player.free()
+		return "spawned player missing faction_id"
+	player.free()
+	return ""
 
 
 func _run_match_spawn_test() -> void:

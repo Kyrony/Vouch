@@ -18,7 +18,7 @@ class_name ClueFlamePaper
 var revealed_code: String = ""
 ## Assigned by RoomPod at spawn time to the Flame prop placed alongside
 ## this paper.
-var flame: Flame = null
+var flame: Node = null
 var is_picked_up: bool = false
 
 
