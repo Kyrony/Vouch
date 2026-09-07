@@ -13,8 +13,11 @@ class_name Match
 ## TODO(post-MVP): mid-match reconnection handling, and support for
 ## uneven faction sizes.
 
-const ROOM_POD_SCENE: PackedScene = preload("res://scenes/Match/RoomPod.tscn")
-const PLAYER_SCENE: PackedScene = preload("res://scenes/Player/Player.tscn")
+const ROOM_POD_SCENE_PATH: String = "res://scenes/Match/RoomPod.tscn"
+const PLAYER_SCENE_PATH: String = "res://scenes/Player/Player.tscn"
+
+var _room_pod_scene: PackedScene
+var _player_scene: PackedScene
 
 ## Rooms are laid out on a simple grid, far enough apart that one player's
 ## room (plus its optional hallway extension) doesn't visually bleed into
@@ -57,6 +60,18 @@ func _ready() -> void:
 	rooms_spawner.spawn_function = _spawn_room_pod
 	players_spawner.spawn_function = _spawn_player
 	GameState.match_started.connect(_on_match_started)
+
+
+func _get_room_pod_scene() -> PackedScene:
+	if _room_pod_scene == null or _room_pod_scene.resource_path.is_empty():
+		_room_pod_scene = load(ROOM_POD_SCENE_PATH) as PackedScene
+	return _room_pod_scene
+
+
+func _get_player_scene() -> PackedScene:
+	if _player_scene == null or _player_scene.resource_path.is_empty():
+		_player_scene = load(PLAYER_SCENE_PATH) as PackedScene
+	return _player_scene
 
 
 func _on_match_started() -> void:
@@ -204,7 +219,19 @@ func _server_spawn_player(peer_id: int, room_index: int) -> void:
 ## it in response to the replicated spawn message) - must stay
 ## deterministic given identical `data`.
 func _spawn_room_pod(data: Dictionary) -> Node:
-	var room := ROOM_POD_SCENE.instantiate() as RoomPod
+	var scene := _get_room_pod_scene()
+	if scene == null:
+		push_error("Match: failed to load RoomPod scene at %s" % ROOM_POD_SCENE_PATH)
+		return null
+	var raw_node := scene.instantiate()
+	if raw_node == null:
+		push_error("Match: RoomPod scene instantiate returned null (path=%s)" % scene.resource_path)
+		return null
+	var room := raw_node as RoomPod
+	if room == null:
+		push_error("Match: RoomPod scene root is not a RoomPod (script=%s)" % str(raw_node.get_script()))
+		raw_node.free()
+		return null
 	room.configure(data)
 	room.position = room_grid_position(data["room_index"])
 	return room
@@ -212,7 +239,14 @@ func _spawn_room_pod(data: Dictionary) -> Node:
 
 ## Runs on EVERY peer, same determinism requirement as `_spawn_room_pod`.
 func _spawn_player(data: Dictionary) -> Node:
-	var player := PLAYER_SCENE.instantiate() as Player
+	var scene := _get_player_scene()
+	if scene == null:
+		push_error("Match: failed to load Player scene at %s" % PLAYER_SCENE_PATH)
+		return null
+	var player := scene.instantiate() as Player
+	if player == null:
+		push_error("Match: Player scene instantiate returned null (path=%s)" % scene.resource_path)
+		return null
 	player.name = str(data["peer_id"])
 	# Must happen here (before add_child), NOT in Player._ready() - the
 	# MultiplayerSynchronizer child needs authority finalized before this
