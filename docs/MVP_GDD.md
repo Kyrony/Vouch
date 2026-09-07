@@ -57,15 +57,27 @@ room, a phone, an escape point, a security camera, a ladder.
   (see `NetworkManager._client_receive_faction`, sent as a targeted
   unicast RPC, never broadcast).
 
-## Rooms - floor-plan templates
+## Rooms - modular kit assembly
 
-Each player spawns **alone** in their own procedurally-built room
-("RoomPod" - see `scripts/room_pod.gd`), assembled from one of **20
-James floor-plan templates** on a 1 ft = 1 Godot unit grid
-(`scripts/systems/floor_plan_templates.gd`). Plans 01–14 are single-story;
-15–20 are two-story with a shared stair shaft. A server-side
-`floor_plan_id` is baked into spawn data so every peer builds the same
-layout.
+Each player spawns **alone** in their own room pod (`scripts/room_pod.gd`),
+assembled from a **small authored module kit** rather than runtime CSG wall
+extrusion. James's **20 floor-plan IDs** still drive variety, but each ID
+maps to one of **6 kit recipes** (`scripts/systems/room_kit_recipes.gd`)
+that instance and snap sealed modules together:
+
+- **Module types**: living, living_large, bedroom, bath, hall, closet,
+  utility, fireplace_nook, stairwell — built by `scripts/kit/kit_builder.gd`
+  with floor/wall/ceiling materials, trim, baseboards, door frames,
+  graybox furniture, and per-room ceiling lights.
+- **Sockets** (`Marker3D` under each module's `Sockets/` node):
+  `Door_N/E/S/W`, `CorridorOut`, `Vent_Ceiling`, `Mount_Switch`,
+  `Mount_Phone`, `Mount_Camera`, `Mount_Fireplace`, `SpawnPoint`.
+- **Assembly**: `RoomKitAssembler` places modules, caches zone centers and
+  mount positions; `CorridorKit` builds sealed horizontal + vertical runs
+  with hallway sconces to the central hub.
+- **Metric scale** (~2.6 m ceilings, ~2.05×0.85 m doors) via
+  `scripts/world_scale.gd`. Plan metadata remains in
+  `scripts/systems/floor_plan_templates.gd`.
 
 - **Theme** - one of three palettes: **Bedroom**, **Utility Room**,
   **Creepy Basement** (rolled per room from seed).
@@ -86,8 +98,11 @@ layout.
   **horizontal escape hall**, then a **vertical rise** into a shared
   central shaft; **Outside** sits at the top (`EscapeHub` + `Outside`).
 - Rooms **rotate** so their escape faces the hub at world origin.
-- Walls use **lintels** above door gaps so rooms stay enclosed to the
-  ceiling; escape tunnels are capped with ceilings too.
+- Walls are **sealed kit modules** with door lintels; escape routes are
+  **long sealed corridor kit segments** (18–46 m horiz + vertical rise)
+  with sconce lighting — walk through, no teleport.
+- Two-story plan IDs (15–20) use a **stairwell module** plus upper-floor
+  bedroom/bath pieces instead of CSG stair cutouts.
 
 ### In-match UI
 
