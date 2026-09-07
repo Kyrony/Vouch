@@ -32,6 +32,12 @@ func _probe() -> String:
 	var main: Node = load("res://scenes/Main.tscn").instantiate()
 	root.add_child(main)
 	await process_frame
+	var lobby := main.get_node_or_null("Lobby") as Control
+	var ui_check: GDScript = load("res://scripts/horror/world/horror_soft_go_validate.gd")
+	var menu_err: String = ui_check.call("validate_leonardo_menu", lobby)
+	if not menu_err.is_empty():
+		main.queue_free()
+		return menu_err
 
 	var match_node: Node = main.get_node("World/Match")
 	if not match_node.is_node_ready():

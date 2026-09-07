@@ -283,10 +283,19 @@ static func validate_phone_hud(world: Node3D) -> String:
 		hud.free()
 		return "NeonHud did not map service -> full"
 	hud.free()
+	var ui: GDScript = load("res://scripts/horror/ui/leonardo_ui_validate.gd")
+	var hud_err: String = ui.call("validate_hud")
+	if not hud_err.is_empty():
+		return hud_err
 	var rules := _towers()
 	if rules and not rules.has_method("signal_band"):
 		return "TowerRules.signal_band missing"
 	return ""
+
+
+static func validate_leonardo_menu(lobby: Control) -> String:
+	var ui: GDScript = load("res://scripts/horror/ui/leonardo_ui_validate.gd")
+	return ui.call("validate_menu", lobby)
 
 
 static func validate_life_steal() -> String:

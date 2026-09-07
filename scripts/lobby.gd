@@ -1,12 +1,12 @@
 extends Control
 ## Lobby
 ##
-## Acts as the game's "home screen": Play / Settings / Character / Exit.
-## Play swaps in the host/join sub-panel (IP-based direct connect only for
-## MVP - lobby codes and relay/NAT traversal are explicitly future work,
-## see docs/MVP_GDD.md). Settings has real key-remapping, mouse
-## sensitivity, and audio volume controls, all persisted locally via
-## `SettingsManager`. Character is still a stub panel. The Play panel
+## Acts as the game's "home screen": Play / Join Friends / Settings / Quit.
+## Play opens the locked Classic mode panel. Classic is the live Host Match
+## path (IP-based direct connect only for MVP — lobby codes and relay are
+## future work, see docs/MVP_GDD.md). Other listed modes are soft-gated.
+## Settings has real key-remapping, mouse sensitivity, and audio volume
+## controls, all persisted locally via `SettingsManager`. The Play panel
 ## shows a LIVE joined-player list (name + peer id) that updates as peers
 ## connect, broadcast to everyone via `NetworkManager.lobby_roster_updated`
 ## - this is pre-match "who's here" information only, never faction/role
@@ -27,10 +27,16 @@ const REMAP_ACTION_LABELS: Dictionary = {
 @onready var settings_panel: Control = $SettingsPanel
 @onready var character_panel: Control = $CharacterPanel
 
-@onready var play_button: Button = $HomePanel/VBoxContainer/PlayButton
-@onready var settings_button: Button = $HomePanel/VBoxContainer/SettingsButton
-@onready var character_button: Button = $HomePanel/VBoxContainer/CharacterButton
-@onready var exit_button: Button = $HomePanel/VBoxContainer/ExitButton
+@onready var play_button: Button = $HomePanel/NavColumn/PlayButton
+@onready var join_friends_button: Button = $HomePanel/NavColumn/JoinFriendsButton
+@onready var settings_button: Button = $HomePanel/NavColumn/SettingsButton
+@onready var quit_button: Button = $HomePanel/NavColumn/QuitButton
+@onready var mode_panel: Control = $HomePanel/ModePanel
+@onready var classic_button: Button = $HomePanel/ModePanel/ModeList/ClassicButton
+@onready var hardcore_button: Button = $HomePanel/ModePanel/ModeList/HardcoreButton
+@onready var custom_button: Button = $HomePanel/ModePanel/ModeList/CustomButton
+@onready var practice_button: Button = $HomePanel/ModePanel/ModeList/PracticeButton
+@onready var friends_lobby_button: Button = $HomePanel/ModePanel/ModeList/FriendsLobbyButton
 
 @onready var host_button: Button = $PlayPanel/VBoxContainer/HostButton
 @onready var ip_input: LineEdit = $PlayPanel/VBoxContainer/JoinRow/IPInput
@@ -76,10 +82,15 @@ var _remap_buttons: Dictionary = {}
 
 
 func _ready() -> void:
-	play_button.pressed.connect(func(): _show_panel(play_panel))
+	play_button.pressed.connect(_on_play_nav_pressed)
+	join_friends_button.pressed.connect(_on_join_friends_pressed)
 	settings_button.pressed.connect(func(): _show_panel(settings_panel))
-	character_button.pressed.connect(func(): _show_panel(character_panel))
-	exit_button.pressed.connect(_on_exit_pressed)
+	quit_button.pressed.connect(_on_exit_pressed)
+	classic_button.pressed.connect(_on_classic_pressed)
+	hardcore_button.pressed.connect(_on_gated_mode_pressed)
+	custom_button.pressed.connect(_on_gated_mode_pressed)
+	practice_button.pressed.connect(_on_gated_mode_pressed)
+	friends_lobby_button.pressed.connect(_on_gated_mode_pressed)
 
 	play_back_button.pressed.connect(func(): _show_panel(home_panel))
 	settings_back_button.pressed.connect(func(): _show_panel(home_panel))
@@ -110,8 +121,30 @@ func _show_panel(panel: Control) -> void:
 	settings_panel.visible = false
 	character_panel.visible = false
 	panel.visible = true
+	if panel == home_panel:
+		mode_panel.visible = true
 	if panel == play_panel:
 		_refresh_match_settings_access()
+
+
+func _on_play_nav_pressed() -> void:
+	_show_panel(home_panel)
+	mode_panel.visible = true
+
+
+func _on_classic_pressed() -> void:
+	_show_panel(play_panel)
+	status_label.text = "Classic outdoor neighborhood. Host a match or join by IP."
+
+
+func _on_join_friends_pressed() -> void:
+	_show_panel(play_panel)
+	status_label.text = "Join a friend's host via direct IP."
+
+
+func _on_gated_mode_pressed() -> void:
+	# Soft-gate: keep the live Classic Host Match path. No extra mode systems.
+	_on_classic_pressed()
 
 
 func _refresh_match_settings_access() -> void:
@@ -321,25 +354,17 @@ func _refresh_settings_labels() -> void:
 func _apply_ui_theme() -> void:
 	var bg := $Background as ColorRect
 	if bg and HorrorModeSettings.is_horror_mode():
-		bg.color = Color(0.04, 0.035, 0.045, 1)
-	var title := home_panel.get_node_or_null("VBoxContainer/TitleLabel") as Label
-	if title and HorrorModeSettings.is_horror_mode():
-		title.text = "VOUCH"
-		title.add_theme_font_size_override("font_size", 48)
-		title.add_theme_color_override("font_color", Color(0.72, 0.18, 0.16))
-	var subtitle := home_panel.get_node_or_null("VBoxContainer/SubtitleLabel") as Label
-	if subtitle and HorrorModeSettings.is_horror_mode():
-		subtitle.text = "Find the missing child. The old man is watching."
-		subtitle.add_theme_color_override("font_color", Color(0.62, 0.68, 0.78))
+		bg.color = Color(0.02, 0.02, 0.03, 1)
+	var neon: GDScript = load("res://scripts/horror/ui/neon_menu.gd")
+	neon.call("apply", self)
 	if HorrorModeSettings.is_horror_mode():
-		var neon: GDScript = load("res://scripts/horror/ui/neon_menu.gd")
-		neon.call("apply", self)
 		start_match_button.text = "Start Match"
-	for panel in [home_panel, play_panel, settings_panel, character_panel]:
-		if panel.get_node_or_null("VBoxContainer"):
-			pass
 	_UI.call("apply_label_hierarchy", status_label, "body")
 	if is_instance_valid(lobby_code_input):
 		lobby_code_input.placeholder_text = "Lobby codes not wired yet — use direct IP"
 		lobby_code_input.editable = false
 		lobby_code_input.tooltip_text = "Session codes and relay are post-MVP. Join with the host LAN IP."
+	var bars := home_panel.get_node_or_null("SignalAccent/Bars") as TextureRect
+	if bars and bars.texture == null:
+		var kit: GDScript = load("res://scripts/horror/ui/ui_kit.gd")
+		bars.texture = kit.call("texture", "signal_bars")
