@@ -1,0 +1,323 @@
+extends Node3D
+class_name RoomMap
+## One complete authored room map — solid geometry + 16 fixed item spawn slots.
+
+const _LAYOUTS: GDScript = preload("res://scripts/rooms/room_layouts.gd")
+const _GEOMETRY: GDScript = preload("res://scripts/rooms/room_geometry.gd")
+const _ITEMS: GDScript = preload("res://scripts/rooms/item_spawn_system.gd")
+
+const DOOR_W: float = 0.85
+const DOOR_H: float = 2.05
+const HUB_SHAFT_RADIUS: float = 1.45
+const HUB_HALL_WIDTH: float = 1.25
+const HUB_HALL_HEIGHT: float = 2.5
+const HUB_SHAFT_HEIGHT: float = 10.0
+const WALL: float = 0.12
+
+const THEMES: Array[Dictionary] = [
+	{
+		"id": "bedroom",
+		"name": "Bedroom",
+		"wall_color": Color(0.5, 0.38, 0.32),
+		"floor_color": Color(0.32, 0.22, 0.16),
+		"accent_color": Color(0.62, 0.5, 0.34),
+		"light_color": Color(1.0, 0.88, 0.68),
+	},
+	{
+		"id": "utility",
+		"name": "Utility Room",
+		"wall_color": Color(0.4, 0.44, 0.42),
+		"floor_color": Color(0.24, 0.27, 0.26),
+		"accent_color": Color(0.55, 0.62, 0.3),
+		"light_color": Color(0.85, 0.95, 1.0),
+	},
+	{
+		"id": "basement",
+		"name": "Creepy Basement",
+		"wall_color": Color(0.15, 0.14, 0.16),
+		"floor_color": Color(0.08, 0.08, 0.09),
+		"accent_color": Color(0.22, 0.26, 0.24),
+		"light_color": Color(0.72, 0.85, 0.74),
+	},
+]
+
+enum EscapeKind { DOOR, VENT, NONE }
+
+@export var room_id: int = 1
+@export var is_puppet_master: bool = false
+
+var room_index: int = 0
+var owner_peer_id: int = -1
+var width: float = 6.0
+var depth: float = 6.0
+var theme_id: String = ""
+var theme_name: String = ""
+var light_switch: Node
+var spawn_point: Marker3D
+var _layout: Dictionary = {}
+var _theme: Dictionary = {}
+var _fireplace: Node3D = null
+var _built: bool = false
+
+
+func _ready() -> void:
+	_ensure_built()
+
+
+func _ensure_built() -> void:
+	if _built:
+		return
+	_built = true
+	if is_puppet_master:
+		_layout = _pm_layout()
+	else:
+		_layout = _LAYOUTS.call("get_layout", room_id)
+	width = _layout.get("width", 6.0)
+	depth = _layout.get("depth", 6.0)
+	var theme := _theme_for_layout(_layout)
+	_theme = theme
+	theme_id = theme["id"]
+	theme_name = theme["name"]
+	_GEOMETRY.call("build", self, _layout, theme)
+	_ensure_markers()
+
+
+func configure(data: Dictionary) -> void:
+	_ensure_built()
+	room_index = data["room_index"]
+	owner_peer_id = data["owner_peer_id"]
+	var rng := RandomNumberGenerator.new()
+	rng.seed = data["rng_seed"]
+
+	if is_puppet_master:
+		_configure_pm(data, rng)
+		return
+
+	if _theme.is_empty():
+		_theme = _theme_for_layout(_layout)
+		theme_id = _theme["id"]
+		theme_name = _theme["name"]
+
+	var escape_kind: EscapeKind
+	if rng.randf() < 0.6:
+		escape_kind = EscapeKind.DOOR
+	else:
+		escape_kind = EscapeKind.VENT
+
+	var accent := _accent_material(_theme["accent_color"])
+	var ctx := {
+		"room_index": room_index,
+		"owner_peer_id": owner_peer_id,
+		"theme": _theme,
+		"theme_id": theme_id,
+		"layout": _layout,
+		"accent_material": accent,
+		"has_valve": data.get("has_valve", false),
+		"has_electrical_box": data.get("has_electrical_box", false),
+		"wire_targets": data.get("wire_targets", []),
+		"has_fireplace": data.get("has_fireplace", false),
+		"has_drain": data.get("has_drain", false),
+		"has_exhaust": data.get("has_exhaust", false),
+		"has_binary_puzzle": data.get("has_binary_puzzle", false),
+		"binary_target": data.get("binary_target", 0),
+		"binary_peek_room": data.get("binary_peek_room", -1),
+	}
+
+	var spawned: Dictionary = _ITEMS.call("populate", self, ctx, rng)
+	light_switch = spawned.get("light_switch")
+	_fireplace = spawned.get("fireplace")
+
+	_ITEMS.call("spawn_room_effects", self, ctx)
+
+	if escape_kind != EscapeKind.NONE:
+		var escape_pos: Vector3 = _layout["escape"]
+		if escape_kind == EscapeKind.VENT:
+			var vent_slot := get_node_or_null("ItemSpawns/Slot_16") as Marker3D
+			if vent_slot:
+				escape_pos = vent_slot.position + Vector3(0, -0.3, 0)
+		_ITEMS.call("spawn_escape", self, ctx, escape_pos, escape_kind == EscapeKind.VENT)
+		_build_escape_corridor(_layout["corridor_out"], data["room_index"])
+
+	if data.get("requires_code", false):
+		mark_escape_locked()
+
+	var clue_kind: String = data.get("clue_kind", "")
+	if not clue_kind.is_empty():
+		add_clue_prop(clue_kind, data.get("clue_code", ""), data.get("clue_in_fireplace", false) and data.get("has_fireplace", false))
+
+
+func get_spawn_transform() -> Transform3D:
+	if spawn_point:
+		return spawn_point.global_transform
+	return global_transform
+
+
+func add_clue_prop(kind: String, code: String, in_fireplace: bool = false) -> void:
+	var accent := _accent_material(_theme["accent_color"])
+	if kind == "flame_paper":
+		var spawn_pos := Vector3(0, 0.9, 0)
+		var flame: Node3D = null
+		if in_fireplace and is_instance_valid(_fireplace):
+			spawn_pos = _fireplace.position + Vector3(0, 0.5, 0.2)
+			flame = _fireplace.get_flame()
+		var paper: StaticBody3D = _ITEMS.call("_make_interactable",
+			preload("res://scripts/interactables/clue_flame_paper.gd"),
+			Vector3(0.3, 0.02, 0.4), spawn_pos, accent, "Pick up paper"
+		)
+		paper.set("revealed_code", code)
+		paper.set("flame", flame)
+		paper.name = "ClueFlamePaper"
+		add_child(paper)
+	else:
+		var book_pos := Vector3(-1, 0.35, 1)
+		if in_fireplace and is_instance_valid(_fireplace) and _fireplace.has_node("ClueSlot"):
+			book_pos = _fireplace.get_node("ClueSlot").position + _fireplace.position
+		var book: StaticBody3D = _ITEMS.call("_make_interactable",
+			preload("res://scripts/interactables/clue_book.gd"),
+			Vector3(0.3, 0.25, 0.35), book_pos, accent, "Read book"
+		)
+		book.set("revealed_text", "A page has a code scrawled in the corner: %s" % code)
+		book.name = "ClueBook"
+		add_child(book)
+
+
+func _ensure_markers() -> void:
+	spawn_point = get_node_or_null("PlayerSpawn") as Marker3D
+	if spawn_point == null:
+		spawn_point = Marker3D.new()
+		spawn_point.name = "PlayerSpawn"
+		spawn_point.position = _layout.get("spawn", Vector3(0, 0.1, depth * 0.35))
+		add_child(spawn_point)
+
+	var slots_root := get_node_or_null("ItemSpawns")
+	if slots_root == null:
+		slots_root = Node3D.new()
+		slots_root.name = "ItemSpawns"
+		add_child(slots_root)
+		var slot_script := preload("res://scripts/rooms/item_spawn_slot.gd")
+		var positions: Array = _layout.get("slots", [])
+		for i in range(16):
+			var slot := Marker3D.new()
+			slot.set_script(slot_script)
+			slot.name = "Slot_%02d" % (i + 1)
+			slot.set("slot_index", i + 1)
+			slot.position = positions[i] if i < positions.size() else Vector3.ZERO
+			slots_root.add_child(slot)
+
+
+func _configure_pm(data: Dictionary, _rng: RandomNumberGenerator) -> void:
+	_build_pm_monitors()
+
+
+func _pm_layout() -> Dictionary:
+	return {
+		"width": 6.0,
+		"depth": 6.0,
+		"height": 2.6,
+		"theme": "basement",
+		"partitions": [],
+		"props": [],
+		"spawn": Vector3(0, 0.1, 1.5),
+		"escape": Vector3.ZERO,
+		"corridor_out": Vector3.ZERO,
+		"slots": _LAYOUTS.call("slot_ring", 99, 6.0, 6.0),
+	}
+
+
+func _theme_for_layout(layout: Dictionary) -> Dictionary:
+	var tid: String = layout.get("theme", "bedroom")
+	for t in THEMES:
+		if t["id"] == tid:
+			return t
+	return THEMES[0]
+
+
+func mark_escape_locked() -> void:
+	if not has_node("EscapePoint"):
+		return
+	var escape_point: Node = get_node("EscapePoint")
+	escape_point.prompt_text += " (locked - needs a code)"
+	var keypad: StaticBody3D = _ITEMS.call("_make_interactable",
+		preload("res://scripts/interactables/code_keypad.gd"),
+		Vector3(0.24, 0.32, 0.06), Vector3(0.7, 1.0, 0), _accent_material(_theme["accent_color"]), "Enter code"
+	)
+	keypad.set("room_index", room_index)
+	keypad.name = "CodeKeypad"
+	add_child(keypad)
+
+
+func _build_pm_monitors() -> void:
+	var screen_mat := StandardMaterial3D.new()
+	screen_mat.albedo_color = Color(0.05, 0.08, 0.07)
+	screen_mat.emission_enabled = true
+	screen_mat.emission = Color(0.15, 0.55, 0.35)
+	for i in range(3):
+		var screen := MeshInstance3D.new()
+		var quad := BoxMesh.new()
+		quad.size = Vector3(0.4, 0.28, 0.03)
+		screen.mesh = quad
+		screen.position = Vector3(-0.5 + i * 0.5, 1.6, -depth / 2.0 + 0.05)
+		screen.set_surface_override_material(0, screen_mat)
+		add_child(screen)
+
+
+func _build_escape_corridor(corridor_out: Vector3, idx: int) -> void:
+	var wall_mat := _accent_material(_theme["wall_color"])
+	var floor_mat := _accent_material(_theme["floor_color"])
+	var grid_pos := Match.room_grid_position(idx)
+	var dist := Vector2(grid_pos.x, grid_pos.z).length()
+	var horiz := clampf(dist - HUB_SHAFT_RADIUS - depth * 0.5, 18.0, 46.0)
+	var start_z := corridor_out.z + WALL
+	_tunnel_run(start_z, horiz, HUB_HALL_WIDTH, HUB_HALL_HEIGHT, wall_mat, floor_mat, true, true)
+	_tunnel_vertical(start_z + horiz, HUB_SHAFT_HEIGHT, HUB_HALL_WIDTH, HUB_HALL_HEIGHT, wall_mat, floor_mat)
+
+
+func _tunnel_run(start_z: float, length: float, inner_w: float, inner_h: float, wall_mat: Material, floor_mat: Material, open_near: bool, open_far: bool) -> void:
+	if length < 0.5:
+		return
+	var cz := start_z + length * 0.5
+	add_child(_tunnel_box(Vector3(inner_w, WALL, length), Vector3(0, -WALL * 0.5, cz), floor_mat))
+	add_child(_tunnel_box(Vector3(inner_w + WALL * 2.0, WALL, length + WALL * 2.0), Vector3(0, inner_h + WALL * 0.5, cz), wall_mat, false))
+	add_child(_tunnel_box(Vector3(WALL, inner_h, length), Vector3(-inner_w / 2.0 - WALL / 2.0, inner_h / 2.0, cz), wall_mat))
+	add_child(_tunnel_box(Vector3(WALL, inner_h, length), Vector3(inner_w / 2.0 + WALL / 2.0, inner_h / 2.0, cz), wall_mat))
+	if not open_near:
+		add_child(_tunnel_box(Vector3(inner_w, inner_h, WALL), Vector3(0, inner_h / 2.0, start_z - WALL / 2.0), wall_mat))
+	if not open_far:
+		add_child(_tunnel_box(Vector3(inner_w, inner_h, WALL), Vector3(0, inner_h / 2.0, start_z + length + WALL * 0.5), wall_mat))
+
+
+func _tunnel_vertical(base_z: float, rise_h: float, inner_w: float, inner_h: float, wall_mat: Material, floor_mat: Material) -> void:
+	var cz := base_z
+	add_child(_tunnel_box(Vector3(inner_w, WALL, inner_w), Vector3(0, -WALL * 0.5, cz), floor_mat))
+	add_child(_tunnel_box(Vector3(inner_w + WALL * 2.0, WALL, inner_w + WALL * 2.0), Vector3(0, rise_h + WALL * 0.5, cz), wall_mat, false))
+	add_child(_tunnel_box(Vector3(WALL, rise_h, inner_w), Vector3(-inner_w / 2.0 - WALL / 2.0, rise_h / 2.0, cz), wall_mat))
+	add_child(_tunnel_box(Vector3(WALL, rise_h, inner_w), Vector3(inner_w / 2.0 + WALL / 2.0, rise_h / 2.0, cz), wall_mat))
+	add_child(_tunnel_box(Vector3(inner_w, rise_h, WALL), Vector3(0, rise_h / 2.0, cz - inner_w / 2.0 - WALL / 2.0), wall_mat))
+	add_child(_tunnel_box(Vector3(inner_w, rise_h, WALL), Vector3(0, rise_h / 2.0, cz + inner_w / 2.0 + WALL / 2.0), wall_mat))
+
+
+func _tunnel_box(size: Vector3, pos: Vector3, mat: Material, collision: bool = true) -> StaticBody3D:
+	var body := StaticBody3D.new()
+	body.collision_layer = 1 if collision else 0
+	body.collision_mask = 0
+	body.position = pos
+	var mi := MeshInstance3D.new()
+	var bm := BoxMesh.new()
+	bm.size = size
+	mi.mesh = bm
+	mi.set_surface_override_material(0, mat)
+	body.add_child(mi)
+	if collision:
+		var col := CollisionShape3D.new()
+		var sh := BoxShape3D.new()
+		sh.size = size
+		col.shape = sh
+		body.add_child(col)
+	return body
+
+
+static func _accent_material(color: Color) -> StandardMaterial3D:
+	var mat := StandardMaterial3D.new()
+	mat.albedo_color = color
+	mat.roughness = 0.6
+	return mat
