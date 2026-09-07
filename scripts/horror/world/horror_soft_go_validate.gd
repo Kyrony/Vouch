@@ -152,7 +152,7 @@ static func validate_tower_roll(world: Node3D) -> String:
 
 
 static func validate_phone_hud(world: Node3D) -> String:
-	var pd := Engine.get_main_loop().root.get_node_or_null("PhoneDevice")
+	var pd: Node = Engine.get_main_loop().root.get_node_or_null("PhoneDevice")
 	if pd == null:
 		return "PhoneDevice autoload missing"
 	if str(pd.ITEM_ID) != "phone":
