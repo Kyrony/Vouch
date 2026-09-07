@@ -306,8 +306,8 @@ func _spawn_room_pod(data: Dictionary) -> Node:
 	else:
 		to_hub = to_hub.normalized()
 	room.rotation.y = atan2(to_hub.x, to_hub.z)
-	room.configure(data)
 	room.position = grid_pos
+	room.configure(data)
 	call_deferred("_maybe_log_escape_path", int(data.get("total_rooms", 1)))
 	return room
 

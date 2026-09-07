@@ -58,9 +58,9 @@ machine:
    below the host/join controls fill in, then click **Start Match**. With
    4+ players there's a 50% chance one of you becomes the secret Puppet
    Master.
-5. Both instances load into the Match scene. Each player spawns **inside** a
-   hand-sealed graybox room (one of six authored `Room_XX.tscn` boxes — see
-   docs/MVP_GDD.md for details).
+5. Both instances load into the Match scene. Each player spawns **dead center**
+   inside a clean empty graybox bunker (`PlayerSpawn` at local `(0, 0, 0)` —
+   feet on floor). Escape door is on the **+Z** wall.
 
 To test across two real machines on the same network instead: host on
 one machine, then on the other type the host's LAN IP into the Join
@@ -101,13 +101,10 @@ persists locally between sessions.
   list** visible to everyone before the match starts, and host-only
   **match spawn odds** sliders (`scripts/autoload/match_settings.gd`)
   for code locks / flame paper / flood valves / hidden hallways.
-- **Hand-sealed graybox rooms (friends-MVP)**: each player gets one of **six
-  authored room scenes** (`scenes/Rooms/Room_01.tscn` … `Room_06.tscn`) —
-  complete enclosed boxes with mesh+collision matched on every wall/floor piece.
-  Puppet Master uses `Room_PM.tscn` (sealed box, no escape). Layout metadata in
-  `scripts/rooms/graybox_layouts.gd`; runtime `room_geometry.gd` is **frozen**
-  for match spawn (kept in repo for reference only). Future art kits: see
-  [`docs/ASSET_SHORTLIST.md`](docs/ASSET_SHORTLIST.md).
+- **Hand-sealed graybox rooms (friends-MVP)**: six perfect axis-aligned bunker
+  boxes (`Room_01`–`Room_06`) + sealed `Room_PM`. Floor/walls/ceiling only;
+  one **+Z** door opening; `PlayerSpawn` at geometric center `(0, 0, 0)`.
+  Mesh = collision on every piece. Runtime `room_geometry.gd` is frozen.
 - **16-slot item spawn**: every room has **16 fixed `ItemSpawnSlot` markers**.
   At match start `ItemSpawnSystem` shuffles which slot each interactable
   (phone, switch, camera, valve, ladder, props, etc.) occupies — no free-float

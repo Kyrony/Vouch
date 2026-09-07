@@ -161,7 +161,13 @@ func _probe_player_spawn() -> String:
 
 func _run_match_spawn_test() -> void:
 	world.visible = true
+	call_deferred("_run_match_spawn_test_async")
+
+
+func _run_match_spawn_test_async() -> void:
 	var match_node = $World/Match
+	if not match_node.is_node_ready():
+		await match_node.ready
 	var recipe: Dictionary = _ROOM_POD.call("plan_recipe", false)
 	recipe["room_scene_id"] = 2
 	var data := {
@@ -182,6 +188,8 @@ func _run_match_spawn_test() -> void:
 		push_error("MATCH SPAWN TEST FAILED: _spawn_room_pod returned null")
 		get_tree().quit(1)
 		return
+	match_node.get_node("RoomsContainer").add_child(room)
+	await get_tree().process_frame
 	var err := _assert_room_map_built(room, "MATCH SPAWN")
 	if not err.is_empty():
 		push_error(err)
@@ -189,7 +197,29 @@ func _run_match_spawn_test() -> void:
 		return
 	var map = room.get_child(0)
 	var slots = map.get_node("ItemSpawns")
-	print("MATCH SPAWN TEST OK children=%d slots=%d" % [room.get_child_count(), slots.get_child_count()])
+	var spawn_xform: Transform3D = room.get_spawn_transform()
+	var player: Node = match_node._spawn_player({
+		"peer_id": 1,
+		"faction_id": "spawn_test",
+		"spawn_position": spawn_xform.origin,
+		"spawn_rotation_y": spawn_xform.basis.get_euler().y,
+	})
+	if player == null:
+		push_error("MATCH SPAWN TEST FAILED: player spawn returned null")
+		get_tree().quit(1)
+		return
+	match_node.get_node("PlayersContainer").add_child(player)
+	await get_tree().physics_frame
+	var global_errors: Array = _SPAWN.call("validate_global", map, player as Node3D)
+	if not global_errors.is_empty():
+		push_error("MATCH SPAWN TEST FAILED: %s" % "; ".join(global_errors))
+		get_tree().quit(1)
+		return
+	print("MATCH SPAWN TEST OK children=%d slots=%d spawn_global=%s" % [
+		room.get_child_count(),
+		slots.get_child_count(),
+		spawn_xform.origin,
+	])
 	get_tree().quit(0)
 
 

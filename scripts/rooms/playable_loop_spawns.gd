@@ -9,8 +9,8 @@ const _ITEMS: GDScript = preload("res://scripts/rooms/item_spawn_system.gd")
 
 const WALL_INSET: float = 0.5
 const WALL_EMBED: float = 0.04
-const MAX_PHONE_SPAWN_DISTANCE: float = 2.0
-const MAX_WALKIE_SPAWN_DISTANCE: float = 1.5
+const MAX_PHONE_SPAWN_DISTANCE: float = 1.25
+const MAX_WALKIE_SPAWN_DISTANCE: float = 1.25
 const INTERACTABLE_LAYER: int = 2
 
 const PHONE_SIZE := Vector3(0.22, 0.28, 0.08)
@@ -21,10 +21,7 @@ static func spawn_near_player(room: Node3D, spawn_local: Vector3, accent: Materi
 	_remove_old(room, "Phone")
 	_remove_old(room, "WalkieTalkie")
 
-	var hw: float = float(room.get("width")) * 0.5 if room.get("width") else 3.0
-	var hd: float = float(room.get("depth")) * 0.5 if room.get("depth") else 3.0
-
-	var phone_placement := _phone_wall_placement(spawn_local, hw, hd)
+	var phone_placement := _phone_near_spawn(spawn_local)
 	var walkie_pos := _walkie_floor_placement(spawn_local, WALKIE_SIZE.y)
 
 	var phone: StaticBody3D = _ITEMS.call(
@@ -95,6 +92,12 @@ static func validate(room: Node3D, spawn_local: Vector3) -> Array[String]:
 		if bottom_y > 0.08:
 			errors.append("WalkieTalkie not on floor (bottom_y=%.3f)" % bottom_y)
 	return errors
+
+
+static func _phone_near_spawn(spawn_local: Vector3) -> Dictionary:
+	# Fixed offset beside center spawn — no wall hunt (center-spawn graybox rooms).
+	var pos := spawn_local + Vector3(0.55, 1.05, 0.0)
+	return {"position": pos, "normal": Vector3(-1, 0, 0), "rotation_y": atan2(-1.0, 0.0)}
 
 
 static func _phone_wall_placement(spawn_local: Vector3, hw: float, hd: float) -> Dictionary:

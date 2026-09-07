@@ -35,7 +35,7 @@ static func pm_layout() -> Dictionary:
 		"depth": 6.0,
 		"height": HEIGHT,
 		"theme": "basement",
-		"spawn": Vector3(0, 0.1, 1.2),
+		"spawn": Vector3(0, 0.0, 0),
 		"escape": Vector3.ZERO,
 		"corridor_out": Vector3.ZERO,
 		"slots": _slot_layout(0, 6.0, 6.0),
@@ -62,9 +62,9 @@ static func _box(name: String, id: int, w: float, d: float, theme: String) -> Di
 		"depth": d,
 		"height": HEIGHT,
 		"theme": theme,
-		"spawn": Vector3(0, 0.1, hd - 1.8),
-		"escape": Vector3(0, 1.025, hd - WALL),
-		"corridor_out": Vector3(0, 1.025, hd + 0.15),
+		"spawn": Vector3(0, 0.0, 0),
+		"escape": Vector3(0, DOOR_H * 0.5, hd - WALL * 0.5),
+		"corridor_out": Vector3(0, DOOR_H * 0.5, hd + WALL * 0.5),
 		"slots": _slot_layout(id, w, d),
 	}
 
