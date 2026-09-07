@@ -44,8 +44,9 @@ exactly what is/isn't implemented yet.
 The fastest way to see the multiplayer loop end-to-end without a second
 machine:
 
-1. Run the project once (F5). From the Home screen, click **Play**, then
-   **Host Match**. Optionally adjust the "Match spawn odds" sliders that
+1. Run the project once (F5). From the Home screen the locked **Play**
+   nav is selected and the Classic side panel is open. Click **CLASSIC**,
+   then **Host Match**. Optionally adjust the "Match spawn odds" sliders that
    appear (code locks, flame paper, flood valves, hidden hallways).
 2. Run the project **again** in a second editor instance (Godot lets you
    run multiple instances of the same project - use
@@ -96,7 +97,7 @@ This is a **terrain-first** neighborhood rethink. The deliverable is a **large c
 **In-editor check (Kyle):**
 
 1. Open `project.godot` in Godot 4.3+, let it import, press **F5**.
-2. Home → **Play** → **Host Match** → **Start Match** (one player is enough).
+2. Home → **Play** → **CLASSIC** → **Host Match** → **Start Match** (one player is enough).
 3. You should stand on the **cul-de-sac asphalt or grass**, see green/brown ground vs dark road + light curbs, and be able to walk the whole yard including the perimeter hills. You should **not** start in a sealed bedroom, basement, or bunker.
 4. Optional second instance: **Play → Join** (blank IP) — host-authoritative outdoor spawns should match for the joiner.
 
@@ -265,7 +266,7 @@ See [`docs/blueprints/v0.5/`](docs/blueprints/v0.5/) for Leonardo v0.5 sheets.
 
 **Towers (soft-go):** many candidate masts; **3 active per match**; **1 forced near the PM**. Phone + mast use **service / weak / dead** radii. Scratch on the slate only (not a voice or SMS line).
 
-**HUD + smartphone (soft-go):** Leonardo’s v2 neon-horror icon language is wired in `scripts/horror/ui/neon_hud.gd` and `assets/horror/hud/` (heart / cyan pulse / violet glitch-eye / yellow **phone LED** / signal full-weak-dead). The inventory `phone` is diegetic `ITEM_DEVICE_SMARTPHONE_01` — graphite/gold mesh, camera LED spotlight, eng-tunable battery drain on `PhoneDevice`. Sheet ~15%/min LED and ~2%/min passive are concept only. No handheld flashlight item. Textures are wiring refs; Leonardo may redraw them before Steam.
+**HUD + smartphone (soft-go):** Leonardo’s approved UI pack is wired in `scripts/horror/ui/` and `assets/horror/ui/` + `assets/horror/hud/`. Home is the locked left-nav shell (VOUCH neon **V** + **OUCH** on puppet strings — **no X-stick / crossbar through the V**). Play opens Classic / Hardcore / Custom / Practice / Friends Lobby; **Classic** is the live outdoor Host Match path, other modes are soft-gated. In-match HUD follows the mock: MISSING CHILD / ALIVE ONLY banner, hearts + EKG, cyan stamina, violet fear, phone LED + signal, PM ability cooldown, center **E INTERACT**. Phone light is the camera LED only — no torch glyph. Drain/TTK stay eng-owned. Textures are wiring refs; Leonardo may redraw them before Steam.
 
 **Environment kits (soft-go):** Family houses use modular porch / foundation / stairs / crawl graybox (`under_porch_crawl` under house A — no grave wording). PM bunker gets sealed concrete + pipes/shelves and a utility closet for `bunker_utility` (red/yellow neon, fluorescent; no gore, no guns). See `assets/horror/kits/README.md`. Kit plan sizes are art targets; live footprints stay v0.5.
 
@@ -372,15 +373,16 @@ scripts/horror/            Horror neighborhood factory (default play mode)
   environment/             FamilyHouse, PMMansion, UncleHouse, Outdoor + Terrain heightfield
   items/                   EffectDefinitions, PlayerEffects (meter stacks)
   world/                   NeighborhoodV05, NeighborhoodLayout, ChildSpawnRNG (11 L2 SoT pins), TowerRules
-  ui/                      Neon HUD (heart / cyan / violet / phone signal) + neon menu
+  ui/                      Locked Leonardo menu + HUD (banner / Classic / phone LED)
+  assets/horror/ui/        Soft-go UI pack textures (banner without X-stick)
   horror_world.gd          World orchestrator
   match_horror.gd          Host-authoritative horror match builder
   puppet_master_controller.gd  PM float, possession, radius life-steal
 scenes/Horror/             HorrorWorld.tscn, WorldPickup, PMChaseAI
 scenes/
   Main.tscn                 Actual main scene: composes Lobby (Home) + World (Match+Outside)
-  Lobby/Lobby.tscn           Home screen: Play/Settings/Character/Exit, joined-player list,
-                             match spawn odds, key remap + sensitivity + volume controls
+  Lobby/Lobby.tscn           Home: Play / Join Friends / Settings / Quit + Classic panel,
+                             Host Match, joined-player list, remap + sensitivity + volume
   Match/Match.tscn           Match director (spawns rooms + players)
   Match/RoomPod.tscn         Multiplayer shell — instances scenes/Rooms/Room_XX.tscn
   scenes/Rooms/              6 hand-sealed graybox rooms + Room_PM.tscn

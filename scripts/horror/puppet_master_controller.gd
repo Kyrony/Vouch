@@ -277,15 +277,16 @@ func _update_steal_ui() -> void:
 	_steal_time_left = times.x
 	_steal_cd_left = times.y
 	var active := times.x > 0.0
+	var neon := _player.get_node_or_null("HUD/NeonHud")
 	if is_instance_valid(_steal_bar):
 		_steal_bar.max_value = 100.0
 		_steal_bar.value = (times.x / maxf(_steal_duration, 0.01)) * 100.0
-		_steal_bar.visible = active
+		_steal_bar.visible = active and neon == null
 	if is_instance_valid(_cooldown_bar):
 		_cooldown_bar.max_value = 100.0
 		var recharge := 1.0 if times.y <= 0.0 else 1.0 - (times.y / maxf(_steal_cooldown, 0.01))
 		_cooldown_bar.value = recharge * 100.0
-		_cooldown_bar.visible = times.y > 0.0
+		_cooldown_bar.visible = times.y > 0.0 and neon == null
 	_set_rings_visible(active)
 	if _player == null:
 		return

@@ -317,17 +317,27 @@ func exit_ladder(ladder: Node) -> void:
 		velocity.y = 0.0
 
 
+func _set_interact_prompt(shown: bool, hint: String = "") -> void:
+	if _neon_hud and _neon_hud.has_method("set_interact_prompt"):
+		var action := hint if not hint.is_empty() else "INTERACT"
+		_neon_hud.call("set_interact_prompt", shown, action, "Look / Talk" if shown else "")
+		prompt_label.visible = false
+		return
+	prompt_label.visible = shown
+	if shown:
+		prompt_label.text = "[E] %s" % hint
+
+
 func _update_interact_prompt() -> void:
 	if _is_input_locked() or _eliminated:
 		_set_highlight(null)
-		prompt_label.visible = false
+		_set_interact_prompt(false)
 		return
 	if interact_ray.is_colliding():
 		var collider := interact_ray.get_collider()
 		if horror_mode and not is_horror_puppet_master and collider.is_in_group("world_pickups"):
 			var hint: String = collider.call("get_prompt") if collider.has_method("get_prompt") else "Pick up item"
-			prompt_label.text = "[E] %s" % hint
-			prompt_label.visible = true
+			_set_interact_prompt(true, hint)
 			return
 		if _PATHS.is_ladder(collider) and not collider.is_carried:
 			var hint: String = collider.prompt_text
@@ -335,21 +345,17 @@ func _update_interact_prompt() -> void:
 				hint = "Pick up ladder (place to lean on wall)"
 			elif collider.is_leaning:
 				hint = collider.prompt_text
-			prompt_label.text = "[E] %s" % hint
-			prompt_label.visible = true
+			_set_interact_prompt(true, hint)
 			_set_highlight(null)
 			return
 		if _PATHS.is_ladder(collider) and collider.is_carried and collider.carrier_peer_id == multiplayer.get_unique_id():
-			prompt_label.text = "[E] Place ladder"
-			prompt_label.visible = true
+			_set_interact_prompt(true, "Place ladder")
 			return
-		var flammable := collider
 		if collider.is_in_group("flammable_props") and not collider.get("is_charred"):
 			var hint: String = str(collider.get("prompt_text"))
 			if collider.has_method("get_display_text") and not collider.get("is_carried"):
 				hint = "Read book / pick up"
-			prompt_label.text = "[E] %s" % hint
-			prompt_label.visible = true
+			_set_interact_prompt(true, hint)
 			_set_highlight(null)
 			return
 		var target: Node = collider if _PATHS.is_interactable(collider) else null
@@ -357,12 +363,11 @@ func _update_interact_prompt() -> void:
 			var hint: String = str(target.get("prompt_text"))
 			if target.get("destroyable") and not target.get("is_destroyed"):
 				hint += "  [hold F: destroy]"
-			prompt_label.text = "[E] %s" % hint
-			prompt_label.visible = true
+			_set_interact_prompt(true, hint)
 			_set_highlight(target)
 			return
 	_set_highlight(null)
-	prompt_label.visible = false
+	_set_interact_prompt(false)
 
 
 func _try_interact() -> void:
@@ -1049,7 +1054,7 @@ func apply_eliminated_visual() -> void:
 		Input.mouse_mode = Input.MOUSE_MODE_VISIBLE
 		phone_panel.visible = false
 		keypad_panel.visible = false
-		prompt_label.visible = false
+		_set_interact_prompt(false)
 		destroy_progress_bar.visible = false
 		eliminated_overlay.visible = true
 
@@ -1083,9 +1088,11 @@ func _build_horror_hud() -> void:
 	_attach_phone_rig()
 	if is_horror_puppet_master:
 		_neon_hud.call("set_steal", false, 0.0, 1.0)
-	faction_label.add_theme_color_override("font_color", Color(1.0, 0.22, 0.48) if is_horror_puppet_master else Color(0.2, 0.92, 1.0))
-	if not is_horror_puppet_master:
-		faction_label.text = "Family"
+	faction_label.visible = false
+	prompt_label.visible = false
+	var cross := hud.get_node_or_null("CrosshairLabel") as Label
+	if cross:
+		cross.visible = false
 
 
 func _style_horror_phone_panel() -> void:

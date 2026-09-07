@@ -13,6 +13,12 @@ signal debug_gui_requested
 func _ready() -> void:
 	visible = false
 	process_mode = Node.PROCESS_MODE_WHEN_PAUSED
+	var kit: GDScript = load("res://scripts/horror/ui/ui_kit.gd")
+	if kit:
+		kit.call("apply_buttons", self)
+		var panel := get_node_or_null("Panel") as PanelContainer
+		if panel:
+			panel.add_theme_stylebox_override("panel", kit.call("panel_focus"))
 
 
 func show_menu() -> void:
