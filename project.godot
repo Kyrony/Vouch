@@ -22,6 +22,8 @@ GameState="*res://scripts/autoload/game_state.gd"
 FactionData="*res://scripts/autoload/faction_data.gd"
 NetworkManager="*res://scripts/autoload/network_manager.gd"
 ContactBook="*res://scripts/autoload/contact_book.gd"
+SettingsManager="*res://scripts/autoload/settings_manager.gd"
+MatchSettings="*res://scripts/autoload/match_settings.gd"
 LinkGraph="*res://scripts/systems/link_graph.gd"
 PhoneSystem="*res://scripts/systems/phone_system.gd"
 EscapeSystem="*res://scripts/systems/escape_system.gd"
@@ -74,6 +76,11 @@ ui_release_mouse={
 destroy={
 "deadzone": 0.2,
 "events": [Object(InputEventKey,"resource_local_to_scene":false,"resource_name":"","device":-1,"key_label":0,"physical_keycode":70,"unicode":102,"echo":false,"script":null)
+]
+}
+fire={
+"deadzone": 0.2,
+"events": [Object(InputEventMouseButton,"resource_local_to_scene":false,"resource_name":"","device":-1,"button_mask":1,"position":Vector2(0, 0),"global_position":Vector2(0, 0),"factor":1.0,"button_index":1,"canceled":false,"pressed":false,"double_click":false,"script":null)
 ]
 }
 

@@ -4,11 +4,23 @@ extends Control
 ## Acts as the game's "home screen": Play / Settings / Character / Exit.
 ## Play swaps in the host/join sub-panel (IP-based direct connect only for
 ## MVP - lobby codes and relay/NAT traversal are explicitly future work,
-## see docs/MVP_GDD.md). Settings/Character are stub panels for now. The
-## Play panel shows a LIVE joined-player list (name + peer id) that
-## updates as peers connect, broadcast to everyone via
-## `NetworkManager.lobby_roster_updated` - this is pre-match "who's here"
-## information only, never faction/role info.
+## see docs/MVP_GDD.md). Settings has real key-remapping, mouse
+## sensitivity, and audio volume controls, all persisted locally via
+## `SettingsManager`. Character is still a stub panel. The Play panel
+## shows a LIVE joined-player list (name + peer id) that updates as peers
+## connect, broadcast to everyone via `NetworkManager.lobby_roster_updated`
+## - this is pre-match "who's here" information only, never faction/role
+## info - plus host-only "match spawn odds" sliders (`MatchSettings`).
+
+const REMAP_ACTION_LABELS: Dictionary = {
+	"move_forward": "Move Forward",
+	"move_back": "Move Back",
+	"move_left": "Move Left",
+	"move_right": "Move Right",
+	"jump": "Jump",
+	"interact": "Interact",
+	"destroy": "Destroy (hold)",
+}
 
 @onready var home_panel: Control = $HomePanel
 @onready var play_panel: Control = $PlayPanel
@@ -30,8 +42,30 @@ extends Control
 @onready var player_count_label: Label = $PlayPanel/PlayerListPanel/VBoxContainer/PlayerCountLabel
 @onready var player_list_box: VBoxContainer = $PlayPanel/PlayerListPanel/VBoxContainer/PlayerListScroll/PlayerListBox
 
-@onready var settings_back_button: Button = $SettingsPanel/VBoxContainer/BackButton
+@onready var match_settings_panel: Panel = $PlayPanel/MatchSettingsPanel
+@onready var hallway_slider: HSlider = $PlayPanel/MatchSettingsPanel/VBoxContainer/HiddenHallwayRow/Slider
+@onready var hallway_value_label: Label = $PlayPanel/MatchSettingsPanel/VBoxContainer/HiddenHallwayRow/ValueLabel
+@onready var code_lock_slider: HSlider = $PlayPanel/MatchSettingsPanel/VBoxContainer/CodeLockRow/Slider
+@onready var code_lock_value_label: Label = $PlayPanel/MatchSettingsPanel/VBoxContainer/CodeLockRow/ValueLabel
+@onready var flame_paper_slider: HSlider = $PlayPanel/MatchSettingsPanel/VBoxContainer/FlamePaperRow/Slider
+@onready var flame_paper_value_label: Label = $PlayPanel/MatchSettingsPanel/VBoxContainer/FlamePaperRow/ValueLabel
+@onready var flood_valve_slider: HSlider = $PlayPanel/MatchSettingsPanel/VBoxContainer/FloodValveRow/Slider
+@onready var flood_valve_value_label: Label = $PlayPanel/MatchSettingsPanel/VBoxContainer/FloodValveRow/ValueLabel
+
+@onready var remap_container: VBoxContainer = $SettingsPanel/ScrollContainer/VBoxContainer/RemapContainer
+@onready var sensitivity_slider: HSlider = $SettingsPanel/ScrollContainer/VBoxContainer/SensitivityRow/Slider
+@onready var sensitivity_value_label: Label = $SettingsPanel/ScrollContainer/VBoxContainer/SensitivityRow/ValueLabel
+@onready var master_volume_slider: HSlider = $SettingsPanel/ScrollContainer/VBoxContainer/MasterVolumeRow/Slider
+@onready var master_volume_value_label: Label = $SettingsPanel/ScrollContainer/VBoxContainer/MasterVolumeRow/ValueLabel
+@onready var sfx_volume_slider: HSlider = $SettingsPanel/ScrollContainer/VBoxContainer/SfxVolumeRow/Slider
+@onready var sfx_volume_value_label: Label = $SettingsPanel/ScrollContainer/VBoxContainer/SfxVolumeRow/ValueLabel
+@onready var settings_back_button: Button = $SettingsPanel/ButtonRow/BackButton
+
 @onready var character_back_button: Button = $CharacterPanel/VBoxContainer/BackButton
+
+## Set while waiting for the next input event to finish a key-remap.
+var _awaiting_remap_action: String = ""
+var _remap_buttons: Dictionary = {}
 
 
 func _ready() -> void:
@@ -54,6 +88,10 @@ func _ready() -> void:
 	NetworkManager.disconnected_from_server.connect(_on_disconnected)
 	NetworkManager.lobby_roster_updated.connect(_on_roster_updated)
 
+	_build_remap_rows()
+	_setup_settings_controls()
+	_setup_match_settings_controls()
+
 	_show_panel(home_panel)
 	_on_roster_updated(NetworkManager.lobby_roster)
 
@@ -64,6 +102,8 @@ func _show_panel(panel: Control) -> void:
 	settings_panel.visible = false
 	character_panel.visible = false
 	panel.visible = true
+	if panel == play_panel:
+		match_settings_panel.visible = NetworkManager.is_server()
 
 
 func _on_exit_pressed() -> void:
@@ -75,6 +115,7 @@ func _on_host_pressed() -> void:
 	if err == OK:
 		status_label.text = "Hosting on port %d. Share your IP with friends." % NetworkManager.DEFAULT_PORT
 		start_match_button.visible = true
+		match_settings_panel.visible = true
 	else:
 		status_label.text = "Failed to host (error %s)." % err
 
@@ -105,6 +146,7 @@ func _on_join_failed(reason: String) -> void:
 func _on_disconnected() -> void:
 	status_label.text = "Disconnected from host."
 	start_match_button.visible = false
+	match_settings_panel.visible = false
 
 
 func _on_roster_updated(roster: Array) -> void:
@@ -117,3 +159,128 @@ func _on_roster_updated(roster: Array) -> void:
 		player_list_box.add_child(label)
 
 	player_count_label.text = "Players connected: %d" % roster.size()
+
+
+# --- Match settings (host-only spawn odds) ------------------------------
+
+func _setup_match_settings_controls() -> void:
+	hallway_slider.value = MatchSettings.hidden_hallway_chance
+	code_lock_slider.value = MatchSettings.code_lock_chance
+	flame_paper_slider.value = MatchSettings.flame_paper_chance
+	flood_valve_slider.value = MatchSettings.flood_valve_chance
+	_refresh_odds_labels()
+
+	hallway_slider.value_changed.connect(func(v):
+		MatchSettings.hidden_hallway_chance = v
+		_refresh_odds_labels())
+	code_lock_slider.value_changed.connect(func(v):
+		MatchSettings.code_lock_chance = v
+		_refresh_odds_labels())
+	flame_paper_slider.value_changed.connect(func(v):
+		MatchSettings.flame_paper_chance = v
+		_refresh_odds_labels())
+	flood_valve_slider.value_changed.connect(func(v):
+		MatchSettings.flood_valve_chance = v
+		_refresh_odds_labels())
+
+
+func _refresh_odds_labels() -> void:
+	hallway_value_label.text = "%d%%" % roundi(hallway_slider.value * 100)
+	code_lock_value_label.text = "%d%%" % roundi(code_lock_slider.value * 100)
+	flame_paper_value_label.text = "%d%%" % roundi(flame_paper_slider.value * 100)
+	flood_valve_value_label.text = "%d%%" % roundi(flood_valve_slider.value * 100)
+
+
+# --- Settings: key remapping ---------------------------------------------
+
+func _build_remap_rows() -> void:
+	for action_name in SettingsManager.REMAPPABLE_ACTIONS:
+		var row := HBoxContainer.new()
+
+		var label := Label.new()
+		label.text = REMAP_ACTION_LABELS.get(action_name, action_name)
+		label.custom_minimum_size = Vector2(150, 0)
+		row.add_child(label)
+
+		var bind_button := Button.new()
+		bind_button.text = SettingsManager.get_binding_label(action_name)
+		bind_button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		bind_button.focus_mode = Control.FOCUS_ALL
+		bind_button.pressed.connect(func(): _start_remap(action_name, bind_button))
+		row.add_child(bind_button)
+		_remap_buttons[action_name] = bind_button
+
+		var reset_button := Button.new()
+		reset_button.text = "Reset"
+		reset_button.pressed.connect(func():
+			SettingsManager.reset_action_to_default(action_name)
+			bind_button.text = SettingsManager.get_binding_label(action_name))
+		row.add_child(reset_button)
+
+		remap_container.add_child(row)
+
+
+func _start_remap(action_name: String, button: Button) -> void:
+	if not _awaiting_remap_action.is_empty():
+		return
+	_awaiting_remap_action = action_name
+	button.text = "Press any key/button..."
+	set_process_unhandled_input(true)
+
+
+func _unhandled_input(event: InputEvent) -> void:
+	if _awaiting_remap_action.is_empty():
+		return
+
+	if event is InputEventKey and event.pressed and not event.echo:
+		if event.physical_keycode == KEY_ESCAPE:
+			_cancel_remap()
+			return
+		SettingsManager.rebind_action(_awaiting_remap_action, event)
+		_finish_remap()
+	elif event is InputEventMouseButton and event.pressed:
+		SettingsManager.rebind_action(_awaiting_remap_action, event)
+		_finish_remap()
+	elif event is InputEventJoypadButton and event.pressed:
+		SettingsManager.rebind_action(_awaiting_remap_action, event)
+		_finish_remap()
+
+
+func _cancel_remap() -> void:
+	var button: Button = _remap_buttons.get(_awaiting_remap_action)
+	if button:
+		button.text = SettingsManager.get_binding_label(_awaiting_remap_action)
+	_awaiting_remap_action = ""
+
+
+func _finish_remap() -> void:
+	var action_name := _awaiting_remap_action
+	var button: Button = _remap_buttons.get(action_name)
+	if button:
+		button.text = SettingsManager.get_binding_label(action_name)
+	_awaiting_remap_action = ""
+
+
+# --- Settings: sensitivity / audio ---------------------------------------
+
+func _setup_settings_controls() -> void:
+	sensitivity_slider.value = SettingsManager.mouse_sensitivity
+	master_volume_slider.value = SettingsManager.master_volume
+	sfx_volume_slider.value = SettingsManager.sfx_volume
+	_refresh_settings_labels()
+
+	sensitivity_slider.value_changed.connect(func(v):
+		SettingsManager.set_mouse_sensitivity(v)
+		_refresh_settings_labels())
+	master_volume_slider.value_changed.connect(func(v):
+		SettingsManager.set_master_volume(v)
+		_refresh_settings_labels())
+	sfx_volume_slider.value_changed.connect(func(v):
+		SettingsManager.set_sfx_volume(v)
+		_refresh_settings_labels())
+
+
+func _refresh_settings_labels() -> void:
+	sensitivity_value_label.text = "%.2fx" % sensitivity_slider.value
+	master_volume_value_label.text = "%d%%" % roundi(master_volume_slider.value * 100)
+	sfx_volume_value_label.text = "%d%%" % roundi(sfx_volume_slider.value * 100)
