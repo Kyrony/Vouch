@@ -57,27 +57,23 @@ room, a phone, an escape point, a security camera, a ladder.
   (see `NetworkManager._client_receive_faction`, sent as a targeted
   unicast RPC, never broadcast).
 
-## Rooms - modular kit assembly
+## Rooms — fixed map scenes
 
-Each player spawns **alone** in their own room pod (`scripts/room_pod.gd`),
-assembled from a **small authored module kit** rather than runtime CSG wall
-extrusion. James's **20 floor-plan IDs** still drive variety, but each ID
-maps to one of **6 kit recipes** (`scripts/systems/room_kit_recipes.gd`)
-that instance and snap sealed modules together:
+Each player spawns **alone** inside one **complete room map** (`RoomMap` script on
+`scenes/Rooms/Room_01.tscn` … `Room_20.tscn`). No modular snapping, no CSG extrusion
+from 2D plans — each scene is a single baked living space with fixed width/length/height.
 
-- **Module types**: living, living_large, bedroom, bath, hall, closet,
-  utility, fireplace_nook, stairwell — built by `scripts/kit/kit_builder.gd`
-  with floor/wall/ceiling materials, trim, baseboards, door frames,
-  graybox furniture, and per-room ceiling lights.
-- **Sockets** (`Marker3D` under each module's `Sockets/` node):
-  `Door_N/E/S/W`, `CorridorOut`, `Vent_Ceiling`, `Mount_Switch`,
-  `Mount_Phone`, `Mount_Camera`, `Mount_Fireplace`, `SpawnPoint`.
-- **Assembly**: `RoomKitAssembler` places modules, caches zone centers and
-  mount positions; `CorridorKit` builds sealed horizontal + vertical runs
-  with hallway sconces to the central hub.
-- **Metric scale** (~2.6 m ceilings, ~2.05×0.85 m doors) via
-  `scripts/world_scale.gd`. Plan metadata remains in
-  `scripts/systems/floor_plan_templates.gd`.
+- **20 unique layouts** defined in `scripts/rooms/room_layouts.gd` and built by
+  `scripts/rooms/room_geometry.gd` (sealed walls, trim, furniture, ceiling light).
+- **16 item spawn slots** per room (`ItemSpawnSlot` markers under `ItemSpawns/`).
+  `ItemSpawnSystem` randomly assigns interactables to slots at `configure()` time
+  (deterministic from `rng_seed`).
+- **Theme** — Bedroom / Utility / Creepy Basement palette per layout.
+- **Escape** — south entry door or bath vent; sealed corridor to central hub.
+- **Puppet Master** — `Room_PM.tscn` (21st fixed room).
+
+Headless validation: `VOUCH_ROOM_SPAWN_TEST=1 godot4 --headless --path .`
+(and `VOUCH_MATCH_SPAWN_TEST=1` for full match spawn).
 
 - **Theme** - one of three palettes: **Bedroom**, **Utility Room**,
   **Creepy Basement** (rolled per room from seed).

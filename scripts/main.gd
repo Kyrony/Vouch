@@ -1,16 +1,5 @@
 extends Node
-## Main
-##
-## Root scene. Composes the Lobby UI and the persistent "World" (Match +
-## Outside) as siblings and just toggles visibility between them, instead
-## of using `change_scene_to_file()`. This sidesteps a lot of Godot 4
-## multiplayer scene-change replication timing headaches for a project
-## this size: Match/Outside/their MultiplayerSpawners are always present
-## in the tree (on every peer) and ready to receive spawned nodes the
-## moment the host starts the match.
-##
-## TODO(post-MVP): if the project grows multiple maps/rounds, revisit this
-## in favor of proper scene streaming.
+## Main — root scene (Lobby + World).
 
 @onready var lobby: Control = $Lobby
 @onready var world: Node3D = $World
@@ -24,8 +13,10 @@ func _ready() -> void:
 	pause_menu.exit_requested.connect(_on_pause_exit)
 	pause_menu.settings_requested.connect(_on_pause_settings)
 	pause_menu.debug_gui_requested.connect(_on_pause_debug)
-	if OS.get_environment("VOUCH_FLOOR_PLAN_TEST") == "1":
-		call_deferred("_run_floor_plan_test")
+	if OS.get_environment("VOUCH_ROOM_SPAWN_TEST") == "1":
+		call_deferred("_run_room_spawn_test")
+	elif OS.get_environment("VOUCH_FLOOR_PLAN_TEST") == "1":
+		call_deferred("_run_room_spawn_test")
 	if OS.get_environment("VOUCH_MATCH_SPAWN_TEST") == "1":
 		call_deferred("_run_match_spawn_test")
 
@@ -38,6 +29,7 @@ func _run_match_spawn_test() -> void:
 		"owner_peer_id": 1,
 		"rng_seed": 12345,
 		"is_puppet_master": false,
+		"room_scene_id": 4,
 		"floor_plan_id": "04",
 		"has_valve": false,
 		"total_rooms": 1,
@@ -51,31 +43,33 @@ func _run_match_spawn_test() -> void:
 	get_tree().quit(0)
 
 
-func _run_floor_plan_test() -> void:
-	print("=== FLOOR PLAN SPAWN TEST START ===")
-	var plans := ["01", "04", "12", "15"]
-	for plan_id in plans:
-		var room := _spawn_test_room(plan_id)
+func _run_room_spawn_test() -> void:
+	print("=== ROOM MAP SPAWN TEST START ===")
+	for room_id in [1, 4, 12, 15, 20]:
+		var room := _spawn_test_room(room_id)
 		if room == null:
-			push_error("FLOOR PLAN TEST FAILED plan=%s" % plan_id)
+			push_error("ROOM SPAWN TEST FAILED room=%02d" % room_id)
 			get_tree().quit(1)
 			return
-		print("  plan %s OK children=%d footprint=%.0fx%.0f" % [plan_id, room.get_child_count(), room.width, room.depth])
+		var map := room.get_child(0) if room.get_child_count() > 0 else room
+		var slots := map.get_node_or_null("ItemSpawns")
+		var slot_count := slots.get_child_count() if slots else 0
+		print("  room %02d OK footprint=%.0fx%.0f slots=%d" % [room_id, room.width, room.depth, slot_count])
 		room.queue_free()
 		await get_tree().process_frame
-	print("=== FLOOR PLAN SPAWN TEST: ALL OK ===")
+	print("=== ROOM MAP SPAWN TEST: ALL OK ===")
 	get_tree().quit(0)
 
 
-func _spawn_test_room(plan_id: String) -> RoomPod:
-	var RoomPodScene: PackedScene = preload("res://scenes/Match/RoomPod.tscn")
-	var room: RoomPod = RoomPodScene.instantiate()
+func _spawn_test_room(room_id: int) -> RoomPod:
+	var room: RoomPod = preload("res://scenes/Match/RoomPod.tscn").instantiate()
 	room.configure({
 		"room_index": 0,
 		"owner_peer_id": 1,
-		"rng_seed": int(plan_id) * 1000,
+		"rng_seed": room_id * 1000,
 		"is_puppet_master": false,
-		"floor_plan_id": plan_id,
+		"room_scene_id": room_id,
+		"floor_plan_id": "%02d" % room_id,
 		"has_valve": false,
 		"total_rooms": 1,
 	})
@@ -101,7 +95,6 @@ func _on_pause_settings() -> void:
 
 
 func _on_pause_debug() -> void:
-	# REMOVE DEBUG GUI FROM PAUSE MENU BEFORE FINAL LAUNCH
 	pause_menu.hide_menu()
 	if debug_gui.has_method("_toggle"):
 		debug_gui._toggle()
