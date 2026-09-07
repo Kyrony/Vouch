@@ -91,11 +91,16 @@ persists locally between sessions.
   list** visible to everyone before the match starts, and host-only
   **match spawn odds** sliders (`scripts/autoload/match_settings.gd`)
   for code locks / flame paper / flood valves / hidden hallways.
-- **Floor-plan rooms**: each player pod picks one of **20 James floor-plan
-  templates** (1 ft = 1 Godot unit, ~10 ft ceilings, ~3.5 ft doors) —
-  one-story layouts 01–14 and two-story 15–20 with stairs. Data lives in
-  `scripts/systems/floor_plan_templates.gd`; `RoomPod` builds walls/doors
-  from zone rectangles. Puppet Master keeps a simple box room.
+- **Modular kit rooms** (Phasmophobia / Lethal Company style): each player pod
+  picks one of **20 James floor-plan IDs**, but assembly uses a **small
+  authored module kit** — living, bedroom, bath, hall, closet, utility,
+  stairwell, fireplace nook — snapped together via **socket markers**
+  (`Door_N/E/S/W`, `CorridorOut`, `Vent_Ceiling`, wall mounts). Recipes
+  in `scripts/systems/room_kit_recipes.gd`; builder in
+  `scripts/kit/kit_builder.gd`; assembler in
+  `scripts/systems/room_kit_assembler.gd`. Shared **corridor kit** segments
+  (`scripts/kit/corridor_kit.gd`) with sconces run to the central hub.
+  Human metric scale (~2.6 m ceilings). Puppet Master keeps a simple box room.
 - **Faction assignment** on match start, round-robin across the 4 MVP
   factions (Red Vipers / Blue Ash / Green Hollow / Yellow Sparks). Each
   client is told **only its own faction** via a targeted RPC - there is
@@ -171,9 +176,10 @@ persists locally between sessions.
 - **Voice comms.** Only text-first phone stub exists.
 - **Lobby codes / matchmaking / relay.** Direct IP only - no NAT
   traversal, no session codes.
-- **Fully hand-authored/varied room shapes.** Rooms are built from 20
-  data-driven floor-plan templates (not random connector soup), but still
-  assembled from graybox primitives in code.
+- **Fully hand-authored/varied room shapes.** Rooms use **6 kit recipes**
+  mapped onto 20 James plan IDs (metric human scale via
+  `scripts/world_scale.gd`) — sealed modular pieces with trim, per-room
+  lights, and corridor sconces. Still graybox, not art-final.
 - **Post-escape interactions from Outside.** It's a neutral holding area
   with no sabotage/mechanics in MVP.
 - **PA announcements and window/note comms.** Called out in the design
@@ -212,7 +218,9 @@ scenes/
   Lobby/Lobby.tscn           Home screen: Play/Settings/Character/Exit, joined-player list,
                              match spawn odds, key remap + sensitivity + volume controls
   Match/Match.tscn           Match director (spawns rooms + players)
-  Match/RoomPod.tscn         Empty shell - RoomPod.gd builds the whole modular room procedurally
+  Match/RoomPod.tscn         Empty shell — RoomPod.gd assembles kit modules + interactables
+  scripts/kit/               Modular room kit (builder, materials, corridor segments)
+  scripts/systems/room_kit_* Plan ID → module graph recipes + assembler
   Match/Props/               Small graybox decoration scenes (crate/shelf/barrel)
   Match/Interactables/       Ladder.tscn (climbable + movable)
   DebugGui.tscn              Dev/host debug panel (Home key — remove before release)

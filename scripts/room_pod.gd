@@ -6,6 +6,8 @@ class_name RoomPod
 ## or a simple box for the Puppet Master.
 
 const _FPT_SCRIPT: GDScript = preload("res://scripts/systems/floor_plan_templates.gd")
+const _KIT_ASSEMBLER: GDScript = preload("res://scripts/systems/room_kit_assembler.gd")
+const _CORRIDOR_KIT: GDScript = preload("res://scripts/kit/corridor_kit.gd")
 const HEIGHT: float = 2.6
 const DOOR_W: float = 0.85
 const DOOR_H: float = 2.05
@@ -90,6 +92,8 @@ var light_switch: Node
 var _theme: Dictionary = THEMES[0]
 var _plan: Dictionary = {}
 var _zone_centers: Dictionary = {}
+var _kit_sockets: Dictionary = {}
+var _corridor_out: Vector3 = Vector3.ZERO
 var _fireplace: Node3D = null
 
 
@@ -161,18 +165,18 @@ func configure(data: Dictionary) -> void:
 		_build_pm_shell(theme, escape_kind)
 	else:
 		_plan = _FPT_SCRIPT.call("get_plan", floor_plan_id)
-		width = _plan["w"]
-		depth = _plan["d"]
-		_cache_zone_centers(_plan)
-		_build_floor_plan_shell(theme, escape_kind)
-		if _plan.get("stories", 1) < 2 and rng.randf() < 0.35:
-			_build_loft_stairs(theme, rng)
-		_build_shape_accents(rng, theme)
+		var kit_result: Dictionary = _KIT_ASSEMBLER.call("assemble", self, floor_plan_id, theme, escape_kind, rng)
+		width = kit_result.get("width", _plan["w"])
+		depth = kit_result.get("depth", _plan["d"])
+		_zone_centers = kit_result.get("zone_centers", {})
+		_kit_sockets = kit_result.get("mount_sockets", {})
+		_corridor_out = kit_result.get("corridor_out", Vector3(0, DOOR_H * 0.5, depth * 0.5))
+		spawn_point = kit_result.get("spawn_point") as Marker3D
 
 	_build_decor(rng, theme, has_pipes, has_wires)
 	_build_interactables(rng, theme, escape_kind, has_valve, has_electrical_box, wire_targets, has_fireplace, has_drain, has_exhaust, has_binary_puzzle, binary_target, binary_peek_room)
 	if escape_kind != EscapeKind.NONE:
-		_build_escape_hall(escape_kind, theme)
+		_CORRIDOR_KIT.call("build_escape_path", self, _corridor_out, room_index, theme, escape_kind)
 	_build_prop_scatter(rng)
 
 	if is_puppet_master_room:
@@ -313,6 +317,12 @@ func _cache_zone_centers(plan: Dictionary) -> void:
 			_zone_centers[role] = Vector3(cx, 0.0, cz)
 		else:
 			_zone_centers[role] = (_zone_centers[role] + Vector3(cx, 0.0, cz)) * 0.5
+
+
+func _socket_pos(key: String, fallback: Vector3) -> Vector3:
+	if _kit_sockets.has(key):
+		return _kit_sockets[key] as Vector3
+	return fallback
 
 
 func _zone_center(role: String) -> Vector3:
@@ -849,7 +859,7 @@ func _build_interactables(rng: RandomNumberGenerator, theme: Dictionary, escape_
 	var effect_id := "room_%d_room_light" % room_index
 
 	var switch_wall := _nearest_wall_normal(living + Vector3(-width * 0.4, 0, 0))
-	var switch_pos := _wall_mount(living + Vector3(-width * 0.4, 0, 0), switch_wall, 1.25)
+	var switch_pos: Vector3 = _socket_pos("Mount_Switch", _wall_mount(living + Vector3(-width * 0.4, 0, 0), switch_wall, 1.25))
 	var switch := _make_interactable(LIGHT_SWITCH_SCRIPT, Vector3(0.08, 0.12, 0.04), switch_pos, accent, "Flip switch")
 	var switch_script: LightSwitch = switch
 	switch_script.control_id = control_id
@@ -859,22 +869,19 @@ func _build_interactables(rng: RandomNumberGenerator, theme: Dictionary, escape_
 	light_switch = switch
 
 	if escape_kind != EscapeKind.NONE:
-		var entry: Dictionary = _FPT_SCRIPT.call("entry_door", _plan) if not _plan.is_empty() else {}
 		var escape_pos: Vector3
 		var escape_size: Vector3
 		var escape_prompt: String
-		if escape_kind == EscapeKind.DOOR and not entry.is_empty():
-			var mid_x := _plan_x_to_world(entry.get("gap_start", 0) + entry.get("gap_w", 4) * 0.5)
-			escape_pos = Vector3(mid_x, DOOR_H * 0.5, _plan_z_to_world(0) - 0.06)
-			escape_size = Vector3(DOOR_W, DOOR_H, 0.08)
-			escape_prompt = "Open the door"
-		elif escape_kind == EscapeKind.DOOR:
-			escape_pos = Vector3(0, DOOR_H * 0.5, depth / 2.0 - 0.06)
+		if escape_kind == EscapeKind.DOOR:
+			escape_pos = _corridor_out + Vector3(0, 0, 0.06)
 			escape_size = Vector3(DOOR_W, DOOR_H, 0.08)
 			escape_prompt = "Open the door"
 		else:
 			var vent_zone := bath if _zone_centers.has("bath") else living
-			escape_pos = vent_zone + Vector3(0, 1.0, -depth * 0.35)
+			if _kit_sockets.has("Vent_Ceiling"):
+				escape_pos = _kit_sockets["Vent_Ceiling"] + Vector3(0, -0.5, 0)
+			else:
+				escape_pos = vent_zone + Vector3(0, 1.0, -depth * 0.35)
 			escape_size = Vector3(0.55, 0.45, 0.08)
 			escape_prompt = "Squeeze through the vent"
 		var escape_point := _make_door(escape_size, escape_pos, accent, escape_prompt, escape_kind == EscapeKind.VENT)
@@ -882,7 +889,7 @@ func _build_interactables(rng: RandomNumberGenerator, theme: Dictionary, escape_
 		add_child(escape_point)
 
 	if has_fireplace:
-		var fp_pos := living + Vector3(-width * 0.25, 0, -depth * 0.15)
+		var fp_pos: Vector3 = _socket_pos("Mount_Fireplace", living + Vector3(-width * 0.25, 0, -depth * 0.15))
 		_build_fireplace_nook(fp_pos, accent)
 		_fireplace = _FIREPLACE_SCRIPT.build(self, fp_pos, accent, room_index)
 
@@ -905,7 +912,7 @@ func _build_interactables(rng: RandomNumberGenerator, theme: Dictionary, escape_
 		add_child(exhaust)
 
 	var phone_wall := _nearest_wall_normal(living + Vector3(width * 0.35, 0, 0))
-	var phone_pos := _wall_mount(living + Vector3(width * 0.35, 0, 0), phone_wall, 1.15)
+	var phone_pos: Vector3 = _socket_pos("Mount_Phone", _wall_mount(living + Vector3(width * 0.35, 0, 0), phone_wall, 1.15))
 	var phone := _make_interactable(PHONE_SCRIPT, Vector3(0.12, 0.18, 0.06), phone_pos, accent, "Pick up phone")
 	var phone_script: Phone = phone
 	phone_script.owner_peer_id = owner_peer_id
@@ -915,7 +922,7 @@ func _build_interactables(rng: RandomNumberGenerator, theme: Dictionary, escape_
 	var camera_mount_y := 2.35
 	var cam_hint := living + Vector3(width * 0.3, 0, -depth * 0.35)
 	var cam_wall := _nearest_wall_normal(cam_hint)
-	var camera_pos := _wall_mount(cam_hint, cam_wall, camera_mount_y, 0.08)
+	var camera_pos: Vector3 = _socket_pos("Mount_Camera", _wall_mount(cam_hint, cam_wall, camera_mount_y, 0.08))
 	var camera := _make_interactable(SECURITY_CAMERA_SCRIPT, Vector3(0.14, 0.1, 0.12), camera_pos, accent, "Camera")
 	var camera_script: SecurityCamera = camera
 	camera_script.min_elevation_y = camera_mount_y - 1.2
