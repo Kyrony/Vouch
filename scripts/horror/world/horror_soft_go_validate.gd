@@ -28,6 +28,9 @@ static func validate_world(world: Node3D) -> String:
 	for i in expected.size():
 		if str(expected[i]) != str(sot[i]):
 			return "ChildSpawnRNG[%d]=%s != L2 SoT %s" % [i, expected[i], sot[i]]
+	for sid in expected:
+		if (str(sid).begins_with("pm_") and sid != "pm_attic") or str(sid).ends_with("_closet") or str(sid).ends_with("_crawlspace") or str(sid).ends_with("_curb"):
+			return "SPAWN_IDS used long-form id %s — eng short ids only" % sid
 	var child_points: Array = world.get_tree().get_nodes_in_group("child_spawn_points")
 	if child_points.size() != expected.size():
 		return "expected %d child spawn points, got %d" % [expected.size(), child_points.size()]

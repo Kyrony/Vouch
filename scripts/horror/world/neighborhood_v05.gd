@@ -3,19 +3,19 @@ class_name NeighborhoodV05
 ## Leonardo Neighborhood Layout v0.5 — production footprints.
 ## World: +X east (PM mansion), +Z south (uncle / stem), origin = cul-de-sac.
 
-## Leonardo L2 CSV spawn_ids (docs/blueprints/v0.5/L2_child_rng_spawns.csv).
+## Leonardo L2 SoT — eng short ids (docs/blueprints/v0.5/L2_child_rng_spawns.csv).
 const SPAWN_IDS: Array[String] = [
 	"pm_attic",
-	"pm_master_bedroom",
-	"pm_bunker_utility_closet",
-	"pm_basement",
+	"master_bedroom",
+	"bunker_utility",
+	"basement",
 	"uncle_bedroom",
 	"uncle_garage",
 	"family_shed",
 	"storm_drain",
 	"under_porch_crawl",
-	"garden_well_crawlspace",
-	"car_trunk_curb",
+	"garden_well",
+	"car_trunk",
 ]
 
 const EXPECTED_PIN_COUNT: int = 11
@@ -45,8 +45,8 @@ const MANSION_SIZE := Vector3(14.0, 3.2, 12.0)
 
 const FAMILY_SHED_POS := Vector3(-14.0, 0, -6.0)
 const STORM_DRAIN_POS := Vector3(3.6, 0, 5.4)
-const GARDEN_WELL_CRAWLSPACE_POS := Vector3(-5.0, 0, -14.0)
-const CAR_TRUNK_CURB_POS := Vector3(3.2, 0, 16.0)
+const GARDEN_WELL_POS := Vector3(-5.0, 0, -14.0)
+const CAR_TRUNK_POS := Vector3(3.2, 0, 16.0)
 const SOFT_ESCAPE_POS := Vector3(-18.0, 0.5, 0.0)
 
 const PM_L4_ROOMS: Array[String] = [

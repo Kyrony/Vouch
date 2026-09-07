@@ -14,7 +14,7 @@ Kyle locked these sheets as the graybox production look. Eng traces in this fold
 
 Canonical pin list: [`L2_child_rng_spawns.csv`](L2_child_rng_spawns.csv) / [`L2_child_rng_spawns.md`](L2_child_rng_spawns.md).
 
-`spawn_id` values are the Leonardo-confirmed CSV ids (`pm_attic`, `pm_master_bedroom`, `pm_bunker_utility_closet`, `pm_basement`, `garden_well_crawlspace`, `car_trunk_curb`, …). Callouts are human labels only.
+`spawn_id` values are the locked **eng short ids** (`pm_attic`, `master_bedroom`, `bunker_utility`, `basement`, `garden_well`, `car_trunk`, …). Callouts are human labels only.
 
 L2 art map labels are deferred. Dirty pin# / label mismatches are not used for world markers.
 
