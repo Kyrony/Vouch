@@ -34,6 +34,9 @@ const PAPER_BURN_TIME: float = 1.2
 ## test gun's raycast - see Gun.gd/DummyTarget.gd.
 const FIRE_RANGE: float = 60.0
 
+const _PATHS: GDScript = preload("res://scripts/interactable_script_paths.gd")
+const _TEST_PROJECTILE_SCRIPT: Script = preload("res://scripts/interactables/test_projectile.gd")
+
 @onready var head: Node3D = $Head
 @onready var camera: Camera3D = $Head/Camera3D
 @onready var interact_ray: RayCast3D = $Head/Camera3D/InteractRay
@@ -70,12 +73,12 @@ var _keypad_digits: String = ""
 var _renaming_line_id: String = ""
 
 var _on_ladder: bool = false
-var _current_ladder: Ladder = null
+var _current_ladder: Node = null
 
-var _destroy_target: Interactable = null
+var _destroy_target: Node = null
 var _destroy_hold_time: float = 0.0
 
-var _held_paper: ClueFlamePaper = null
+var _held_paper: Node = null
 var _paper_reveal_progress: float = 0.0
 var _paper_burn_progress: float = 0.0
 var _paper_revealed: bool = false
@@ -183,7 +186,7 @@ func _unhandled_input(event: InputEvent) -> void:
 
 	if event.is_action_pressed("interact"):
 		_try_interact()
-	elif event.is_action_pressed("fire") and has_gun and Input.mouse_mode == Input.MOUSE_MODE_CAPTURED:
+	elif event.is_action_pressed("fire") and has_gun and DebugBuild.enabled and Input.mouse_mode == Input.MOUSE_MODE_CAPTURED:
 		_fire_gun()
 
 
@@ -226,7 +229,7 @@ func _apply_ground_velocity(delta: float, locked: bool) -> void:
 		)
 	var direction := (transform.basis * Vector3(input_dir.x, 0, input_dir.y)).normalized()
 
-	var current_room := Match.world_position_to_room_index(global_position)
+	var current_room: int = WorldScale.world_position_to_room_index(global_position)
 	var water_level: float = GameState.room_water_levels.get(current_room, 0.0)
 	var effective_speed := SPEED * (1.0 - water_level * 0.6)
 	if _crouching:
@@ -255,13 +258,13 @@ func _apply_ladder_velocity() -> void:
 
 
 ## Called by Ladder.gd's Area3D when this player's body enters/exits it.
-func enter_ladder(ladder: Ladder) -> void:
+func enter_ladder(ladder: Node) -> void:
 	if is_multiplayer_authority():
 		_on_ladder = true
 		_current_ladder = ladder
 
 
-func exit_ladder(ladder: Ladder) -> void:
+func exit_ladder(ladder: Node) -> void:
 	if _current_ladder == ladder:
 		_on_ladder = false
 		_current_ladder = null
@@ -275,7 +278,7 @@ func _update_interact_prompt() -> void:
 		return
 	if interact_ray.is_colliding():
 		var collider := interact_ray.get_collider()
-		if collider is Ladder and not collider.is_carried:
+		if _PATHS.is_ladder(collider) and not collider.is_carried:
 			var hint: String = collider.prompt_text
 			if collider.is_placed and not collider.is_leaning and not collider.is_leaning_anim:
 				hint = "Pick up ladder (place to lean on wall)"
@@ -285,7 +288,7 @@ func _update_interact_prompt() -> void:
 			prompt_label.visible = true
 			_set_highlight(null)
 			return
-		if collider is Ladder and collider.is_carried and collider.carrier_peer_id == multiplayer.get_unique_id():
+		if _PATHS.is_ladder(collider) and collider.is_carried and collider.carrier_peer_id == multiplayer.get_unique_id():
 			prompt_label.text = "[E] Place ladder"
 			prompt_label.visible = true
 			return
@@ -298,10 +301,10 @@ func _update_interact_prompt() -> void:
 			prompt_label.visible = true
 			_set_highlight(null)
 			return
-		var target := collider as Interactable
+		var target: Node = collider if _PATHS.is_interactable(collider) else null
 		if target:
-			var hint := target.prompt_text
-			if target.destroyable and not target.is_destroyed:
+			var hint: String = str(target.get("prompt_text"))
+			if target.get("destroyable") and not target.get("is_destroyed"):
 				hint += "  [hold F: destroy]"
 			prompt_label.text = "[E] %s" % hint
 			prompt_label.visible = true
@@ -316,7 +319,7 @@ func _try_interact() -> void:
 		return
 	var collider := interact_ray.get_collider()
 
-	var ladder_target := collider as Ladder
+	var ladder_target: Node = collider if _PATHS.is_ladder(collider) else null
 	if ladder_target:
 		ladder_target.interact(multiplayer.get_unique_id())
 		return
@@ -328,11 +331,11 @@ func _try_interact() -> void:
 			collider.interact(multiplayer.get_unique_id())
 		return
 
-	var target := collider as Interactable
+	var target: Node = collider if _PATHS.is_interactable(collider) else null
 	if not target:
 		return
 
-	if target is ClueFlamePaper and not target.is_picked_up and not target.is_destroyed:
+	if _PATHS.is_clue_flame_paper(target) and not target.get("is_picked_up") and not target.get("is_destroyed"):
 		target.interact(multiplayer.get_unique_id())
 		_held_paper = target
 		_paper_reveal_progress = 0.0
@@ -341,20 +344,26 @@ func _try_interact() -> void:
 		_show_toast("Picked up the paper. Find a flame to read it - but don't get too close.")
 		return
 
-	if target is Gun and not target.is_picked_up:
+	if _PATHS.is_gun(target) and not target.get("is_picked_up"):
+		if not DebugBuild.enabled:
+			_show_toast("Nothing useful here.")
+			return
 		target.interact(multiplayer.get_unique_id())
 		has_gun = true
 		_show_toast("Picked up a gun. (TEST ONLY)")
 		return
 
+	if _PATHS.is_gun(target):
+		return
+
 	target.interact(multiplayer.get_unique_id())
 
-	if target is Phone:
+	if _PATHS.is_phone(target):
 		_open_phone_panel()
-	elif target is CodeKeypad:
-		_open_keypad_panel(target.room_index)
+	elif _PATHS.is_code_keypad(target):
+		_open_keypad_panel(int(target.get("room_index")))
 	elif target.has_method("get_display_text"):
-		_show_toast(target.get_display_text())
+		_show_toast(target.call("get_display_text"))
 
 
 # --- Hold-to-destroy ------------------------------------------------------
@@ -364,13 +373,12 @@ func _process_destroy_hold(delta: float) -> void:
 		_cancel_destroy_hold()
 		return
 
-	var target := interact_ray.get_collider() as Interactable
-	if not target or not target.destroyable or target.is_destroyed:
+	var target: Node = interact_ray.get_collider() if _PATHS.is_interactable(interact_ray.get_collider()) else null
+	if not target or not target.get("destroyable") or target.get("is_destroyed"):
 		_cancel_destroy_hold()
 		return
 
-	var camera_target := target as SecurityCamera
-	if camera_target and global_position.y < camera_target.min_elevation_y:
+	if _PATHS.is_security_camera(target) and global_position.y < float(target.get("min_elevation_y")):
 		_cancel_destroy_hold()
 		return
 
@@ -387,7 +395,7 @@ func _process_destroy_hold(delta: float) -> void:
 	destroy_progress_bar.value = clampf(_destroy_hold_time / DESTROY_HOLD_DURATION, 0.0, 1.0) * 100.0
 
 	if _destroy_hold_time >= DESTROY_HOLD_DURATION:
-		target.request_destroy(multiplayer.get_unique_id())
+		target.call("request_destroy", multiplayer.get_unique_id())
 		_cancel_destroy_hold()
 
 
@@ -400,7 +408,7 @@ func _cancel_destroy_hold() -> void:
 # --- Held clue paper: flame reveal / burn ---------------------------------
 
 func _process_held_paper(delta: float) -> void:
-	if not is_instance_valid(_held_paper) or _held_paper.is_destroyed:
+	if not is_instance_valid(_held_paper) or _held_paper.get("is_destroyed"):
 		_held_paper = null
 		holding_label.visible = false
 		return
@@ -421,7 +429,7 @@ func _process_held_paper(delta: float) -> void:
 			var burnt := _held_paper
 			_held_paper = null
 			holding_label.visible = false
-			burnt.request_destroy(multiplayer.get_unique_id())
+			burnt.call("request_destroy", multiplayer.get_unique_id())
 			_show_toast("The paper caught fire! You lost the clue.")
 		else:
 			_show_toast("Too close to the flame! (%d%%)" % roundi(_paper_burn_progress / PAPER_BURN_TIME * 100.0))
@@ -431,7 +439,7 @@ func _process_held_paper(delta: float) -> void:
 			_paper_reveal_progress += delta
 			if _paper_reveal_progress >= PAPER_REVEAL_TIME:
 				_paper_revealed = true
-				_show_toast("The code appears on the paper: %s" % _held_paper.revealed_code)
+				_show_toast("The code appears on the paper: %s" % str(_held_paper.get("revealed_code")))
 	else:
 		_paper_reveal_progress = 0.0
 		_paper_burn_progress = 0.0
@@ -454,14 +462,14 @@ func _rpc_fire_projectile() -> void:
 
 
 func _spawn_test_projectile() -> void:
-	var proj := TestProjectile.new()
+	var proj: Node = _TEST_PROJECTILE_SCRIPT.new()
 	var world := get_node_or_null("/root/Main/World")
 	if world:
 		world.add_child(proj)
 	else:
 		get_tree().root.add_child(proj)
 	var dir := -camera.global_transform.basis.z.normalized()
-	proj.launch(camera.global_position + dir * 0.3, dir)
+	proj.call("launch", camera.global_position + dir * 0.3, dir)
 
 
 func _on_faction_assigned(faction_id_in: String) -> void:
@@ -503,11 +511,11 @@ func _close_phone_panel() -> void:
 func _set_highlight(target: Node) -> void:
 	if _highlight_target == target:
 		return
-	if _highlight_target is Interactable:
-		(_highlight_target as Interactable).set_highlighted(false)
+	if _highlight_target and _PATHS.is_interactable(_highlight_target):
+		_highlight_target.call("set_highlighted", false)
 	_highlight_target = target
-	if target is Interactable:
-		target.set_highlighted(true)
+	if target and _PATHS.is_interactable(target):
+		target.call("set_highlighted", true)
 
 
 func _update_crouch_state() -> void:
@@ -844,7 +852,7 @@ func _build_camera_feed(room_index: int, slot_index: int) -> Control:
 	sub_viewport.size = Vector2i(200, 130)
 	sub_viewport.render_target_update_mode = SubViewport.UPDATE_ALWAYS
 	var feed_camera := Camera3D.new()
-	feed_camera.position = Match.room_grid_position(room_index) + Vector3(0, 5.5, 0)
+	feed_camera.position = WorldScale.room_grid_position(room_index) + Vector3(0, 5.5, 0)
 	feed_camera.rotation_degrees = Vector3(-75, 0, 0)
 	feed_camera.current = true
 	sub_viewport.add_child(feed_camera)

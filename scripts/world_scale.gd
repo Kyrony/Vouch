@@ -27,3 +27,17 @@ const PLAYER_EYE_CROUCH: float = 1.0
 ## Climbable stair spec (IBC-ish comfort range)
 const STAIR_RISER: float = 0.18
 const STAIR_TREAD: float = 0.28
+
+const GRID_COLUMNS: int = 4
+
+
+func room_grid_position(index: int) -> Vector3:
+	var col := index % GRID_COLUMNS
+	var row := index / GRID_COLUMNS
+	return Vector3(col * GRID_SPACING, -UNDERGROUND_DEPTH, row * GRID_SPACING)
+
+
+func world_position_to_room_index(world_pos: Vector3) -> int:
+	var col := int(roundi(world_pos.x / GRID_SPACING))
+	var row := int(roundi(world_pos.z / GRID_SPACING))
+	return row * GRID_COLUMNS + col

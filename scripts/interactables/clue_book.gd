@@ -1,4 +1,4 @@
-extends Interactable
+extends "res://scripts/interactables/interactable.gd"
 class_name ClueBook
 ## ClueBook
 ##

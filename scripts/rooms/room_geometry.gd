@@ -47,9 +47,13 @@ static func build(parent: Node3D, layout: Dictionary, theme: Dictionary) -> void
 	if layout.get("loft", false):
 		var loft_y := h * 0.55
 		root.add_child(_box(Vector3(w * 0.55, WALL, d * 0.35), Vector3(-w * 0.12, loft_y, -d * 0.28), floor_mat))
+		if layout.has("mezzanine"):
+			var mez: Dictionary = layout["mezzanine"]
+			root.add_child(_box(mez["size"], mez["pos"], floor_mat))
 
 	if layout.has("stairs"):
-		_build_stairs(root, layout["stairs"], floor_mat, wall_mat, h)
+		var landing_y := h * 0.55 if layout.get("loft", false) else float(layout["stairs"].get("landing_y", h * 0.55))
+		_build_stairs(root, layout["stairs"], floor_mat, wall_mat, landing_y)
 
 
 static func _wall_x(parent: Node3D, z: float, span: float, gap_w: float, gap_center: float, mat: Material, h: float) -> void:
@@ -108,22 +112,44 @@ static func _add_trim(parent: Node3D, w: float, d: float, mat: Material) -> void
 	parent.add_child(_box(Vector3(td, th, d), Vector3(-hw + td * 0.5, th * 0.5, 0), mat, false))
 
 
-static func _build_stairs(parent: Node3D, spec: Dictionary, floor_mat: Material, wall_mat: Material, room_h: float) -> void:
+static func _build_stairs(parent: Node3D, spec: Dictionary, floor_mat: Material, wall_mat: Material, landing_y: float) -> void:
 	var pos: Vector3 = spec["pos"]
 	var width: float = spec["size"].x
-	var riser := WorldScale.STAIR_RISER
-	var tread := WorldScale.STAIR_TREAD
-	var steps := maxi(1, int(round(room_h / riser)))
+	var riser: float = WorldScale.STAIR_RISER
+	var tread: float = WorldScale.STAIR_TREAD
+	var steps := maxi(1, int(round(landing_y / riser)))
+	var run: float = tread * float(steps)
 	for i in range(steps):
-		var y := i * riser + riser * 0.5
-		var z := pos.z + tread * (i + 0.5)
+		var y: float = i * riser + riser * 0.5
+		var z: float = pos.z + tread * (float(i) + 0.5)
 		parent.add_child(_box(
 			Vector3(width, riser * 0.95, tread * 0.92),
 			Vector3(pos.x, y, z),
 			floor_mat
 		))
-	var run := tread * float(steps)
-	parent.add_child(_box(Vector3(WALL, room_h, run), Vector3(pos.x - width * 0.5 - WALL * 0.5, room_h * 0.5, pos.z + run * 0.5), wall_mat))
+	# Landing deck — stairs must end on walkable floor, not thin air.
+	var landing_z: float = pos.z + run + tread * 0.35
+	var landing_w := width * 1.35
+	var landing_d: float = tread * 1.6
+	parent.add_child(_box(
+		Vector3(landing_w, WALL, landing_d),
+		Vector3(pos.x, landing_y, landing_z),
+		floor_mat
+	))
+	# Side guard — blocks falling off the open side of the run.
+	parent.add_child(_box(
+		Vector3(WALL, landing_y + 0.05, run + landing_d * 0.5),
+		Vector3(pos.x - width * 0.5 - WALL * 0.5, (landing_y + 0.05) * 0.5, pos.z + (run + landing_d * 0.5) * 0.5),
+		wall_mat
+	))
+	if spec.get("blocked", false):
+		# Dead-end stair run — seal top with a prop barrier (no loft connection).
+		parent.add_child(_box(
+			Vector3(width + 0.4, landing_y * 0.85, WALL),
+			Vector3(pos.x, landing_y * 0.42, landing_z + landing_d * 0.5 + WALL),
+			wall_mat,
+			false
+		))
 
 
 static func _box(size: Vector3, pos: Vector3, mat: Material, collision: bool = true) -> StaticBody3D:

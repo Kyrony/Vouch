@@ -21,7 +21,7 @@ const FLOOD_BLOCK_LEVEL: float = 0.75
 ## actually present before we bother teleporting them.
 var _player_nodes: Dictionary = {}
 ## Server-only: the Outside scene director, used to fetch roam spawn points.
-var _outside_director: Outside = null
+var _outside_director: Node = null
 
 
 func reset() -> void:
@@ -35,7 +35,7 @@ func server_register_player_node(peer_id: int, node: Node) -> void:
 	_player_nodes[peer_id] = node
 
 
-func server_register_outside(director: Outside) -> void:
+func server_register_outside(director: Node) -> void:
 	if not multiplayer.is_server():
 		return
 	_outside_director = director

@@ -12,6 +12,7 @@ class_name Interactable
 var is_destroyed: bool = false
 var _highlighted: bool = false
 var _mesh_overrides: Dictionary = {}
+var _outline_meshes: Array[MeshInstance3D] = []
 
 
 func _ready() -> void:
@@ -31,12 +32,40 @@ func set_highlighted(on: bool) -> void:
 			continue
 		if on:
 			var glow: StandardMaterial3D = _mesh_overrides[mesh].duplicate()
-			glow.emission_enabled = true
-			glow.emission = Color(0.35, 0.9, 1.0)
-			glow.emission_energy_multiplier = 0.55
+			if glow is StandardMaterial3D:
+				glow.emission_enabled = true
+				glow.emission = Color(0.55, 0.78, 0.82)
+				glow.emission_energy_multiplier = 0.28
+				glow.albedo_color = glow.albedo_color.lerp(Color(0.92, 0.94, 0.96), 0.08)
 			mesh.set_surface_override_material(0, glow)
 		else:
 			mesh.set_surface_override_material(0, _mesh_overrides[mesh])
+	_set_outline(on)
+
+
+func _set_outline(on: bool) -> void:
+	for om in _outline_meshes:
+		if is_instance_valid(om):
+			om.queue_free()
+	_outline_meshes.clear()
+	if not on:
+		return
+	for mesh: MeshInstance3D in _mesh_overrides.keys():
+		if not is_instance_valid(mesh):
+			continue
+		var outline := MeshInstance3D.new()
+		outline.mesh = mesh.mesh
+		outline.scale = mesh.scale * 1.03
+		outline.position = mesh.position
+		outline.rotation = mesh.rotation
+		var mat := StandardMaterial3D.new()
+		mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+		mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+		mat.albedo_color = Color(0.45, 0.72, 0.78, 0.18)
+		mat.cull_mode = BaseMaterial3D.CULL_FRONT
+		outline.set_surface_override_material(0, mat)
+		add_child(outline)
+		_outline_meshes.append(outline)
 
 
 func _cache_mesh_materials() -> void:

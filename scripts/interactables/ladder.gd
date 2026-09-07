@@ -32,6 +32,7 @@ func configure(p_top_y: float, p_room_index: int = -1) -> void:
 
 func _ready() -> void:
 	add_to_group("flammable_props")
+	add_to_group("wood_props")
 	collision_layer = 0
 	collision_mask = 4
 	monitorable = false
@@ -165,8 +166,9 @@ func server_place(by_peer_id: int) -> void:
 	is_leaning_anim = true
 	carrier_peer_id = -1
 	monitoring = false
-	_client_start_lean.rpc(_feet_pos, lean_yaw)
-	_apply_placed_feet(_feet_pos, lean_yaw)
+	var room := _find_room_parent(player)
+	_client_start_lean.rpc(_feet_pos, lean_yaw, room.get_path() if room else NodePath())
+	_apply_placed_feet(_feet_pos, lean_yaw, room)
 
 
 @rpc("authority", "call_remote", "reliable")
@@ -175,8 +177,11 @@ func _client_apply_carry(by_peer_id: int, carrying: bool) -> void:
 
 
 @rpc("authority", "call_remote", "reliable")
-func _client_start_lean(feet: Vector3, yaw: float) -> void:
-	_apply_placed_feet(feet, yaw)
+func _client_start_lean(feet: Vector3, yaw: float, room_path: NodePath = NodePath()) -> void:
+	var room: Node = null
+	if not room_path.is_empty():
+		room = get_node_or_null(room_path)
+	_apply_placed_feet(feet, yaw, room)
 	is_leaning_anim = multiplayer.is_server()
 
 
@@ -204,26 +209,29 @@ func _apply_carry(by_peer_id: int, carrying: bool) -> void:
 			position = Vector3(0.5, -0.3, -0.6)
 			rotation = Vector3.ZERO
 			lean_pitch = 0.0
+			visible = true
 	else:
-		var world := get_tree().root.get_node_or_null("Main/World")
-		if world:
-			reparent(world)
+		visible = true
 
 
-func _apply_placed_feet(feet: Vector3, yaw: float) -> void:
+func _apply_placed_feet(feet: Vector3, yaw: float, room: Node = null) -> void:
 	is_carried = false
 	is_placed = true
 	carrier_peer_id = -1
 	prompt_text = "Pick up ladder"
-	if get_parent() is Player:
-		var world := get_tree().root.get_node_or_null("Main/World")
-		if world:
-			reparent(world)
+	if get_parent() != null and (get_parent() as Node).is_in_group("players"):
+		if room:
+			reparent(room)
+		else:
+			var world := get_tree().root.get_node_or_null("Main/World")
+			if world:
+				reparent(world)
 	_feet_pos = feet
 	lean_yaw = yaw
 	global_position = feet
 	rotation = Vector3(0, yaw, 0)
 	scale = _base_scale
+	visible = true
 
 
 func _apply_lean_transform() -> void:
@@ -257,6 +265,18 @@ func _find_player(peer_id: int) -> Node3D:
 		if str(node.name) == str(peer_id):
 			return node as Node3D
 	return null
+
+
+func _find_room_parent(player: Node3D) -> Node:
+	var col := int(roundi(player.global_position.x / WorldScale.GRID_SPACING))
+	var row := int(roundi(player.global_position.z / WorldScale.GRID_SPACING))
+	var room_idx := row * 4 + col
+	var match_node := get_tree().root.get_node_or_null("Main/World/Match")
+	if match_node:
+		var pod := match_node.get_node_or_null("RoomsContainer/RoomPod_%d" % room_idx)
+		if pod:
+			return pod
+	return get_tree().root.get_node_or_null("Main/World")
 
 
 func _on_body_entered(body: Node) -> void:

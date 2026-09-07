@@ -34,7 +34,8 @@ static func build_horizontal(
 	inner_w: float,
 	inner_h: float,
 	open_near: bool,
-	open_far: bool
+	open_far: bool,
+	rise: float = 0.0
 ) -> void:
 	if length < 0.5:
 		return
@@ -42,9 +43,11 @@ static func build_horizontal(
 	var floor_mat := floor_material()
 	var ceil_mat := ceiling_material()
 	var cz := start_z + length * 0.5
+	var floor_y := -WALL_T * 0.5
+	var ceil_y := inner_h + WALL_T * 0.5
 
-	parent.add_child(_GEOM.call("box", Vector3(inner_w, WALL_T, length), Vector3(0, -WALL_T * 0.5, cz), floor_mat))
-	parent.add_child(_GEOM.call("box", Vector3(inner_w + WALL_T * 2.0, WALL_T, length + WALL_T * 2.0), Vector3(0, inner_h + WALL_T * 0.5, cz), ceil_mat, 0))
+	parent.add_child(_GEOM.call("box", Vector3(inner_w, WALL_T, length), Vector3(0, floor_y, cz), floor_mat))
+	parent.add_child(_GEOM.call("box", Vector3(inner_w + WALL_T * 2.0, WALL_T, length + WALL_T * 2.0), Vector3(0, ceil_y, cz), ceil_mat, 0))
 	parent.add_child(_GEOM.call("box", Vector3(WALL_T, inner_h, length), Vector3(-inner_w / 2.0 - WALL_T / 2.0, inner_h / 2.0, cz), wall_mat))
 	parent.add_child(_GEOM.call("box", Vector3(WALL_T, inner_h, length), Vector3(inner_w / 2.0 + WALL_T / 2.0, inner_h / 2.0, cz), wall_mat))
 	if not open_near:
@@ -52,26 +55,72 @@ static func build_horizontal(
 	if not open_far:
 		parent.add_child(_GEOM.call("box", Vector3(inner_w, inner_h, WALL_T), Vector3(0, inner_h / 2.0, start_z + length + WALL_T * 0.5), wall_mat))
 
+	if absf(rise) > 0.05:
+		build_ramp(parent, start_z, length, inner_w, rise)
+
 	_add_run_lights(parent, start_z, length, inner_w, inner_h)
+
+
+static func build_ramp(parent: Node3D, start_z: float, length: float, inner_w: float, rise: float) -> void:
+	var floor_mat := floor_material()
+	var segments := maxi(4, int(length / 2.5))
+	var seg_len := length / float(segments)
+	var seg_rise := rise / float(segments)
+	for i in range(segments):
+		var z0 := start_z + seg_len * float(i)
+		var z1 := start_z + seg_len * float(i + 1)
+		var cz := (z0 + z1) * 0.5
+		var y := seg_rise * (float(i) + 0.5)
+		var pitch := atan2(seg_rise, seg_len)
+		var ramp: Node = _GEOM.call("box", Vector3(inner_w * 0.92, WALL_T * 0.9, seg_len * 1.02), Vector3(0, y, cz), floor_mat, 1)
+		ramp.rotation.x = -pitch
+		parent.add_child(ramp)
 
 
 static func build_hub_connector(
 	parent: Node3D,
 	local_z: float,
 	inner_w: float,
-	inner_h: float
+	inner_h: float,
+	floor_rise: float = 0.0
 ) -> void:
 	var wall_mat := wall_material()
 	var floor_mat := floor_material()
 	var ceil_mat := ceiling_material()
 	var depth := inner_w * 0.85
 	var cz := local_z + depth * 0.5
+	var floor_y := -WALL_T * 0.5 + floor_rise * 0.35
 
-	parent.add_child(_GEOM.call("box", Vector3(inner_w, WALL_T, depth), Vector3(0, -WALL_T * 0.5, cz), floor_mat))
-	parent.add_child(_GEOM.call("box", Vector3(inner_w + WALL_T * 2.0, WALL_T, depth + WALL_T), Vector3(0, inner_h + WALL_T * 0.5, cz), ceil_mat, 0))
-	parent.add_child(_GEOM.call("box", Vector3(WALL_T, inner_h, depth), Vector3(-inner_w / 2.0 - WALL_T / 2.0, inner_h / 2.0, cz), wall_mat))
-	parent.add_child(_GEOM.call("box", Vector3(WALL_T, inner_h, depth), Vector3(inner_w / 2.0 + WALL_T / 2.0, inner_h / 2.0, cz), wall_mat))
-	_add_sconce(parent, Vector3(-inner_w * 0.35, inner_h - 0.35, cz), inner_h)
+	parent.add_child(_GEOM.call("box", Vector3(inner_w, WALL_T, depth), Vector3(0, floor_y, cz), floor_mat))
+	parent.add_child(_GEOM.call("box", Vector3(inner_w + WALL_T * 2.0, WALL_T, depth + WALL_T), Vector3(0, inner_h + WALL_T * 0.5 + floor_rise * 0.2, cz), ceil_mat, 0))
+	parent.add_child(_GEOM.call("box", Vector3(WALL_T, inner_h, depth), Vector3(-inner_w / 2.0 - WALL_T / 2.0, inner_h / 2.0 + floor_rise * 0.15, cz), wall_mat))
+	parent.add_child(_GEOM.call("box", Vector3(WALL_T, inner_h, depth), Vector3(inner_w / 2.0 + WALL_T / 2.0, inner_h / 2.0 + floor_rise * 0.15, cz), wall_mat))
+	if floor_rise > 0.05:
+		build_ramp(parent, local_z, depth, inner_w, floor_rise * 0.65)
+	_add_sconce(parent, Vector3(-inner_w * 0.35, inner_h - 0.35 + floor_rise * 0.1, cz), inner_h)
+	var mouth_z := local_z + depth
+	var mouth_y := maxf(floor_rise * 1.05, 0.2)
+	var landing: StaticBody3D = _GEOM.call(
+		"box",
+		Vector3(inner_w, 0.22, 1.4),
+		Vector3(0, mouth_y, mouth_z - 0.55),
+		floor_mat,
+		1
+	)
+	landing.name = "EscapeTunnelLanding"
+	landing.add_to_group("escape_tunnel_floor")
+	parent.add_child(landing)
+	_add_tunnel_mouth_marker(parent, mouth_z, floor_rise)
+
+
+static func _add_tunnel_mouth_marker(parent: Node3D, mouth_z: float, floor_rise: float) -> void:
+	var marker := Marker3D.new()
+	marker.name = "EscapeTunnelMouth"
+	marker.position = Vector3(0, maxf(floor_rise * 1.05, 0.2), mouth_z)
+	marker.add_to_group("escape_tunnel_mouth")
+	marker.add_to_group("escape_path_node")
+	parent.add_child(marker)
+	print("ESCAPE_PATH tunnel mouth local_pos=%s parent=%s" % [marker.position, parent.name])
 
 
 static func _add_run_lights(parent: Node3D, start_z: float, length: float, inner_w: float, inner_h: float) -> void:

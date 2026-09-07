@@ -6,6 +6,8 @@ class_name TestProjectile
 ## Visible projectile fired by the test gun. Host-authoritative hit
 ## detection against DummyTarget props.
 
+const _PATHS: GDScript = preload("res://scripts/interactable_script_paths.gd")
+
 const SPEED: float = 45.0
 const MAX_LIFETIME: float = 3.0
 
@@ -57,14 +59,15 @@ func _physics_process(delta: float) -> void:
 func _on_body_entered(body: Node) -> void:
 	if not multiplayer.is_server():
 		return
-	if body is DummyTarget:
-		body.server_register_hit()
+	if _PATHS.is_dummy_target(body):
+		body.call("server_register_hit")
 		queue_free()
 
 
 func _on_area_entered(area: Area3D) -> void:
 	if not multiplayer.is_server():
 		return
-	if area.get_parent() is DummyTarget:
-		(area.get_parent() as DummyTarget).server_register_hit()
+	var parent := area.get_parent()
+	if _PATHS.is_dummy_target(parent):
+		parent.call("server_register_hit")
 		queue_free()

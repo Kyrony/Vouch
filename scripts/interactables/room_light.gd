@@ -20,6 +20,7 @@ var _is_on: bool = true
 
 
 func _ready() -> void:
+	add_to_group("link_effects")
 	# Duplicate the material so toggling emission on this bulb doesn't
 	# mutate the shared graybox material resource used by every room.
 	var mat := bulb_mesh.get_active_material(0)
@@ -58,3 +59,15 @@ func _apply_visual(is_on: bool) -> void:
 	var mat := bulb_mesh.get_active_material(0)
 	if mat is StandardMaterial3D:
 		mat.emission_enabled = is_on and powered
+
+
+func client_link_pulse() -> void:
+	if not is_instance_valid(bulb_mesh):
+		return
+	var mat := bulb_mesh.get_active_material(0)
+	if mat is StandardMaterial3D:
+		var pulse := mat.duplicate()
+		pulse.emission_energy_multiplier = 1.2
+		bulb_mesh.set_surface_override_material(0, pulse)
+		var tween := create_tween()
+		tween.tween_callback(func(): _apply_visual(_is_on)).set_delay(0.35)
