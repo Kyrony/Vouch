@@ -104,9 +104,8 @@ persists locally between sessions.
 - **Hand-sealed graybox rooms (friends-MVP)**: six perfect axis-aligned bunker
   boxes (`Room_01`–`Room_06`) + sealed `Room_PM`. Floor/walls/ceiling only;
   one **+Z** door opening; `PlayerSpawn` at geometric center `(0, 0, 0)`.
-  Mesh = collision on every piece. **Escape tunnels + EscapeHub are gated
-  off** by default (`VOUCH_ESCAPE_PATH=1` to re-enable). Runtime
-  `room_geometry.gd` is frozen.
+  Mesh = collision on every piece. **Bunker-only default:** no tunnels, hub,
+  item props, phone, or walkie (`VOUCH_ESCAPE_PATH=1` for full loop).
 - **16-slot item spawn**: every room has **16 fixed `ItemSpawnSlot` markers**.
   At match start `ItemSpawnSystem` shuffles which slot each interactable
   (phone, switch, camera, valve, ladder, props, etc.) occupies — no free-float

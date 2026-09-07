@@ -10,6 +10,7 @@ const _SLOT_SCRIPT: GDScript = preload("res://scripts/rooms/item_spawn_slot.gd")
 const _TUNNEL: GDScript = preload("res://scripts/rooms/tunnel_kit.gd")
 const _NEON: GDScript = preload("res://scripts/rooms/neon_theme.gd")
 const _SPAWN_VALIDATOR: GDScript = preload("res://scripts/rooms/graybox_spawn_validator.gd")
+const _BUNKER: GDScript = preload("res://scripts/rooms/graybox_bunker_validator.gd")
 
 const WALL: float = WorldScale.WALL_THICK
 
@@ -90,7 +91,11 @@ func configure(data: Dictionary) -> void:
 	rng.seed = data["rng_seed"]
 
 	if is_puppet_master:
-		_configure_pm(data, rng)
+		if not EscapePathSettings.bunker_only():
+			_configure_pm(data, rng)
+		return
+
+	if EscapePathSettings.bunker_only():
 		return
 
 	if _theme.is_empty():
@@ -218,6 +223,10 @@ func _corridor_out_position() -> Vector3:
 
 static func validate_spawn(room: Node3D) -> Array[String]:
 	return _SPAWN_VALIDATOR.call("validate", room)
+
+
+static func validate_bunker(room: Node3D) -> Array[String]:
+	return _BUNKER.call("validate", room)
 func _ensure_markers() -> void:
 	spawn_point = get_node_or_null("PlayerSpawn") as Marker3D
 	if spawn_point == null:

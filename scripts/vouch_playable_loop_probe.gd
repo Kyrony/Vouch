@@ -1,13 +1,14 @@
 extends SceneTree
 ## Uses the same Match.tscn + RoomsSpawner.spawn path as live Start Match.
 ## Run: godot4 --headless --path . -s res://scripts/vouch_playable_loop_probe.gd
-## Full escape path: VOUCH_ESCAPE_PATH=1 godot4 --headless --path . -s res://scripts/vouch_playable_loop_probe.gd
+## Full escape + items: VOUCH_ESCAPE_PATH=1 godot4 --headless --path . -s res://scripts/vouch_playable_loop_probe.gd
 
-const _PLAYABLE: GDScript = preload("res://scripts/rooms/playable_loop_spawns.gd")
 const _ROOM_POD: GDScript = preload("res://scripts/room_pod.gd")
 const _PATH: GDScript = preload("res://scripts/rooms/escape_path_validator.gd")
-const _ESCAPE_PATH: GDScript = preload("res://scripts/autoload/escape_path_settings.gd")
 const _SPAWN: GDScript = preload("res://scripts/rooms/graybox_spawn_validator.gd")
+const _BUNKER: GDScript = preload("res://scripts/rooms/graybox_bunker_validator.gd")
+const _PLAYABLE: GDScript = preload("res://scripts/rooms/playable_loop_spawns.gd")
+const _ESCAPE_SETTINGS: GDScript = preload("res://scripts/autoload/escape_path_settings.gd")
 
 
 func _initialize() -> void:
@@ -18,7 +19,7 @@ func _run_probe() -> void:
 	await process_frame
 	var err: String = await _probe()
 	if err.is_empty():
-		var mode := "escape path" if _ESCAPE_PATH.escape_path_enabled() else "bunker-only"
+		var mode := "escape path" if _ESCAPE_SETTINGS.escape_path_enabled() else "bunker-only"
 		print("PLAYABLE LOOP PROBE OK (live Match API, 2 rooms, %s)" % mode)
 		quit(0)
 	push_error("PLAYABLE LOOP PROBE FAILED: %s" % err)
@@ -43,9 +44,38 @@ func _probe() -> String:
 	await physics_frame
 	await physics_frame
 
-	if _ESCAPE_PATH.escape_path_enabled():
+	if _ESCAPE_SETTINGS.bunker_only():
+		return _probe_bunker_only(match_node, main)
+	if _ESCAPE_SETTINGS.escape_path_enabled():
 		return _probe_escape_path(match_node, main)
 	return _probe_bunker_only(match_node, main)
+
+
+func _probe_bunker_only(match_node: Node, main: Node) -> String:
+	if match_node.get_node_or_null("EscapeHub") != null:
+		main.queue_free()
+		return "EscapeHub must not exist in bunker-only mode"
+	var mouths: Array = _PATH.call("_collect_tunnel_mouths", match_node)
+	if not mouths.is_empty():
+		main.queue_free()
+		return "tunnel mouths forbidden in bunker-only mode"
+	var room0: Node = _first_room_pod(match_node)
+	if room0 == null:
+		main.queue_free()
+		return "no RoomPod under RoomsContainer"
+	var map0: Node = room0.get_child(0)
+	var spawn_errors: Array = _SPAWN.call("validate", map0)
+	if not spawn_errors.is_empty():
+		main.queue_free()
+		return "; ".join(spawn_errors)
+	var bunker_errors: Array = _BUNKER.call("validate", map0)
+	if not bunker_errors.is_empty():
+		main.queue_free()
+		return "; ".join(bunker_errors)
+	var spawn_local: Vector3 = map0.get_node("PlayerSpawn").position
+	print("  bunker-only: spawn=%s geometry-only" % spawn_local)
+	main.queue_free()
+	return ""
 
 
 func _probe_escape_path(match_node: Node, main: Node) -> String:
@@ -73,33 +103,6 @@ func _probe_escape_path(match_node: Node, main: Node) -> String:
 		main.queue_free()
 		return "; ".join(path_errors)
 
-	return _probe_comms(match_node, main, ramp_count, mouths.size())
-
-
-func _probe_bunker_only(match_node: Node, main: Node) -> String:
-	if match_node.get_node_or_null("EscapeHub") != null:
-		main.queue_free()
-		return "EscapeHub must not exist when escape path disabled"
-	var mouths: Array = _PATH.call("_collect_tunnel_mouths", match_node)
-	if not mouths.is_empty():
-		main.queue_free()
-		return "tunnel mouths should not exist when escape path disabled"
-	var room0: Node = _first_room_pod(match_node)
-	if room0 == null:
-		main.queue_free()
-		return "no RoomPod under RoomsContainer"
-	var map0: Node = room0.get_child(0)
-	if map0.get_node_or_null("EscapePoint") != null:
-		main.queue_free()
-		return "EscapePoint should not spawn when escape path disabled"
-	var spawn_errors: Array = _SPAWN.call("validate", map0)
-	if not spawn_errors.is_empty():
-		main.queue_free()
-		return "; ".join(spawn_errors)
-	return _probe_comms(match_node, main, 0, 0)
-
-
-func _probe_comms(match_node: Node, main: Node, ramp_count: int, mouth_count: int) -> String:
 	var room0: Node = _first_room_pod(match_node)
 	if room0 == null:
 		main.queue_free()
@@ -113,7 +116,7 @@ func _probe_comms(match_node: Node, main: Node, ramp_count: int, mouth_count: in
 
 	print("  ramp_segments=%d tunnel_mouths=%d room0_phone=%.2fm" % [
 		ramp_count,
-		mouth_count,
+		mouths.size(),
 		spawn_local.distance_to(map0.get_node("Phone").position),
 	])
 	main.queue_free()

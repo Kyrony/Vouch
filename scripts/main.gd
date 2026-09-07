@@ -6,6 +6,8 @@ const _ROOM_POD: GDScript = preload("res://scripts/room_pod.gd")
 const _PLAYABLE: GDScript = preload("res://scripts/rooms/playable_loop_spawns.gd")
 const _PATH: GDScript = preload("res://scripts/rooms/escape_path_validator.gd")
 const _SPAWN: GDScript = preload("res://scripts/rooms/graybox_spawn_validator.gd")
+const _BUNKER: GDScript = preload("res://scripts/rooms/graybox_bunker_validator.gd")
+const _ESCAPE_SETTINGS: GDScript = preload("res://scripts/autoload/escape_path_settings.gd")
 const EXPECTED_SLOT_COUNT: int = 16
 
 @onready var lobby: Control = $Lobby
@@ -73,6 +75,8 @@ func _probe_playable_loop_match_path() -> String:
 		return spawn_err
 	await get_tree().process_frame
 	await get_tree().physics_frame
+	if _ESCAPE_SETTINGS.bunker_only():
+		return _probe_playable_loop_bunker_only(match_node)
 	if EscapePathSettings.is_enabled():
 		return _probe_playable_loop_escape_path(match_node)
 	return _probe_playable_loop_bunker_only(match_node)
@@ -110,12 +114,15 @@ func _probe_playable_loop_bunker_only(match_node: Node) -> String:
 	if room0 == null:
 		return "no RoomPod spawned"
 	var map: Node = room0.get_child(0)
-	if map.get_node_or_null("EscapePoint") != null:
-		return "EscapePoint door should not spawn when escape path disabled"
 	var spawn_errors: Array = _SPAWN.call("validate", map)
 	if not spawn_errors.is_empty():
 		return "; ".join(spawn_errors)
-	return _probe_playable_loop_comms(match_node, 0, 0)
+	var bunker_errors: Array = _BUNKER.call("validate", map)
+	if not bunker_errors.is_empty():
+		return "; ".join(bunker_errors)
+	var spawn_local: Vector3 = map.get_node("PlayerSpawn").position
+	print("  playable loop (bunker-only): spawn=%s props=0" % spawn_local)
+	return ""
 
 
 func _probe_playable_loop_comms(match_node: Node, mouth_count: int, ramp_count: int) -> String:
@@ -288,6 +295,10 @@ func _run_room_spawn_test() -> void:
 
 
 func _run_attachment_test() -> void:
+	if _ESCAPE_SETTINGS.bunker_only():
+		print("=== ATTACHMENT TEST SKIPPED (bunker-only friends-MVP) ===")
+		get_tree().quit(0)
+		return
 	print("=== ATTACHMENT TEST START ===")
 	for room_id in [1, 3, 5, 6]:
 		var room = _spawn_test_room(room_id, true)
@@ -337,6 +348,16 @@ func _assert_room_map_built(room_pod: Node, label: String) -> String:
 		return "%s: child missing configure() — room_map.gd did not attach" % label
 	if map.get_node_or_null("Geometry") == null:
 		return "%s: map has no Geometry node" % label
+	if map.get_node_or_null("PlayerSpawn") == null:
+		return "%s: PlayerSpawn marker missing" % label
+	var spawn_errors: Array = _SPAWN.call("validate", map)
+	if not spawn_errors.is_empty():
+		return "%s: %s" % [label, "; ".join(spawn_errors)]
+	if _ESCAPE_SETTINGS.bunker_only():
+		var bunker_errors: Array = _BUNKER.call("validate", map)
+		if not bunker_errors.is_empty():
+			return "%s: %s" % [label, "; ".join(bunker_errors)]
+		return ""
 	var slots = map.get_node_or_null("ItemSpawns")
 	if slots == null:
 		return "%s: map has no ItemSpawns" % label
@@ -348,9 +369,6 @@ func _assert_room_map_built(room_pod: Node, label: String) -> String:
 		return "%s: EscapeDoor marker missing" % label
 	if map.get_node_or_null("EscapeAttach") == null:
 		return "%s: EscapeAttach marker missing" % label
-	var spawn_errors: Array = _SPAWN.call("validate", map)
-	if not spawn_errors.is_empty():
-		return "%s: %s" % [label, "; ".join(spawn_errors)]
 	var spawn_local: Vector3 = map.get_node("PlayerSpawn").position if map.has_node("PlayerSpawn") else Vector3.ZERO
 	var comms_errors: Array = _PLAYABLE.call("validate", map, spawn_local)
 	if not comms_errors.is_empty():
