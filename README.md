@@ -104,7 +104,9 @@ persists locally between sessions.
 - **Hand-sealed graybox rooms (friends-MVP)**: six perfect axis-aligned bunker
   boxes (`Room_01`–`Room_06`) + sealed `Room_PM`. Floor/walls/ceiling only;
   one **+Z** door opening; `PlayerSpawn` at geometric center `(0, 0, 0)`.
-  Mesh = collision on every piece. Runtime `room_geometry.gd` is frozen.
+  Mesh = collision on every piece. **Escape tunnels + EscapeHub are gated
+  off** by default (`VOUCH_ESCAPE_PATH=1` to re-enable). Runtime
+  `room_geometry.gd` is frozen.
 - **16-slot item spawn**: every room has **16 fixed `ItemSpawnSlot` markers**.
   At match start `ItemSpawnSystem` shuffles which slot each interactable
   (phone, switch, camera, valve, ladder, props, etc.) occupies — no free-float
@@ -268,8 +270,9 @@ VOUCH_PLAYER_SCRIPT_TEST=1 godot4 --headless --path .
 rm -rf .godot
 godot4 --headless --path . -s res://scripts/vouch_player_spawn_probe.gd
 
-# Playable loop (phone/walkie/hub ramp) — mirrors live Match._spawn_room_pod path:
+# Playable loop (phone/walkie) — bunker-only by default; full escape path needs VOUCH_ESCAPE_PATH=1:
 VOUCH_PLAYABLE_LOOP_TEST=1 godot4 --headless --path .
+VOUCH_ESCAPE_PATH=1 VOUCH_PLAYABLE_LOOP_TEST=1 godot4 --headless --path .
 godot4 --headless --path . -s res://scripts/vouch_playable_loop_probe.gd
 
 VOUCH_ROOM_SPAWN_TEST=1 godot4 --headless --path .

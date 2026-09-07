@@ -73,7 +73,12 @@ func _probe_playable_loop_match_path() -> String:
 		return spawn_err
 	await get_tree().process_frame
 	await get_tree().physics_frame
-	await get_tree().physics_frame
+	if EscapePathSettings.is_enabled():
+		return _probe_playable_loop_escape_path(match_node)
+	return _probe_playable_loop_bunker_only(match_node)
+
+
+func _probe_playable_loop_escape_path(match_node: Node) -> String:
 	var hub := match_node.get_node_or_null("EscapeHub")
 	if hub == null:
 		return "EscapeHub missing"
@@ -92,11 +97,29 @@ func _probe_playable_loop_match_path() -> String:
 	var path_errors: Array = _PATH.call("validate", match_node)
 	if not path_errors.is_empty():
 		return "; ".join(path_errors)
-	var room0: Node = null
-	for c in match_node.get_node("RoomsContainer").get_children():
-		if str(c.name).begins_with("RoomPod"):
-			room0 = c
-			break
+	return _probe_playable_loop_comms(match_node, mouths.size(), ramp_count)
+
+
+func _probe_playable_loop_bunker_only(match_node: Node) -> String:
+	if match_node.get_node_or_null("EscapeHub") != null:
+		return "EscapeHub must not exist when escape path is disabled"
+	var mouths: Array = _PATH.call("_collect_tunnel_mouths", match_node)
+	if not mouths.is_empty():
+		return "tunnel mouths should not exist when escape path disabled (got %d)" % mouths.size()
+	var room0: Node = _first_room_pod(match_node)
+	if room0 == null:
+		return "no RoomPod spawned"
+	var map: Node = room0.get_child(0)
+	if map.get_node_or_null("EscapePoint") != null:
+		return "EscapePoint door should not spawn when escape path disabled"
+	var spawn_errors: Array = _SPAWN.call("validate", map)
+	if not spawn_errors.is_empty():
+		return "; ".join(spawn_errors)
+	return _probe_playable_loop_comms(match_node, 0, 0)
+
+
+func _probe_playable_loop_comms(match_node: Node, mouth_count: int, ramp_count: int) -> String:
+	var room0: Node = _first_room_pod(match_node)
 	if room0 == null:
 		return "no RoomPod spawned"
 	var map: Node = room0.get_child(0)
@@ -104,12 +127,25 @@ func _probe_playable_loop_match_path() -> String:
 	var comms_errors: Array = _PLAYABLE.call("validate", map, spawn_local)
 	if not comms_errors.is_empty():
 		return "; ".join(comms_errors)
-	print("  playable loop: mouths=%d hub_ramps=%d phone_dist=%.2f" % [
-		mouths.size(),
-		ramp_count,
-		spawn_local.distance_to(map.get_node("Phone").position),
-	])
+	if EscapePathSettings.is_enabled():
+		print("  playable loop: mouths=%d hub_ramps=%d phone_dist=%.2f" % [
+			mouth_count,
+			ramp_count,
+			spawn_local.distance_to(map.get_node("Phone").position),
+		])
+	else:
+		print("  playable loop (bunker-only): phone_dist=%.2f spawn=%s" % [
+			spawn_local.distance_to(map.get_node("Phone").position),
+			spawn_local,
+		])
 	return ""
+
+
+func _first_room_pod(match_node: Node) -> Node:
+	for c in match_node.get_node("RoomsContainer").get_children():
+		if str(c.name).begins_with("RoomPod"):
+			return c
+	return null
 
 
 func _run_player_script_test() -> void:

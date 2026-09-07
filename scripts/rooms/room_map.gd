@@ -133,12 +133,13 @@ func configure(data: Dictionary) -> void:
 
 	_ITEMS.call("spawn_room_effects", self, ctx)
 
-	var escape_pos: Vector3 = _escape_position()
-	if escape_kind == EscapeKind.VENT:
-		escape_pos = _vent_escape_position()
-	_ITEMS.call("spawn_escape", self, ctx, escape_pos, escape_kind == EscapeKind.VENT)
-	if not is_puppet_master:
-		_build_escape_corridor(_corridor_out_position(), data["room_index"])
+	if EscapePathSettings.is_enabled():
+		var escape_pos: Vector3 = _escape_position()
+		if escape_kind == EscapeKind.VENT:
+			escape_pos = _vent_escape_position()
+		_ITEMS.call("spawn_escape", self, ctx, escape_pos, escape_kind == EscapeKind.VENT)
+		if not is_puppet_master:
+			_build_escape_corridor(_corridor_out_position(), data["room_index"])
 
 	if data.get("requires_code", false):
 		mark_escape_locked()
@@ -303,6 +304,9 @@ func _build_pm_monitors() -> void:
 
 
 func _build_escape_corridor(corridor_out: Vector3, idx: int) -> void:
+	# TODO(post-MVP): replace ramp stack with a short flat hall from +Z door when re-enabled.
+	if not EscapePathSettings.is_enabled():
+		return
 	var grid_pos: Vector3 = WorldScale.room_grid_position(idx)
 	var dist := Vector2(grid_pos.x, grid_pos.z).length()
 	var raw_horiz := dist - WorldScale.HUB_SHAFT_RADIUS - depth * 0.5

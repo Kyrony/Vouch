@@ -297,7 +297,8 @@ func _spawn_room_pod(data: Dictionary) -> Node:
 		push_error("Match: RoomPod scene root is not a RoomPod (script=%s)" % str(raw_node.get_script()))
 		raw_node.free()
 		return null
-	_ensure_escape_hub(int(data.get("total_rooms", 4)))
+	if EscapePathSettings.is_enabled():
+		_ensure_escape_hub(int(data.get("total_rooms", 4)))
 	var grid_pos: Vector3 = room_grid_position(data["room_index"])
 	var to_hub := Vector3(-grid_pos.x, 0.0, -grid_pos.z)
 	if to_hub.length() < 0.5:
@@ -313,6 +314,8 @@ func _spawn_room_pod(data: Dictionary) -> Node:
 
 
 func _ensure_escape_hub(room_count: int) -> void:
+	if not EscapePathSettings.is_enabled():
+		return
 	if is_instance_valid(_escape_hub) and _escape_hub_room_count == room_count:
 		return
 	if is_instance_valid(_escape_hub):
@@ -396,7 +399,7 @@ func _log_live_escape_path(total_rooms: int, room_pods: int, mouth_count: int) -
 		push_warning("LIVE_ESCAPE only %d tunnel mouths for %d room pods — PM rooms have no tunnel; otherwise missing corridor" % [
 			mouth_count, room_pods
 		])
-	if OS.get_environment("VOUCH_PLAYABLE_LOOP_TEST") == "1":
+	if OS.get_environment("VOUCH_PLAYABLE_LOOP_TEST") == "1" and EscapePathSettings.is_enabled():
 		var path_errors: Array = _PATH.call("validate", self)
 		if not path_errors.is_empty():
 			push_warning("LIVE_ESCAPE path validation failed: %s" % "; ".join(path_errors))
