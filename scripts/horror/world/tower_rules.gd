@@ -193,7 +193,7 @@ func _nearest_phone_distance(world_pos: Vector3) -> float:
 func _pm_origin(world: Node3D) -> Vector3:
 	if world.has_method("get_pm_spawn_transform"):
 		return world.call("get_pm_spawn_transform").origin
-	return Vector3(17.3, 0.1, 0)
+	return Vector3(14.8, 0.12, 0)
 
 
 func _nearest(nodes: Array[Node3D], origin: Vector3) -> Node3D:

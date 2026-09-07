@@ -64,6 +64,9 @@ static func validate_world(world: Node3D) -> String:
 	var kit_err := validate_kit_graybox(world)
 	if not kit_err.is_empty():
 		return kit_err
+	var outdoor_err := validate_outdoor_terrain(world)
+	if not outdoor_err.is_empty():
+		return outdoor_err
 	return ""
 
 
@@ -119,6 +122,56 @@ static func validate_v05_layout(world: Node3D) -> String:
 	var span_z: float = max_z - min_z
 	if span_x < 28.0 or span_x > 56.0 or span_z < 22.0 or span_z > 48.0:
 		return "neighborhood span %.1fx%.1f not ~40m v0.5" % [span_x, span_z]
+	return ""
+
+
+static func validate_outdoor_terrain(world: Node3D) -> String:
+	var outdoor := world.get_node_or_null("Outdoor")
+	if outdoor == null:
+		return "Outdoor missing"
+	var terrain := outdoor.get_node_or_null("Terrain")
+	if terrain == null:
+		return "Outdoor/Terrain missing (phase 1 heightfield)"
+	if terrain.get_node_or_null("CollisionShape3D") == null:
+		return "Outdoor/Terrain missing collision"
+	var span_x: float = float(terrain.get_meta("span_x", 0.0))
+	var span_z: float = float(terrain.get_meta("span_z", 0.0))
+	if span_x < 80.0 or span_z < 64.0:
+		return "outdoor terrain too small (%.1fx%.1f) — need a large walkable area" % [span_x, span_z]
+	var hills := outdoor.get_node_or_null("Hills")
+	if hills == null:
+		return "Outdoor/Hills missing"
+	if hills.get_child_count() < 3:
+		return "expected a few hills, got %d" % hills.get_child_count()
+	var roads := outdoor.get_node_or_null("Roads")
+	if roads == null or roads.get_child_count() < 4:
+		return "Outdoor/Roads missing street pieces"
+	var spawns: Array = world.get_tree().get_nodes_in_group("outdoor_player_spawns")
+	if spawns.size() < 5:
+		return "expected outdoor player spawns (4 families + PM), got %d" % spawns.size()
+	if not world.has_method("get_family_spawn_transform"):
+		return "HorrorWorld missing get_family_spawn_transform"
+	for i in 4:
+		var fam_xf = world.call("get_family_spawn_transform", i)
+		var ferr: String = _spawn_must_be_outdoor(fam_xf.origin, "family %d" % i)
+		if not ferr.is_empty():
+			return ferr
+	var pm_xf = world.call("get_pm_spawn_transform")
+	var perr: String = _spawn_must_be_outdoor(pm_xf.origin, "PM")
+	if not perr.is_empty():
+		return perr
+	var bunker: Node3D = world.find_child("Bunker", true, false) as Node3D
+	if bunker != null and pm.origin.distance_to(bunker.global_position) < 5.0:
+		if absf(pm.origin.y - bunker.global_position.y) < 2.5:
+			return "PM spawn is inside the bunker"
+	return ""
+
+
+static func _spawn_must_be_outdoor(origin: Vector3, label: String) -> String:
+	if origin.y < _V05.OUTDOOR_SPAWN_Y_MIN:
+		return "%s spawn is underground y=%.2f" % [label, origin.y]
+	if origin.y > 4.5:
+		return "%s spawn is not on outdoor ground (y=%.2f)" % [label, origin.y]
 	return ""
 
 

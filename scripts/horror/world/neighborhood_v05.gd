@@ -49,6 +49,17 @@ const GARDEN_WELL_POS := Vector3(-5.0, 0, -14.0)
 const CAR_TRUNK_POS := Vector3(3.2, 0, 16.0)
 const SOFT_ESCAPE_POS := Vector3(-18.0, 0.5, 0.0)
 
+## Phase 1 Host Match spawns — outdoor street / yard, not bedrooms or bunker.
+## Y is ground-ish; OutdoorBuilder samples the heightfield and writes the marker.
+const OUTDOOR_FAMILY_SPAWNS: Array[Vector3] = [
+	Vector3(0.0, 0.12, -4.8),
+	Vector3(4.8, 0.12, 0.0),
+	Vector3(0.0, 0.12, 4.8),
+	Vector3(-4.8, 0.12, 0.0),
+]
+const OUTDOOR_PM_SPAWN := Vector3(14.8, 0.12, 0.0)
+const OUTDOOR_SPAWN_Y_MIN: float = -0.35
+
 const PM_L4_ROOMS: Array[String] = [
 	"Attic",
 	"MasterBedroom",
