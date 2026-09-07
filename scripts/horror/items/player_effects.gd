@@ -62,7 +62,10 @@ func server_apply_effect(peer_id: int, effect_id: String) -> bool:
 		return true
 	var effects: Array = _active_effects[peer_id]
 	for e in effects:
-		if e["id"] == effect_id and float(e.get("cooldown_left", 0.0)) > 0.0:
+		if e["id"] != effect_id:
+			continue
+		# One aura at a time — do not stack a 2nd activate on top of duration or cooldown.
+		if float(e.get("time_left", 0.0)) > 0.0 or float(e.get("cooldown_left", 0.0)) > 0.0:
 			return false
 	effects.append({
 		"id": effect_id,
@@ -115,13 +118,20 @@ func server_tick(delta: float) -> void:
 func server_apply_life_steal(victim_peer: int, pm_peer: int, dist: float, max_range: float, delta: float) -> void:
 	if not multiplayer.is_server():
 		return
-	var def: Dictionary = _EffectDefs.get_def("life_steal_aura")
-	var t := clampf(1.0 - (dist / maxf(max_range, 0.1)), 0.0, 1.0)
-	var rate: float = lerpf(float(def.get("min_drain_per_sec", 4.0)), float(def.get("max_drain_per_sec", 22.0)), t)
+	var rate: float = life_steal_drain_per_sec(dist, max_range)
 	PlayerHealth.server_apply_drain(victim_peer, rate * delta, pm_peer)
 	_apply_meter_delta(victim_peer, _EffectDefs.Meter.FEAR, rate * 0.15 * delta)
 	if pm_peer > 0:
 		_apply_meter_delta(pm_peer, _EffectDefs.Meter.STAMINA, -rate * 0.08 * delta)
+
+
+static func life_steal_drain_per_sec(dist: float, max_range: float) -> float:
+	var def: Dictionary = _EffectDefs.get_def("life_steal_aura")
+	var span := maxf(max_range, 0.1)
+	var proximity := clampf(1.0 - (dist / span), 0.0, 1.0)
+	# Quadratic ramp: edge stays a trickle; close range is the only real bite.
+	var t := proximity * proximity
+	return lerpf(float(def.get("min_drain_per_sec", 2.0)), float(def.get("max_drain_per_sec", 14.0)), t)
 
 
 func _tick_effects(peer_id: int, delta: float) -> void:

@@ -110,15 +110,24 @@ static func _server_spawn_horror_player(match_node: Node, peer_id: int, xform: T
 	if player == null:
 		push_error("MatchHorror: failed to spawn player %d" % peer_id)
 		return
-	if is_pm:
-		attach_pm_controller(player)
+	# Controller is attached in Match._spawn_player (all peers). Do not attach again.
 	EscapeSystem.server_register_player_node(peer_id, player)
 
 
 static func attach_pm_controller(player: Node) -> void:
+	if player == null:
+		return
+	var existing := player.get_node_or_null("PuppetMasterController")
+	if existing:
+		if existing.has_method("setup"):
+			existing.call("setup", player)
+		player.set("is_horror_puppet_master", true)
+		return
 	var ctrl := Node.new()
 	ctrl.name = "PuppetMasterController"
 	ctrl.set_script(load("res://scripts/horror/puppet_master_controller.gd"))
+	ctrl.set_process(false)
+	ctrl.set_physics_process(false)
 	player.add_child(ctrl)
 	ctrl.call("setup", player)
 	player.set("is_horror_puppet_master", true)

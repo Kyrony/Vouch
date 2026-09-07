@@ -76,3 +76,18 @@ static func validate_tower_roll(world: Node3D) -> String:
 	if forced_node.global_position.distance_to(pm) > max_d:
 		return "forced tower %s too far from PM (%.1f)" % [forced, forced_node.global_position.distance_to(pm)]
 	return ""
+
+
+static func validate_life_steal() -> String:
+	var fx: GDScript = load("res://scripts/horror/items/player_effects.gd")
+	if fx == null:
+		return "player_effects.gd failed to load"
+	var close: float = float(fx.call("life_steal_drain_per_sec", 0.5, 8.0))
+	var edge: float = float(fx.call("life_steal_drain_per_sec", 7.8, 8.0))
+	if close < 8.0 or close > 16.0:
+		return "close-range drain %.2f HP/s not in several-second TTK band" % close
+	if edge > close * 0.35:
+		return "edge drain %.2f HP/s too close to point-blank %.2f" % [edge, close]
+	if 100.0 / maxf(close, 0.01) < 6.0:
+		return "close TTK %.1fs is faster than several seconds" % (100.0 / close)
+	return ""

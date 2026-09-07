@@ -88,10 +88,35 @@ func _probe() -> String:
 		return "Player script missing"
 
 	player.set("horror_mode", true)
+	player.set("is_horror_puppet_master", true)
 	player.set("faction_id", "probe")
 	player.position = world.call("get_family_spawn_transform", 0).origin + Vector3(0, 1, 0)
+	player.set_multiplayer_authority(1)
 	match_node.get_node("PlayersContainer").add_child(player)
+	horror_script.call("attach_pm_controller", player)
+	horror_script.call("attach_pm_controller", player)
 	await physics_frame
+	if player.get_node_or_null("PuppetMasterController") == null:
+		player.free()
+		main.queue_free()
+		return "PuppetMasterController missing after attach"
+	if player.get_node_or_null("HUD/LifeStealBar") == null or player.get_node_or_null("HUD/LifeStealCooldown") == null:
+		player.free()
+		main.queue_free()
+		return "life-steal ProgressBars missing"
+	var steal_err: String = _CHECK.call("validate_life_steal")
+	if not steal_err.is_empty():
+		player.free()
+		main.queue_free()
+		return steal_err
+	var pm_count := 0
+	for child in player.get_children():
+		if str(child.name).begins_with("PuppetMasterController"):
+			pm_count += 1
+	if pm_count != 1:
+		player.free()
+		main.queue_free()
+		return "expected 1 PuppetMasterController, got %d" % pm_count
 
 	print("  horror spawns=%d pickups=%d child_points=%d towers=%d neighborhood=OK" % [
 		spawn_count, pickups.get_child_count(), child_points.size(),

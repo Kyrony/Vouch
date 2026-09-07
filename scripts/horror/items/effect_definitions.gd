@@ -11,8 +11,9 @@ const EFFECTS: Dictionary = {
 		"duration": 6.0,
 		"cooldown": 10.0,
 		"radius": 8.0,
-		"max_drain_per_sec": 22.0,
-		"min_drain_per_sec": 4.0,
+		# Close-range TTK ~7s (100 / 14); edge of 8m is a trickle (~50s).
+		"max_drain_per_sec": 14.0,
+		"min_drain_per_sec": 2.0,
 	},
 	"fear_pulse": {
 		"meter": Meter.FEAR,

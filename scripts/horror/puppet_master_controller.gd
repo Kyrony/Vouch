@@ -12,55 +12,74 @@ var _possession_target: Node3D = null
 var _original_peer: int = -1
 var _floating: bool = false
 var _steal_active: bool = false
-var _steal_bar: ProgressBar
-var _cooldown_bar: ProgressBar
+var _steal_bar: ProgressBar = null
+var _cooldown_bar: ProgressBar = null
 var _ring_root: Node3D
 var _steal_time_left: float = 0.0
 var _steal_cd_left: float = 0.0
 var _steal_duration: float = 6.0
 var _steal_cooldown: float = 10.0
+var _setup_done: bool = false
+
+
+func _init() -> void:
+	set_process(false)
+	set_physics_process(false)
 
 
 func setup(player: CharacterBody3D) -> void:
 	_player = player
 	set_process(false)
 	set_physics_process(false)
+	_ensure_steal_bars()
 	if _player.is_multiplayer_authority():
 		set_process(true)
 		set_physics_process(true)
-		_build_steal_bars()
 		_build_radius_rings()
-		if PlayerEffects.has_signal("local_effect_state"):
+		if PlayerEffects.has_signal("local_effect_state") and not PlayerEffects.local_effect_state.is_connected(_on_local_effect_state):
 			PlayerEffects.local_effect_state.connect(_on_local_effect_state)
+	_setup_done = true
 
 
-func _build_steal_bars() -> void:
-	var hud: CanvasLayer = _player.get_node("HUD")
-	_steal_bar = ProgressBar.new()
-	_steal_bar.name = "LifeStealBar"
-	_steal_bar.visible = false
-	_steal_bar.custom_minimum_size = Vector2(180, 14)
-	_steal_bar.set_anchors_preset(Control.PRESET_CENTER_TOP)
-	_steal_bar.offset_top = 80
-	_steal_bar.offset_left = -90
-	_steal_bar.offset_right = 90
-	_steal_bar.show_percentage = false
-	hud.add_child(_steal_bar)
-
-	_cooldown_bar = ProgressBar.new()
-	_cooldown_bar.name = "LifeStealCooldown"
-	_cooldown_bar.visible = false
-	_cooldown_bar.custom_minimum_size = Vector2(180, 8)
-	_cooldown_bar.set_anchors_preset(Control.PRESET_CENTER_TOP)
-	_cooldown_bar.offset_top = 98
-	_cooldown_bar.offset_left = -90
-	_cooldown_bar.offset_right = 90
-	_cooldown_bar.modulate = Color(0.7, 0.35, 0.35)
-	_cooldown_bar.show_percentage = false
-	hud.add_child(_cooldown_bar)
+func _ensure_steal_bars() -> void:
+	if _player == null or not is_instance_valid(_player):
+		return
+	var hud: CanvasLayer = _player.get_node_or_null("HUD") as CanvasLayer
+	if hud == null:
+		return
+	if not is_instance_valid(_steal_bar):
+		_steal_bar = hud.get_node_or_null("LifeStealBar") as ProgressBar
+	if _steal_bar == null:
+		_steal_bar = ProgressBar.new()
+		_steal_bar.name = "LifeStealBar"
+		_steal_bar.set_anchors_preset(Control.PRESET_CENTER_TOP)
+		_steal_bar.offset_top = 80
+		_steal_bar.offset_left = -90
+		_steal_bar.offset_right = 90
+		_steal_bar.custom_minimum_size = Vector2(180, 14)
+		_steal_bar.show_percentage = false
+		_steal_bar.max_value = 100
+		_steal_bar.modulate = Color(1.0, 0.22, 0.48)
+		hud.add_child(_steal_bar)
+	if not is_instance_valid(_cooldown_bar):
+		_cooldown_bar = hud.get_node_or_null("LifeStealCooldown") as ProgressBar
+	if _cooldown_bar == null:
+		_cooldown_bar = ProgressBar.new()
+		_cooldown_bar.name = "LifeStealCooldown"
+		_cooldown_bar.set_anchors_preset(Control.PRESET_CENTER_TOP)
+		_cooldown_bar.offset_top = 98
+		_cooldown_bar.offset_left = -90
+		_cooldown_bar.offset_right = 90
+		_cooldown_bar.custom_minimum_size = Vector2(180, 8)
+		_cooldown_bar.show_percentage = false
+		_cooldown_bar.max_value = 100
+		_cooldown_bar.modulate = Color(0.2, 0.92, 1.0)
+		hud.add_child(_cooldown_bar)
 
 
 func _process(delta: float) -> void:
+	if _player == null or not is_instance_valid(_player):
+		return
 	if not _player.is_multiplayer_authority():
 		return
 	if _swap_active:
@@ -71,6 +90,8 @@ func _process(delta: float) -> void:
 
 
 func _physics_process(delta: float) -> void:
+	if _player == null or not is_instance_valid(_player):
+		return
 	if not _player.is_multiplayer_authority():
 		return
 	_update_life_steal_aura(delta)
@@ -91,6 +112,8 @@ func process_movement(delta: float, locked: bool) -> void:
 
 func _try_activate_life_steal() -> void:
 	var peer := multiplayer.get_unique_id()
+	if PlayerEffects.server_has_effect(peer, _PM.LIFE_STEAL_EFFECT):
+		return
 	if not PlayerEffects.server_effect_cooldown_ready(peer, _PM.LIFE_STEAL_EFFECT):
 		return
 	if multiplayer.is_server():
@@ -230,11 +253,11 @@ func _update_life_steal_aura(delta: float) -> void:
 		if multiplayer.is_server():
 			PlayerEffects.server_apply_life_steal(victim_peer, pm_peer, dist, max_range, delta)
 		else:
-			_rpc_life_steal_tick.rpc_id(1, victim_peer, dist)
+			_rpc_life_steal_tick.rpc_id(1, victim_peer, dist, delta)
 
 
 @rpc("any_peer", "call_remote", "unreliable")
-func _rpc_life_steal_tick(victim_peer: int, dist: float) -> void:
+func _rpc_life_steal_tick(victim_peer: int, dist: float, tick_delta: float = 0.0167) -> void:
 	if not multiplayer.is_server():
 		return
 	var sender := multiplayer.get_remote_sender_id()
@@ -242,18 +265,30 @@ func _rpc_life_steal_tick(victim_peer: int, dist: float) -> void:
 		return
 	if not PlayerEffects.server_has_effect(sender, _PM.LIFE_STEAL_EFFECT):
 		return
-	PlayerEffects.server_apply_life_steal(victim_peer, sender, dist, _PM.LIFE_STEAL_MAX_RANGE, 1.0 / 30.0)
+	var dt := tick_delta if tick_delta > 0.0 else (1.0 / 60.0)
+	dt = minf(dt, 0.05)
+	PlayerEffects.server_apply_life_steal(victim_peer, sender, dist, _PM.LIFE_STEAL_MAX_RANGE, dt)
 
 
 func _update_steal_ui() -> void:
+	_ensure_steal_bars()
 	var peer := multiplayer.get_unique_id()
 	var times := PlayerEffects.get_effect_times(peer, _PM.LIFE_STEAL_EFFECT)
 	_steal_time_left = times.x
 	_steal_cd_left = times.y
 	var active := times.x > 0.0
-	_steal_bar.visible = false
-	_cooldown_bar.visible = false
+	if is_instance_valid(_steal_bar):
+		_steal_bar.max_value = 100.0
+		_steal_bar.value = (times.x / maxf(_steal_duration, 0.01)) * 100.0
+		_steal_bar.visible = active
+	if is_instance_valid(_cooldown_bar):
+		_cooldown_bar.max_value = 100.0
+		var recharge := 1.0 if times.y <= 0.0 else 1.0 - (times.y / maxf(_steal_cooldown, 0.01))
+		_cooldown_bar.value = recharge * 100.0
+		_cooldown_bar.visible = times.y > 0.0
 	_set_rings_visible(active)
+	if _player == null:
+		return
 	var hud := _player.get_node_or_null("HUD/NeonHud")
 	if hud and hud.has_method("set_steal"):
 		var dur_r := times.x / maxf(_steal_duration, 0.01)
@@ -271,6 +306,14 @@ func _on_local_effect_state(effect_id: String, time_left: float, cooldown_left: 
 
 
 func _build_radius_rings() -> void:
+	if _player == null:
+		return
+	if is_instance_valid(_ring_root):
+		return
+	var existing := _player.get_node_or_null("LifeStealRings")
+	if existing is Node3D:
+		_ring_root = existing
+		return
 	_ring_root = Node3D.new()
 	_ring_root.name = "LifeStealRings"
 	_player.add_child(_ring_root)
