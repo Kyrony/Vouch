@@ -5,7 +5,7 @@ class_name Ladder
 ## Independent grabbable ladder. Place on its feet, lean forward until the
 ## top hits a wall, then climb along the ladder's axis.
 
-const LADDER_LENGTH: float = 3.0
+const LADDER_LENGTH: float = 2.4
 const LEAN_SPEED: float = 2.2
 const MAX_LEAN_DEG: float = 78.0
 

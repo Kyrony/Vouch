@@ -6,10 +6,10 @@ class_name EscapeHub
 ## The shared Outside courtyard sits on top. Built once per match on every
 ## peer from the same room count / grid layout.
 
-const SHAFT_RADIUS: float = 4.0
-const SHAFT_HEIGHT: float = 45.0
-const HALL_WIDTH: float = 2.8
-const HALL_HEIGHT: float = 3.2
+const SHAFT_RADIUS: float = 1.45
+const SHAFT_HEIGHT: float = 10.0
+const HALL_WIDTH: float = 1.25
+const HALL_HEIGHT: float = 2.5
 
 var _wall_mat: StandardMaterial3D
 var _floor_mat: StandardMaterial3D
