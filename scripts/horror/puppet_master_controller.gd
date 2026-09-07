@@ -2,6 +2,8 @@ extends Node
 class_name PuppetMasterController
 ## Puppet Master: possession of dead family stubs, float, radius life-steal aura.
 
+const _PM: GDScript = preload("res://scripts/horror/characters/puppet_master_data.gd")
+
 var _player: CharacterBody3D
 var _swap_active: bool = false
 var _swap_timer: float = 0.0
@@ -76,15 +78,15 @@ func process_movement(delta: float, locked: bool) -> void:
 		_try_activate_life_steal()
 	_floating = Input.is_action_pressed("jump") and not _player.is_on_floor()
 	if _floating:
-		_player.velocity.y += PuppetMasterData.FLOAT_LIFT * delta
+		_player.velocity.y += _PM.FLOAT_LIFT * delta
 
 
 func _try_activate_life_steal() -> void:
 	var peer := multiplayer.get_unique_id()
-	if not PlayerEffects.server_effect_cooldown_ready(peer, PuppetMasterData.LIFE_STEAL_EFFECT):
+	if not PlayerEffects.server_effect_cooldown_ready(peer, _PM.LIFE_STEAL_EFFECT):
 		return
 	if multiplayer.is_server():
-		PlayerEffects.server_apply_effect(peer, PuppetMasterData.LIFE_STEAL_EFFECT)
+		PlayerEffects.server_apply_effect(peer, _PM.LIFE_STEAL_EFFECT)
 	else:
 		_rpc_activate_steal.rpc_id(1)
 
@@ -95,22 +97,22 @@ func _rpc_activate_steal() -> void:
 		return
 	if multiplayer.get_remote_sender_id() != GameState.puppet_master_peer_id:
 		return
-	PlayerEffects.server_apply_effect(GameState.puppet_master_peer_id, PuppetMasterData.LIFE_STEAL_EFFECT)
+	PlayerEffects.server_apply_effect(GameState.puppet_master_peer_id, _PM.LIFE_STEAL_EFFECT)
 
 
 func _try_possess_dead_body() -> bool:
-	var target := _nearest_in_group("possession_targets", PuppetMasterData.POSSESSION_RANGE)
+	var target := _nearest_in_group("possession_targets", _PM.POSSESSION_RANGE)
 	if target == null:
 		return false
 	_possession_target = target
 	_swap_active = true
-	_swap_timer = PuppetMasterData.POSSESSION_DURATION
+	_swap_timer = _PM.POSSESSION_DURATION
 	_player.global_position = target.global_position + Vector3(0, 0.5, 0)
 	return true
 
 
 func _try_body_swap() -> void:
-	var nearest: Node = _nearest_survivor(PuppetMasterData.BODY_SWAP_RANGE)
+	var nearest: Node = _nearest_survivor(_PM.BODY_SWAP_RANGE)
 	if nearest == null:
 		return
 	var target_peer := int(str(nearest.name))
@@ -119,7 +121,7 @@ func _try_body_swap() -> void:
 	_original_peer = multiplayer.get_unique_id()
 	_swap_target_peer = target_peer
 	_swap_active = true
-	_swap_timer = PuppetMasterData.BODY_SWAP_DURATION
+	_swap_timer = _PM.BODY_SWAP_DURATION
 	if multiplayer.is_server():
 		_server_begin_swap(_original_peer, _swap_target_peer)
 	else:
@@ -198,11 +200,11 @@ func _freeze_local(frozen: bool) -> void:
 
 func _update_life_steal_aura(delta: float) -> void:
 	var pm_peer := multiplayer.get_unique_id()
-	if not PlayerEffects.server_has_effect(pm_peer, PuppetMasterData.LIFE_STEAL_EFFECT):
+	if not PlayerEffects.server_has_effect(pm_peer, _PM.LIFE_STEAL_EFFECT):
 		_steal_active = false
 		return
 	_steal_active = true
-	var max_range := PuppetMasterData.LIFE_STEAL_MAX_RANGE
+	var max_range := _PM.LIFE_STEAL_MAX_RANGE
 	var origin := _player.global_position
 	for node in get_tree().get_nodes_in_group("players"):
 		if node == _player:
@@ -230,22 +232,22 @@ func _rpc_life_steal_tick(victim_peer: int, dist: float) -> void:
 	var sender := multiplayer.get_remote_sender_id()
 	if sender != GameState.puppet_master_peer_id:
 		return
-	if not PlayerEffects.server_has_effect(sender, PuppetMasterData.LIFE_STEAL_EFFECT):
+	if not PlayerEffects.server_has_effect(sender, _PM.LIFE_STEAL_EFFECT):
 		return
-	PlayerEffects.server_apply_life_steal(victim_peer, sender, dist, PuppetMasterData.LIFE_STEAL_MAX_RANGE, 1.0 / 30.0)
+	PlayerEffects.server_apply_life_steal(victim_peer, sender, dist, _PM.LIFE_STEAL_MAX_RANGE, 1.0 / 30.0)
 
 
 func _update_steal_ui() -> void:
 	var peer := multiplayer.get_unique_id()
-	var active := PlayerEffects.server_has_effect(peer, PuppetMasterData.LIFE_STEAL_EFFECT)
+	var active := PlayerEffects.server_has_effect(peer, _PM.LIFE_STEAL_EFFECT)
 	_steal_bar.visible = active
 	if active:
-		var nearest := _nearest_survivor(PuppetMasterData.LIFE_STEAL_MAX_RANGE)
+		var nearest := _nearest_survivor(_PM.LIFE_STEAL_MAX_RANGE)
 		if nearest != null:
 			var hp := PlayerHealth.server_get_health(int(str(nearest.name))) if multiplayer.is_server() else 100.0
 			_steal_bar.value = hp
 	# Cooldown indicator stub — show when effect on cooldown
-	_cooldown_bar.visible = not active and not PlayerEffects.server_effect_cooldown_ready(peer, PuppetMasterData.LIFE_STEAL_EFFECT)
+	_cooldown_bar.visible = not active and not PlayerEffects.server_effect_cooldown_ready(peer, _PM.LIFE_STEAL_EFFECT)
 
 
 func _nearest_survivor(max_dist: float) -> Node:

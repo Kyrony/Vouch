@@ -5,7 +5,7 @@ class_name OutdoorBuilder
 const _GEOM: GDScript = preload("res://scripts/rooms/geometry_util.gd")
 
 
-static func build(parent: Node3D, mats: HorrorGrayboxMaterials) -> Dictionary:
+static func build(parent: Node3D, mats) -> Dictionary:
 	var root := Node3D.new()
 	root.name = "Outdoor"
 	parent.add_child(root)

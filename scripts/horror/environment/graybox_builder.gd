@@ -9,7 +9,7 @@ static func add_room_box(
 	parent: Node3D,
 	size: Vector3,
 	center: Vector3,
-	mats: HorrorGrayboxMaterials,
+	mats,
 	floor: bool = true,
 	ceiling: bool = true,
 ) -> void:

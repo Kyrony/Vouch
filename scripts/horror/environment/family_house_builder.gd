@@ -6,7 +6,7 @@ const _GB: GDScript = preload("res://scripts/horror/environment/graybox_builder.
 const _GEOM: GDScript = preload("res://scripts/rooms/geometry_util.gd")
 
 
-static func build(parent: Node3D, origin: Vector3, family_index: int, mats: HorrorGrayboxMaterials) -> Dictionary:
+static func build(parent: Node3D, origin: Vector3, family_index: int, mats) -> Dictionary:
 	var root := Node3D.new()
 	root.name = "FamilyHouse_%d" % family_index
 	root.position = origin

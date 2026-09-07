@@ -20,7 +20,7 @@ const MANSION_ORIGIN := Vector3(0, 0, -62)
 
 
 static func build(parent: Node3D, max_families: int = 4) -> Dictionary:
-	var mats: HorrorGrayboxMaterials = _MATS.new()
+	var mats = _MATS.new()
 	var family_spawns: Array[Marker3D] = []
 	var family_count: int = clampi(max_families, 1, FAMILY_OFFSETS.size())
 

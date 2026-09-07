@@ -11,7 +11,7 @@ const BUNKER_Y: float = -14.0
 const ATTIC_Y: float = 3.2
 
 
-static func build(parent: Node3D, origin: Vector3, mats: HorrorGrayboxMaterials) -> Dictionary:
+static func build(parent: Node3D, origin: Vector3, mats) -> Dictionary:
 	var root := Node3D.new()
 	root.name = "PMMansion"
 	root.position = origin
@@ -43,7 +43,7 @@ static func build(parent: Node3D, origin: Vector3, mats: HorrorGrayboxMaterials)
 	}
 
 
-static func _build_main_floor(root: Node3D, mats: HorrorGrayboxMaterials, child_markers: Array) -> void:
+static func _build_main_floor(root: Node3D, mats, child_markers: Array) -> void:
 	var floor_root := Node3D.new()
 	floor_root.name = "MainFloor"
 	root.add_child(floor_root)
@@ -82,7 +82,7 @@ static func _build_main_floor(root: Node3D, mats: HorrorGrayboxMaterials, child_
 	_add_child_marker(floor_root, Vector3(16, 0.5, 4), "mansion_study", child_markers)
 
 
-static func _build_basement(root: Node3D, mats: HorrorGrayboxMaterials, child_markers: Array) -> void:
+static func _build_basement(root: Node3D, mats, child_markers: Array) -> void:
 	var bs := Node3D.new()
 	bs.name = "Basement"
 	bs.position = Vector3(0, BASEMENT_Y, 0)
@@ -97,7 +97,7 @@ static func _build_basement(root: Node3D, mats: HorrorGrayboxMaterials, child_ma
 	root.add_child(_GEOM.call("box", Vector3(2.5, 4.2, 2.5), Vector3(14, -2.1, 10), mats.wall))
 
 
-static func _build_bunker(root: Node3D, mats: HorrorGrayboxMaterials, child_markers: Array) -> void:
+static func _build_bunker(root: Node3D, mats, child_markers: Array) -> void:
 	var bk := Node3D.new()
 	bk.name = "Bunker"
 	bk.position = Vector3(0, BUNKER_Y, 0)
@@ -118,7 +118,7 @@ static func _build_bunker(root: Node3D, mats: HorrorGrayboxMaterials, child_mark
 	bk.add_child(dim)
 
 
-static func _build_attic(root: Node3D, mats: HorrorGrayboxMaterials, child_markers: Array) -> void:
+static func _build_attic(root: Node3D, mats, child_markers: Array) -> void:
 	var at := Node3D.new()
 	at.name = "Attic"
 	at.position = Vector3(0, ATTIC_Y, 0)
@@ -129,7 +129,7 @@ static func _build_attic(root: Node3D, mats: HorrorGrayboxMaterials, child_marke
 	_add_child_marker(at, Vector3(8, 0.5, 4), "attic_crawlspace", child_markers)
 
 
-static func _build_ducts(root: Node3D, mats: HorrorGrayboxMaterials, child_markers: Array) -> void:
+static func _build_ducts(root: Node3D, mats, child_markers: Array) -> void:
 	var ducts := Node3D.new()
 	ducts.name = "DuctSystem"
 	root.add_child(ducts)

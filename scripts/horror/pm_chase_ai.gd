@@ -1,6 +1,8 @@
 extends CharacterBody3D
 ## PMChaseAI — simple chase stub when no human Puppet Master is active.
 
+const _PM: GDScript = preload("res://scripts/horror/characters/puppet_master_data.gd")
+
 const CHASE_SPEED: float = 5.5
 
 var _active: bool = false
@@ -48,7 +50,7 @@ func _physics_process(delta: float) -> void:
 	else:
 		velocity = Vector3.ZERO
 	move_and_slide()
-	var max_range := PuppetMasterData.LIFE_STEAL_MAX_RANGE
+	var max_range: float = _PM.LIFE_STEAL_MAX_RANGE
 	if dist <= max_range and _target != null:
 		var peer := int(str(_target.name))
 		if peer > 0:
