@@ -61,6 +61,9 @@ static func validate_world(world: Node3D) -> String:
 	var layout_err := validate_v05_layout(world)
 	if not layout_err.is_empty():
 		return layout_err
+	var kit_err := validate_kit_graybox(world)
+	if not kit_err.is_empty():
+		return kit_err
 	return ""
 
 
@@ -116,6 +119,40 @@ static func validate_v05_layout(world: Node3D) -> String:
 	var span_z: float = max_z - min_z
 	if span_x < 28.0 or span_x > 56.0 or span_z < 22.0 or span_z > 48.0:
 		return "neighborhood span %.1fx%.1f not ~40m v0.5" % [span_x, span_z]
+	return ""
+
+
+static func validate_kit_graybox(world: Node3D) -> String:
+	var house_a: Node = world.get_node_or_null("FamilyHouses/FamilyHouse_A")
+	if house_a == null:
+		return "FamilyHouse_A missing"
+	for piece in ["Foundation", "Porch", "Stairs", "HouseBody", "UnderPorchCrawl"]:
+		if house_a.get_node_or_null(piece) == null:
+			return "FamilyHouse_A missing modular piece %s" % piece
+	var crawl: Node = house_a.get_node("UnderPorchCrawl")
+	if crawl.get_node_or_null("ChildSpawn_under_porch_crawl") == null:
+		return "under_porch_crawl marker is not inside UnderPorchCrawl"
+	if crawl.find_child("CrawlMood", true, false) == null:
+		return "under-porch crawl missing mood light"
+	var bedroom: Node = house_a.find_child("Bedroom", true, false)
+	if bedroom == null:
+		return "FamilyHouse_A missing Bedroom (kit floor plan)"
+	var mansion: Node = world.get_node_or_null("PMMansion")
+	if mansion == null:
+		return "PMMansion missing"
+	var bunker: Node = mansion.find_child("Bunker", true, false)
+	if bunker == null:
+		return "Bunker missing"
+	for piece in ["Pipes", "NeonStrips", "Fluorescent", "Workbench", "UtilityCloset"]:
+		if bunker.get_node_or_null(piece) == null:
+			return "Bunker missing kit piece %s" % piece
+	var util: Node = bunker.get_node("UtilityCloset")
+	if util.get_node_or_null("Shelves") == null:
+		return "UtilityCloset missing shelves"
+	if util.find_child("ChildSpawn_bunker_utility", true, false) == null:
+		return "bunker_utility marker missing from UtilityCloset"
+	if mansion.find_child("Basement", true, false) == null:
+		return "Basement missing"
 	return ""
 
 

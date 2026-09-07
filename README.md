@@ -254,6 +254,8 @@ See [`docs/blueprints/v0.5/`](docs/blueprints/v0.5/) for Leonardo v0.5 sheets.
 
 **HUD + smartphone (soft-go):** Leonardo’s v2 neon-horror icon language is wired in `scripts/horror/ui/neon_hud.gd` and `assets/horror/hud/` (heart / cyan pulse / violet glitch-eye / yellow **phone LED** / signal full-weak-dead). The inventory `phone` is diegetic `ITEM_DEVICE_SMARTPHONE_01` — graphite/gold mesh, camera LED spotlight, eng-tunable battery drain on `PhoneDevice`. Sheet ~15%/min LED and ~2%/min passive are concept only. No handheld flashlight item. Textures are wiring refs; Leonardo may redraw them before Steam.
 
+**Environment kits (soft-go):** Family houses use modular porch / foundation / stairs / crawl graybox (`under_porch_crawl` under house A — no grave wording). PM bunker gets sealed concrete + pipes/shelves and a utility closet for `bunker_utility` (red/yellow neon, fluorescent; no gore, no guns). See `assets/horror/kits/README.md`. Kit plan sizes are art targets; live footprints stay v0.5.
+
 **HUD:** neon heart (health), cyan bar (stamina), violet bar (fear), phone + spotty signal.
 
 ## Friends-ready playtest (James checklist)

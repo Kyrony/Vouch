@@ -11,6 +11,8 @@ Kyle locked these sheets as the graybox production look. Eng traces in this fold
 | L4 PM Interior | `L4-pm-interior.png` | Attic, master bedroom, study, kitchen, dining, living, bathroom, hallway, stairwell, basement, bunker, utility closet + ducts. |
 | HUD icon pack (soft-go) | wired in `assets/horror/hud/` | Leonardo v2 neon-horror HUD: heart / cyan pulse / violet glitch-eye / **phone LED** (not a torch) / signal full-weak-dead. Wiring ref — Leonardo redraw may replace textures before Steam. |
 | Smartphone item (soft-go) | `ITEM_DEVICE_SMARTPHONE_01` | Graphite/gold phone; camera LED is the only flashlight. Sheet drain (~15%/min LED, ~2%/min passive) is concept only — eng tunables live on `PhoneDevice`. |
+| Family house kit (soft-go) | porch / under-porch crawl | Raised porch, foundation, stairs, shed module. Pin 9 `under_porch_crawl` is a readable low crawl under house A. Kit plan ~13.5×11 m; live footprint stays v0.5 so the ~40 m ring fits. No grave wording. |
+| PM bunker kit (soft-go) | bunker + utility closet | Sealed concrete, pipes, shelves, workbench, red/yellow neon + fluorescent. Pin 3 `bunker_utility` stays in `UtilityCloset`. No gore, no guns. |
 
 ## L2 source of truth
 
