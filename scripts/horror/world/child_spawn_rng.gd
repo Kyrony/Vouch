@@ -6,7 +6,7 @@ const SPAWN_IDS: Array[String] = [
 	"bunker_utility",
 	"master_bedroom",
 	"attic_crawlspace",
-	"shallow_grave",
+	"uncle_locked_closet",
 	"basement_storage",
 	"duct_junction",
 	"mansion_kitchen",
@@ -61,10 +61,6 @@ func get_spawn_id() -> String:
 
 func get_spawn_position() -> Vector3:
 	return _active_global_pos
-
-
-func is_dead_spawn() -> bool:
-	return _active_spawn_id == "shallow_grave"
 
 
 @rpc("authority", "call_local", "reliable")

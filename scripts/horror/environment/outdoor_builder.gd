@@ -1,6 +1,6 @@
 extends RefCounted
 class_name OutdoorBuilder
-## Mountainous yard, street, shallow grave, and escape zone between houses.
+## Mountainous yard, street, garden shed, and escape zone between houses.
 
 const _GEOM: GDScript = preload("res://scripts/rooms/geometry_util.gd")
 
@@ -42,21 +42,6 @@ static func build(parent: Node3D, mats: HorrorGrayboxMaterials) -> Dictionary:
 	shed_child.set_meta("spawn_id", "outdoor_shed")
 	shed.add_child(shed_child)
 
-	# Shallow grave (dead child variant)
-	var grave := Node3D.new()
-	grave.name = "ShallowGrave"
-	grave.position = Vector3(-38, 0, -35)
-	root.add_child(grave)
-	root.add_child(_GEOM.call("box", Vector3(2.2, 0.15, 1.2), Vector3(-38, 0.05, -35), mats.dirt))
-	root.add_child(_GEOM.call("box", Vector3(0.5, 0.25, 1.4), Vector3(-38, 0.2, -35.2), mats.blood))
-	var grave_child := Marker3D.new()
-	grave_child.name = "ChildSpawn_shallow_grave"
-	grave_child.position = Vector3(-38, 0.4, -35)
-	grave_child.add_to_group("child_spawn_points")
-	grave_child.set_meta("spawn_id", "shallow_grave")
-	grave_child.set_meta("is_dead", true)
-	root.add_child(grave_child)
-
 	# Escape zone — field edge toward mountains
 	var zone := _build_escape_zone(Vector3(0, 0.5, 58))
 	root.add_child(zone)
@@ -64,7 +49,7 @@ static func build(parent: Node3D, mats: HorrorGrayboxMaterials) -> Dictionary:
 	return {
 		"root": root,
 		"escape_zone": zone,
-		"outdoor_markers": [shed_child, grave_child],
+		"outdoor_markers": [shed_child],
 	}
 
 

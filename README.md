@@ -240,7 +240,7 @@ Host RNG picks **one** per match (`ChildSpawnRNG`). Teams map to **families** (h
 | 2 | `bunker_utility` | PM mansion underground bunker |
 | 3 | `master_bedroom` | PM mansion main floor |
 | 4 | `attic_crawlspace` | PM mansion attic |
-| 5 | `shallow_grave` | Outdoor yard (dead variant stub) |
+| 5 | `uncle_locked_closet` | Uncle house locked closet (child found alive) |
 | 6 | `basement_storage` | PM mansion basement |
 | 7 | `duct_junction` | PM mansion crawlable duct hub |
 | 8 | `mansion_kitchen` | PM mansion main floor |

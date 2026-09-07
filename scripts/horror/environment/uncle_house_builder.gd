@@ -24,4 +24,13 @@ static func build(parent: Node3D, origin: Vector3, mats: HorrorGrayboxMaterials)
 	child_marker.set_meta("spawn_id", "uncle_bedroom")
 	root.add_child(child_marker)
 
-	return {"root": root, "child_marker": child_marker}
+	var closet_marker := Marker3D.new()
+	closet_marker.name = "ChildSpawn_uncle_locked_closet"
+	closet_marker.position = Vector3(4, 0.5, -3)
+	closet_marker.add_to_group("child_spawn_points")
+	closet_marker.set_meta("spawn_id", "uncle_locked_closet")
+	root.add_child(closet_marker)
+	# Closet door stub (visual only)
+	root.add_child(_GEOM.call("box", Vector3(0.15, 2.2, 1.2), Vector3(4.5, 1.1, -3), mats.wall))
+
+	return {"root": root, "child_marker": child_marker, "closet_marker": closet_marker}

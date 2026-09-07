@@ -11,7 +11,7 @@ config_version=5
 [application]
 
 config/name="Vouch"
-config/description="Industrial bunker social-deduction party game. Trust no one. First faction to fully escape wins."
+config/description="Horror neighborhood chase — find the missing child, escape the Puppet Master."
 run/main_scene="res://scenes/Main.tscn"
 config/features=PackedStringArray("4.3", "Forward Plus")
 config/icon="res://assets/brand/vouch_icon_128.png"
