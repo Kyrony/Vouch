@@ -13,6 +13,10 @@ signal escaped_locally
 signal match_won(faction_id: String)
 signal escape_locked(feedback: String)
 
+## Rooms flooded at or above this level (see BrokenPipe.gd) have their
+## escape physically blocked - the water's too high to reach the door.
+const FLOOD_BLOCK_LEVEL: float = 0.75
+
 ## Server-only: peer_id -> Player node, used to validate a player is still
 ## actually present before we bother teleporting them.
 var _player_nodes: Dictionary = {}
@@ -65,6 +69,9 @@ func server_handle_escape_request(peer_id: int) -> void:
 	if PuzzleSystem.server_requires_code(room_index) and not PuzzleSystem.server_is_unlocked(room_index):
 		_notify_escape_locked(peer_id)
 		return
+	if GameState.room_water_levels.get(room_index, 0.0) >= FLOOD_BLOCK_LEVEL:
+		_notify_escape_locked_message(peer_id, "The water's too high - you can't reach it.")
+		return
 
 	GameState.server_mark_escaped(peer_id)
 
@@ -81,17 +88,20 @@ func server_handle_escape_request(peer_id: int) -> void:
 
 
 func _notify_escape_locked(peer_id: int) -> void:
+	_notify_escape_locked_message(peer_id, "It's locked. Find the code.")
+
+
+func _notify_escape_locked_message(peer_id: int, message: String) -> void:
 	if peer_id == multiplayer.get_unique_id():
-		_client_escape_locked()
+		_client_escape_locked(message)
 	else:
-		_client_escape_locked.rpc_id(peer_id)
+		_client_escape_locked.rpc_id(peer_id, message)
 
 
 @rpc("authority", "call_remote", "reliable")
-func _client_escape_locked() -> void:
-	var msg := "It's locked. Find the code."
-	print("[EscapeSystem] %s" % msg)
-	escape_locked.emit(msg)
+func _client_escape_locked(message: String) -> void:
+	print("[EscapeSystem] %s" % message)
+	escape_locked.emit(message)
 
 
 func _teleport_player(peer_id: int, spawn_position: Vector3, spawn_rotation_y: float) -> void:

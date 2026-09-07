@@ -12,6 +12,10 @@ class_name RoomLight
 
 var effect_id: String = ""
 var owner_peer_id: int = -1
+## Set by RoomPod at spawn time - which room this light physically lives
+## in (needed so LinkGraph can guarantee no control in THIS room links
+## back to it).
+var room_index: int = -1
 var _is_on: bool = true
 
 
@@ -23,7 +27,7 @@ func _ready() -> void:
 		bulb_mesh.set_surface_override_material(0, mat.duplicate())
 
 	if multiplayer.is_server():
-		LinkGraph.server_register_effect(effect_id, self, owner_peer_id)
+		LinkGraph.server_register_effect(effect_id, self, owner_peer_id, room_index, "light")
 	_apply_visual(_is_on)
 
 
