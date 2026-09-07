@@ -5,6 +5,7 @@ class_name ItemSpawnSlot
 const SURFACE_WALL := "wall"
 const SURFACE_FLOOR := "floor"
 const SURFACE_WALL_FLOOR := "wall_floor"
+const SURFACE_CEILING := "ceiling"
 
 @export var slot_index: int = 1
 @export var surface_kind: String = SURFACE_WALL
@@ -20,6 +21,8 @@ static func from_dict(index: int, data: Dictionary) -> Marker3D:
 	slot.position = data.get("position", Vector3.ZERO)
 	if slot.surface_kind != SURFACE_FLOOR:
 		slot.rotation.y = rotation_y_from_normal(slot.wall_normal)
+	if slot.surface_kind == SURFACE_CEILING:
+		slot.rotation.x = PI
 	return slot
 
 

@@ -18,11 +18,14 @@ const _FIREPLACE_SCRIPT: GDScript = preload("res://scripts/interactables/firepla
 const BINARY_TERMINAL_SCRIPT: Script = preload("res://scripts/interactables/binary_terminal.gd")
 const MOVABLE_PROP_SCRIPT: Script = preload("res://scripts/interactables/movable_prop.gd")
 const ROOM_PEEK_MONITOR_SCRIPT: Script = preload("res://scripts/interactables/room_peek_monitor.gd")
+const WALKIE_SCRIPT: Script = preload("res://scripts/interactables/walkie_talkie.gd")
+const PIPE_BANDAGE_SCRIPT: Script = preload("res://scripts/interactables/pipe_bandage.gd")
 const LADDER_SCENE: PackedScene = preload("res://scenes/Match/Interactables/Ladder.tscn")
 const CRATE_SCENE: PackedScene = preload("res://scenes/Match/Props/Crate.tscn")
 const SHELF_SCENE: PackedScene = preload("res://scenes/Match/Props/Shelf.tscn")
 const BARREL_SCENE: PackedScene = preload("res://scenes/Match/Props/Barrel.tscn")
 const _SLOT_SCRIPT: GDScript = preload("res://scripts/rooms/item_spawn_slot.gd")
+const _UTIL_VIS: GDScript = preload("res://scripts/rooms/room_utilities_visual.gd")
 
 
 static func populate(room: Node3D, ctx: Dictionary, rng: RandomNumberGenerator) -> Dictionary:
@@ -78,14 +81,16 @@ static func _surface_for_kind(kind: String) -> String:
 	match kind:
 		"fireplace":
 			return "wall_floor"
-		"drain", "ladder", "bookcase", "prop":
+		"camera":
+			return "ceiling"
+		"drain", "ladder", "bookcase", "prop", "walkie", "pipe_bandage":
 			return "floor"
 		_:
 			return "wall"
 
 
 static func _group_slots_by_surface(slots: Array) -> Dictionary:
-	var pools := {"wall": [], "floor": [], "wall_floor": []}
+	var pools := {"wall": [], "floor": [], "wall_floor": [], "ceiling": []}
 	for slot in slots:
 		if slot is Marker3D and slot.get("surface_kind"):
 			var kind: String = slot.surface_kind
@@ -133,6 +138,8 @@ static func spawn_room_effects(room: Node3D, ctx: Dictionary) -> void:
 	room_light.set("owner_peer_id", owner_peer_id)
 	room_light.set("room_index", room_index)
 	room.add_child(room_light)
+
+	_UTIL_VIS.call("build", room, layout, ctx["theme"])
 
 	var pipe := Node3D.new()
 	pipe.set_script(preload("res://scripts/interactables/broken_pipe.gd"))
@@ -185,6 +192,8 @@ static func _build_requests(ctx: Dictionary, rng: RandomNumberGenerator) -> Arra
 	requests.append({"kind": "phone"})
 	requests.append({"kind": "camera"})
 	requests.append({"kind": "ladder"})
+	requests.append({"kind": "walkie"})
+	requests.append({"kind": "pipe_bandage"})
 
 	if ctx.get("has_valve", false):
 		requests.append({"kind": "water_valve", "control_id": "room_%d_water_valve" % room_index})
@@ -219,6 +228,7 @@ static func _spawn_request(room: Node3D, req: Dictionary, slot: Marker3D, accent
 			sw.set("control_id", req["control_id"])
 			sw.set("room_index", room_index)
 			sw.name = "LightSwitch"
+			_tag_attachment(sw, slot)
 			room.add_child(sw)
 			return sw
 		"phone":
@@ -226,13 +236,18 @@ static func _spawn_request(room: Node3D, req: Dictionary, slot: Marker3D, accent
 			phone.rotation.y = rot_y
 			phone.set("owner_peer_id", owner_peer_id)
 			phone.name = "Phone"
+			_tag_attachment(phone, slot)
 			room.add_child(phone)
 			return phone
 		"camera":
 			var cam := _make_interactable(SECURITY_CAMERA_SCRIPT, Vector3(0.14, 0.1, 0.12), pos, accent, "Camera")
-			cam.rotation.y = rot_y
+			if slot.get("surface_kind") == "ceiling":
+				cam.rotation.x = PI
+			else:
+				cam.rotation.y = rot_y
 			cam.set("min_elevation_y", pos.y - 1.2)
 			cam.name = "SecurityCamera"
+			_tag_attachment(cam, slot)
 			room.add_child(cam)
 			return cam
 		"ladder":
@@ -242,6 +257,7 @@ static func _spawn_request(room: Node3D, req: Dictionary, slot: Marker3D, accent
 			if ladder.has_method("configure"):
 				ladder.configure(pos.y + 0.95, room_index)
 			ladder.prompt_text = "Pick up ladder"
+			_tag_attachment(ladder, slot)
 			room.add_child(ladder)
 			return ladder
 		"water_valve":
@@ -250,13 +266,18 @@ static func _spawn_request(room: Node3D, req: Dictionary, slot: Marker3D, accent
 			valve.set("control_id", req["control_id"])
 			valve.set("room_index", room_index)
 			valve.name = "WaterValve"
+			_tag_attachment(valve, slot)
 			room.add_child(valve)
 			return valve
 		"electrical_box":
 			var box := _make_interactable(ELECTRICAL_BOX_SCRIPT, Vector3(0.35, 0.45, 0.12), pos, accent, "Electrical box")
 			box.rotation.y = rot_y
-			box.call("configure", room_index, req.get("targets", []))
+			var wire_targets: Array[int] = []
+			for t in req.get("targets", []):
+				wire_targets.append(int(t))
+			box.call("configure", room_index, wire_targets)
 			box.name = "ElectricalBox"
+			_tag_attachment(box, slot)
 			room.add_child(box)
 			return box
 		"drain":
@@ -265,6 +286,7 @@ static func _spawn_request(room: Node3D, req: Dictionary, slot: Marker3D, accent
 			drain.rotation.y = rot_y
 			drain.call("configure", room_index)
 			drain.name = "Drain"
+			_tag_attachment(drain, slot)
 			room.add_child(drain)
 			return drain
 		"exhaust":
@@ -272,11 +294,13 @@ static func _spawn_request(room: Node3D, req: Dictionary, slot: Marker3D, accent
 			exhaust.rotation.y = rot_y
 			exhaust.call("configure", room_index)
 			exhaust.name = "ExhaustVent"
+			_tag_attachment(exhaust, slot)
 			room.add_child(exhaust)
 			return exhaust
 		"fireplace":
 			var fp: Node3D = _FIREPLACE_SCRIPT.build(room, pos, accent, room_index)
 			fp.rotation.y = rot_y
+			_tag_attachment(fp, slot)
 			return fp
 		"gas_valve":
 			var gv := _make_interactable(GAS_VALVE_SCRIPT, Vector3(0.09, 0.09, 0.06), pos, accent, "Turn gas valve")
@@ -284,6 +308,7 @@ static func _spawn_request(room: Node3D, req: Dictionary, slot: Marker3D, accent
 			gv.set("control_id", req["control_id"])
 			gv.set("room_index", room_index)
 			gv.name = "GasValve"
+			_tag_attachment(gv, slot)
 			room.add_child(gv)
 			return gv
 		"binary_terminal":
@@ -291,6 +316,7 @@ static func _spawn_request(room: Node3D, req: Dictionary, slot: Marker3D, accent
 			term.rotation.y = rot_y
 			term.name = "BinaryTerminal"
 			term.call("configure", room_index, req.get("target", 0), 8)
+			_tag_attachment(term, slot)
 			room.add_child(term)
 			return term
 		"bookcase":
@@ -301,6 +327,7 @@ static func _spawn_request(room: Node3D, req: Dictionary, slot: Marker3D, accent
 			bc.set("move_offset", Vector3(0.95, 0, 0))
 			bc.set("unmoved_prompt", "Blocked by bookcase")
 			bc.set("moved_prompt", "Bookcase moved")
+			_tag_attachment(bc, slot)
 			room.add_child(bc)
 			return bc
 		"peek_monitor":
@@ -324,6 +351,7 @@ static func _spawn_request(room: Node3D, req: Dictionary, slot: Marker3D, accent
 			mon.add_child(collision)
 			mon.call("configure", room_index, req.get("peek_room", -1))
 			mon.visible = false
+			_tag_attachment(mon, slot)
 			for c in mon.get_children():
 				if c is CollisionShape3D:
 					c.disabled = true
@@ -334,9 +362,34 @@ static func _spawn_request(room: Node3D, req: Dictionary, slot: Marker3D, accent
 			var prop: Node3D = scene.instantiate() as Node3D
 			prop.position = pos
 			prop.rotation.y = rot_y
+			_tag_attachment(prop, slot)
 			room.add_child(prop)
 			return prop
+		"walkie":
+			var wk := _make_interactable(WALKIE_SCRIPT, Vector3(0.1, 0.06, 0.18), pos + Vector3(0, 0.03, 0), accent, "Use walkie-talkie")
+			wk.rotation.y = rot_y
+			wk.set("owner_peer_id", owner_peer_id)
+			wk.name = "WalkieTalkie"
+			_tag_attachment(wk, slot)
+			room.add_child(wk)
+			WalkieSystem.server_register_walkie(owner_peer_id, wk)
+			return wk
+		"pipe_bandage":
+			var pb := _make_interactable(PIPE_BANDAGE_SCRIPT, Vector3(0.12, 0.04, 0.18), pos + Vector3(0, 0.02, 0), accent, "Bandage pipe")
+			pb.rotation.y = rot_y
+			pb.set("room_index", room_index)
+			pb.name = "PipeBandage"
+			_tag_attachment(pb, slot)
+			room.add_child(pb)
+			return pb
 	return null
+
+
+static func _tag_attachment(node: Node, slot: Marker3D) -> void:
+	if slot.get("surface_kind"):
+		node.set_meta("attachment_surface", slot.surface_kind)
+	if slot.get("wall_normal"):
+		node.set_meta("wall_normal", slot.wall_normal)
 
 
 static func _anchor_position(slot: Marker3D, kind: String) -> Vector3:
@@ -345,14 +398,11 @@ static func _anchor_position(slot: Marker3D, kind: String) -> Vector3:
 	n = n.normalized()
 	match surface_kind:
 		"floor":
-			var half_y := 0.0
-			if kind == "bookcase":
-				half_y = 0.55
-			elif kind == "drain":
-				half_y = 0.025
-			return slot.position + Vector3(0, half_y, 0)
+			return slot.position
 		"wall_floor":
 			return slot.position
+		"ceiling":
+			return slot.position - n * WALL_EMBED
 		_:
 			return slot.position - n * WALL_EMBED
 

@@ -87,6 +87,7 @@ func _server_build_match() -> void:
 	PuzzleSystem.reset()
 	PuppetMasterSystem.reset()
 	PhoneSystem.reset()
+	WalkieSystem.reset()
 	RoomUtilities.reset()
 
 	var peer_ids: Array = GameState.players.keys()
@@ -94,6 +95,8 @@ func _server_build_match() -> void:
 
 	for i in range(peer_ids.size()):
 		GameState.server_set_room(peer_ids[i], i)
+
+	WalkieSystem.server_pair_players(peer_ids)
 
 	# Puzzle placement is decided BEFORE any room is spawned so it can be
 	# baked into each room's deterministic spawn data (see RoomPod.configure).

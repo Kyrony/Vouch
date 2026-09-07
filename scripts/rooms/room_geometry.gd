@@ -3,11 +3,11 @@ class_name RoomGeometry
 ## Builds sealed solid geometry for one fixed room layout.
 
 const _GEOM: GDScript = preload("res://scripts/rooms/geometry_util.gd")
+const _NEON: GDScript = preload("res://scripts/rooms/neon_theme.gd")
 
-const WALL: float = 0.12
-const DOOR_W: float = 0.85
-const DOOR_H: float = 2.05
-const HEIGHT: float = 2.6
+const WALL: float = WorldScale.WALL_THICK
+const DOOR_W: float = WorldScale.DOOR_W
+const DOOR_H: float = WorldScale.DOOR_H
 
 
 static func build(parent: Node3D, layout: Dictionary, theme: Dictionary) -> void:
@@ -25,7 +25,7 @@ static func build(parent: Node3D, layout: Dictionary, theme: Dictionary) -> void
 
 	var floor_mat := _mat(theme["floor_color"], 0.85)
 	var wall_mat := _mat(theme["wall_color"], 0.88)
-	var trim_mat := _mat(theme["accent_color"], 0.7)
+	var trim_mat: Material = _NEON.call("trim_material", _NEON.call("neon_for_theme", theme.get("id", "bedroom")))
 	var ceil_mat := _mat(theme["wall_color"].lerp(Color.WHITE, 0.1), 0.95)
 
 	root.add_child(_box(Vector3(w, WALL, d), Vector3(0, -WALL * 0.5, 0), floor_mat))
@@ -49,7 +49,7 @@ static func build(parent: Node3D, layout: Dictionary, theme: Dictionary) -> void
 		root.add_child(_box(Vector3(w * 0.55, WALL, d * 0.35), Vector3(-w * 0.12, loft_y, -d * 0.28), floor_mat))
 
 	if layout.has("stairs"):
-		_build_stairs(root, layout["stairs"], floor_mat, wall_mat)
+		_build_stairs(root, layout["stairs"], floor_mat, wall_mat, h)
 
 
 static func _wall_x(parent: Node3D, z: float, span: float, gap_w: float, gap_center: float, mat: Material, h: float) -> void:
@@ -108,19 +108,22 @@ static func _add_trim(parent: Node3D, w: float, d: float, mat: Material) -> void
 	parent.add_child(_box(Vector3(td, th, d), Vector3(-hw + td * 0.5, th * 0.5, 0), mat, false))
 
 
-static func _build_stairs(parent: Node3D, spec: Dictionary, floor_mat: Material, wall_mat: Material) -> void:
+static func _build_stairs(parent: Node3D, spec: Dictionary, floor_mat: Material, wall_mat: Material, room_h: float) -> void:
 	var pos: Vector3 = spec["pos"]
-	var size: Vector2 = spec["size"]
-	var steps := 6
-	var rise := HEIGHT / float(steps)
-	var tread := size.y / float(steps)
+	var width: float = spec["size"].x
+	var riser := WorldScale.STAIR_RISER
+	var tread := WorldScale.STAIR_TREAD
+	var steps := maxi(1, int(round(room_h / riser)))
 	for i in range(steps):
+		var y := i * riser + riser * 0.5
+		var z := pos.z + tread * (i + 0.5)
 		parent.add_child(_box(
-			Vector3(size.x, rise, tread),
-			Vector3(pos.x, i * rise + rise * 0.5, pos.z + tread * (i + 0.5)),
+			Vector3(width, riser * 0.95, tread * 0.92),
+			Vector3(pos.x, y, z),
 			floor_mat
 		))
-	parent.add_child(_box(Vector3(WALL, HEIGHT, size.y), Vector3(pos.x - size.x * 0.5 - WALL * 0.5, HEIGHT * 0.5, pos.z + size.y * 0.5), wall_mat))
+	var run := tread * float(steps)
+	parent.add_child(_box(Vector3(WALL, room_h, run), Vector3(pos.x - width * 0.5 - WALL * 0.5, room_h * 0.5, pos.z + run * 0.5), wall_mat))
 
 
 static func _box(size: Vector3, pos: Vector3, mat: Material, collision: bool = true) -> StaticBody3D:
