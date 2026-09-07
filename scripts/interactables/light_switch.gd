@@ -14,6 +14,12 @@ var room_index: int = -1
 
 
 func _ready() -> void:
+	call_deferred("_register_control")
+
+
+func _register_control() -> void:
+	if not is_inside_tree() or multiplayer.multiplayer_peer == null:
+		return
 	if multiplayer.is_server():
 		LinkGraph.server_register_control(control_id, self, room_index, "light")
 

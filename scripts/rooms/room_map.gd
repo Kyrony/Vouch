@@ -6,6 +6,7 @@ const _LAYOUTS: GDScript = preload("res://scripts/rooms/room_layouts.gd")
 const _INTERACTABLE_BASE: GDScript = preload("res://scripts/interactables/interactable.gd")
 const _GEOMETRY: GDScript = preload("res://scripts/rooms/room_geometry.gd")
 const _ITEMS: GDScript = preload("res://scripts/rooms/item_spawn_system.gd")
+const _PLAYABLE: GDScript = preload("res://scripts/rooms/playable_loop_spawns.gd")
 const _SLOT_SCRIPT: GDScript = preload("res://scripts/rooms/item_spawn_slot.gd")
 const _TUNNEL: GDScript = preload("res://scripts/rooms/tunnel_kit.gd")
 const _NEON: GDScript = preload("res://scripts/rooms/neon_theme.gd")
@@ -125,6 +126,9 @@ func configure(data: Dictionary) -> void:
 	var spawned: Dictionary = _ITEMS.call("populate", self, ctx, rng)
 	light_switch = spawned.get("light_switch")
 	_fireplace = spawned.get("fireplace")
+
+	var spawn_local: Vector3 = spawn_point.position if spawn_point else _layout.get("spawn", Vector3.ZERO)
+	_PLAYABLE.call("spawn_near_player", self, spawn_local, accent, owner_peer_id)
 
 	_ITEMS.call("spawn_room_effects", self, ctx)
 

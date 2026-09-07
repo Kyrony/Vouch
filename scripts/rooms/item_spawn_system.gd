@@ -42,11 +42,9 @@ static func populate(room: Node3D, ctx: Dictionary, rng: RandomNumberGenerator) 
 	var spawn_hint: Vector3 = ctx.get("spawn_hint", Vector3.ZERO)
 	var result := {"light_switch": null, "fireplace": null, "bookcase": null, "peek_monitor": null}
 
-	# Task 9 playable loop: guaranteed comms props near spawn (non-PM rooms only).
+	# light_switch guaranteed here; phone/walkie come from PlayableLoopSpawns in room_map.configure().
 	var sw_req := {"kind": "light_switch", "control_id": "room_%d_light_switch" % room_index}
 	result["light_switch"] = _spawn_guaranteed(room, pools, ctx, accent, sw_req, "wall", spawn_hint)
-	_spawn_guaranteed(room, pools, ctx, accent, {"kind": "phone"}, "wall", spawn_hint)
-	_spawn_guaranteed(room, pools, ctx, accent, {"kind": "walkie"}, "floor", spawn_hint)
 
 	var requests := _build_requests(ctx, rng)
 	for req in requests:
@@ -76,8 +74,6 @@ static func populate(room: Node3D, ctx: Dictionary, rng: RandomNumberGenerator) 
 		var prop_scene: PackedScene = [CRATE_SCENE, SHELF_SCENE, BARREL_SCENE][rng.randi() % 3]
 		var req := {"kind": "prop", "scene": prop_scene}
 		_spawn_request(room, req, slot, accent, ctx)
-
-	_ensure_playable_comms(room, ctx, accent, spawn_hint)
 
 	if ctx.get("has_binary_puzzle", false) and result["bookcase"] and result["peek_monitor"]:
 		var term := room.get_node_or_null("BinaryTerminal")
@@ -260,25 +256,6 @@ static func _pick_slot_near(pool: Array, hint: Vector3, surface_key: String) -> 
 			best_dist = dist
 			best = slot
 	return best
-
-
-static func _ensure_playable_comms(room: Node3D, ctx: Dictionary, accent: Material, spawn_hint: Vector3) -> void:
-	var owner_peer_id: int = ctx["owner_peer_id"]
-	if room.get_node_or_null("Phone") == null:
-		var phone_pos := spawn_hint + Vector3(0.85, 1.1, -0.45)
-		var phone := _make_interactable(PHONE_SCRIPT, Vector3(0.12, 0.18, 0.06), phone_pos, accent, "Use phone")
-		phone.set("owner_peer_id", owner_peer_id)
-		phone.name = "Phone"
-		room.add_child(phone)
-		push_warning("ItemSpawnSystem: Phone fallback spawn in %s" % room.name)
-	if room.get_node_or_null("WalkieTalkie") == null:
-		var walkie_pos := spawn_hint + Vector3(-0.55, 0.05, 0.35)
-		var wk := _make_interactable(WALKIE_SCRIPT, Vector3(0.1, 0.06, 0.18), walkie_pos, accent, "Use walkie-talkie")
-		wk.set("owner_peer_id", owner_peer_id)
-		wk.name = "WalkieTalkie"
-		room.add_child(wk)
-		WalkieSystem.server_register_walkie(owner_peer_id, wk)
-		push_warning("ItemSpawnSystem: WalkieTalkie fallback spawn in %s" % room.name)
 
 
 static func _spawn_request(room: Node3D, req: Dictionary, slot: Marker3D, accent: Material, ctx: Dictionary) -> Node:
