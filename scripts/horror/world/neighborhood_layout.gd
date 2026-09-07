@@ -39,9 +39,24 @@ static func build(parent: Node3D, max_families: int = 4) -> Dictionary:
 	var outdoor_result: Dictionary = _OUTDOOR.call("build", parent, mats)
 	var trust_result: Dictionary = _TRUST.call("build", parent)
 
+	# Phase 1: Host Match uses outdoor street/yard markers, not sealed bedrooms / bunker.
+	# Bedroom markers stay on the houses for later interior work; L2 child pins unchanged.
+	var outdoor_spawns: Array = outdoor_result.get("player_spawns", [])
+	var live_spawns: Array[Marker3D] = []
+	for m in outdoor_spawns:
+		live_spawns.append(m)
+	if live_spawns.is_empty():
+		live_spawns = family_spawns
+
+	var pm_spawn: Marker3D = mansion_result["pm_spawn"]
+	var outdoor_pm = outdoor_result.get("pm_spawn")
+	if outdoor_pm is Marker3D:
+		pm_spawn = outdoor_pm
+
 	return {
-		"family_spawns": family_spawns,
-		"pm_spawn": mansion_result["pm_spawn"],
+		"family_spawns": live_spawns,
+		"bedroom_spawns": family_spawns,
+		"pm_spawn": pm_spawn,
 		"uncle_root": uncle_result["root"],
 		"mansion_root": mansion_result["root"],
 		"outdoor_root": outdoor_result["root"],

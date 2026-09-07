@@ -53,7 +53,21 @@ func _probe() -> String:
 	var spawn_count: int = world.call("get_spawn_point_count")
 	if spawn_count < 4:
 		main.queue_free()
-		return "expected >= 4 family bedroom spawns, got %d" % spawn_count
+		return "expected >= 4 outdoor family spawns, got %d" % spawn_count
+	if world.get_node_or_null("Outdoor/Terrain") == null:
+		main.queue_free()
+		return "Outdoor/Terrain missing"
+	if world.get_node_or_null("Outdoor/Hills") == null:
+		main.queue_free()
+		return "Outdoor/Hills missing"
+	var fam0 = world.call("get_family_spawn_transform", 0)
+	if fam0.origin.y < -0.35:
+		main.queue_free()
+		return "family 0 spawn is underground y=%s" % fam0.origin
+	var pm_xf = world.call("get_pm_spawn_transform")
+	if pm_xf.origin.y < -0.35:
+		main.queue_free()
+		return "PM spawn is underground y=%s" % pm_xf.origin
 
 	var pickups := world.get_node_or_null("Pickups")
 	if pickups == null or pickups.get_child_count() < 1:
@@ -125,9 +139,11 @@ func _probe() -> String:
 
 	var rng := root.get_node_or_null("ChildSpawnRNG")
 	var pins: Array = rng.call("spawn_id_list") if rng else []
-	print("  horror spawns=%d pickups=%d child_points=%d towers=%d neighborhood=OK pins=%s" % [
+	print("  horror outdoor_spawns=%d pickups=%d child_points=%d towers=%d fam0=%s pm=%s pins=%s" % [
 		spawn_count, pickups.get_child_count(), child_points.size(),
 		world.get_tree().get_nodes_in_group("active_towers").size(),
+		fam0.origin,
+		pm_xf.origin,
 		pins,
 	])
 	main.queue_free()

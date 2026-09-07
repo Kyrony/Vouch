@@ -85,7 +85,20 @@ field as a placeholder — session codes are post-MVP.
 | Puppet Master | Life steal aura (radius, then cooldown) | `E` |
 | All | Pause / release mouse | `Esc` |
 
-**Goal:** Each **family team** spawns in their own **1-story house bedroom** (A–D around the cul-de-sac). One missing child is hidden at a random location among **11 alive-only spawn pins** (Leonardo L2 SoT ids). Find the child marker, then reach the **soft-gated field exit** (west yard, unmarked — master sheet has no escape routes). Trust tools are **phone + live radio masts** (service / weak / dead radii, 3 active per match, one forced near the PM). The **Puppet Master** hunts from the **east PM mansion** — radius life-steal aura with neon ring + recharge. PM wins if all survivors are drained before families escape with the child.
+**Goal:** Host Match drops every player on the **outdoor street / yard** (phase 1 terrain-first rethink — not bedrooms, not the PM bunker). Walk the large grass/dirt field, the hills, and the asphalt cul-de-sac. One missing child is hidden at a random location among **11 alive-only spawn pins** (Leonardo L2 SoT ids). Find the child marker, then reach the **soft-gated field exit** (west yard, unmarked — master sheet has no escape routes). Trust tools are **phone + live radio masts** (service / weak / dead radii, 3 active per match, one forced near the PM). The **Puppet Master** also starts on the **east approach street**. PM wins if all survivors are drained before families escape with the child.
+
+### Map rethink phase 1 (terrain first)
+
+This is a **terrain-first** neighborhood rethink. The deliverable is a **large continuous outdoor heightfield** (~100×84 m) with a few **gentle walkable hills**, **asphalt streets + curbs**, and first-person-readable grass/dirt vs road materials. Houses / the PM mansion stay kit-stubbed; interiors are **not** the spawn.
+
+**Why players used to land underground:** default horror spawns were family **bedrooms** (sealed 1-story boxes on a raised deck) and the PM **mansion foyer**, with L4 **basement / bunker** volumes at y=-4 / y=-12. Those interior paths had no outdoor exit. Phase 1 Host Match uses `Outdoor/PlayerSpawns` + `Outdoor_PM_Street` on the heightfield instead. L2 child pin ids are unchanged.
+
+**In-editor check (Kyle):**
+
+1. Open `project.godot` in Godot 4.3+, let it import, press **F5**.
+2. Home → **Play** → **Host Match** → **Start Match** (one player is enough).
+3. You should stand on the **cul-de-sac asphalt or grass**, see green/brown ground vs dark road + light curbs, and be able to walk the whole yard including the perimeter hills. You should **not** start in a sealed bedroom, basement, or bunker.
+4. Optional second instance: **Play → Join** (blank IP) — host-authoritative outdoor spawns should match for the joiner.
 
 Legacy sealed-room / tunnel modes: `VOUCH_BUNKER_ONLY=1` or `VOUCH_ESCAPE_PATH=1`.
 
@@ -232,7 +245,7 @@ pointing at what's missing.
 
 ## Horror child spawn points (11, alive-only)
 
-Host RNG picks **one** per match (`ChildSpawnRNG`). Teams map to **families** A–D (cul-de-sac bedroom spawns). All pins are living hides — no grave sites. IDs are Leonardo L2 SoT **eng short names**. Art map labels are deferred.
+Host RNG picks **one** per match (`ChildSpawnRNG`). Teams map to **families** A–D (**outdoor cul-de-sac street spawns** in phase 1; house bedrooms stay as kit stubs). All pins are living hides — no grave sites. IDs are Leonardo L2 SoT **eng short names**. Art map labels are deferred.
 
 | # | `spawn_id` | Callout | Location |
 | --- | --- | --- | --- |
@@ -356,7 +369,7 @@ damage model, no gameplay purpose. Before shipping, remove:
 project.godot              Godot 4 project config (autoloads, input map, etc.)
 scripts/horror/            Horror neighborhood factory (default play mode)
   characters/              PuppetMasterData, possession constants
-  environment/             FamilyHouse, PMMansion, UncleHouse, Outdoor graybox builders
+  environment/             FamilyHouse, PMMansion, UncleHouse, Outdoor + Terrain heightfield
   items/                   EffectDefinitions, PlayerEffects (meter stacks)
   world/                   NeighborhoodV05, NeighborhoodLayout, ChildSpawnRNG (11 L2 SoT pins), TowerRules
   ui/                      Neon HUD (heart / cyan / violet / phone signal) + neon menu

@@ -25,3 +25,5 @@ L2 art map labels are deferred. Dirty pin# / label mismatches are not used for w
 ## Escape
 
 Master sheet draws **no escape routes**. The graybox keeps a soft-gated, unmarked west-yard zone (`HorrorEscapeZone`, `soft_gated` meta). No signage.
+
+Phase 1 map rethink (eng): outdoor heightfield + streets + hills first. Host Match player spawns are on that outdoor ground. L2 `spawn_id` list is unchanged. House / PM interiors stay stubbed for later phases.

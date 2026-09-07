@@ -13,10 +13,15 @@ var _tick_accum: float = 0.0
 func _ready() -> void:
 	add_to_group("horror_world")
 	var built: Dictionary = _LAYOUT.call("build", self, 4)
-	_family_spawns = built["family_spawns"]
-	_pm_spawn = built["pm_spawn"]
+	_family_spawns.clear()
+	var spawned = built.get("family_spawns", [])
+	for m in spawned:
+		if m is Marker3D:
+			_family_spawns.append(m)
+	var pm = built.get("pm_spawn")
+	_pm_spawn = pm if pm is Marker3D else null
 	_scatter_pickups()
-	print("[HorrorWorld] neighborhood built families=%d spawns=%d" % [
+	print("[HorrorWorld] neighborhood built families=%d outdoor_spawns=%d terrain=phase1" % [
 		built["family_count"], _family_spawns.size(),
 	])
 
@@ -41,20 +46,20 @@ func server_init_match(player_count: int) -> void:
 
 func get_family_spawn_transform(family_index: int) -> Transform3D:
 	if _family_spawns.is_empty():
-		return Transform3D(Basis.IDENTITY, Vector3(0, 1.2, -8))
+		return Transform3D(Basis.IDENTITY, Vector3(0, 0.2, -4.8))
 	var idx := clampi(family_index, 0, _family_spawns.size() - 1)
 	return _family_spawns[idx].global_transform
 
 
 func get_pm_spawn_transform() -> Transform3D:
 	if _pm_spawn == null:
-		return Transform3D(Basis.IDENTITY, Vector3(17.3, 1.2, 0))
+		return Transform3D(Basis.IDENTITY, Vector3(14.8, 0.2, 0))
 	return _pm_spawn.global_transform
 
 
 func get_random_spawn_transform() -> Transform3D:
 	if _family_spawns.is_empty():
-		return Transform3D(Basis.IDENTITY, Vector3(0, 1.2, -8))
+		return Transform3D(Basis.IDENTITY, Vector3(0, 0.2, -4.8))
 	var m: Marker3D = _family_spawns[randi() % _family_spawns.size()]
 	return m.global_transform
 

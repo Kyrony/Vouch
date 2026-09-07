@@ -71,7 +71,9 @@ func _probe_horror_match() -> String:
 		return "HorrorWorld missing"
 	var spawn_count: int = world_node.call("get_spawn_point_count")
 	if spawn_count < 4:
-		return "expected >= 4 family spawns, got %d" % spawn_count
+		return "expected >= 4 outdoor family spawns, got %d" % spawn_count
+	if world_node.get_node_or_null("Outdoor/Terrain") == null:
+		return "Outdoor/Terrain missing"
 	var pickups := world_node.get_node_or_null("Pickups")
 	if pickups == null or pickups.get_child_count() < 1:
 		return "no pickups"
