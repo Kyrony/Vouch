@@ -1,7 +1,268 @@
-[gd_scene load_steps=2 format=3]
+[gd_scene load_steps=22 format=3]
 
 [ext_resource type="Script" path="res://scripts/rooms/room_map.gd" id="1"]
+[ext_resource type="Material" path="res://assets/materials/graybox_wall.tres" id="2"]
+[ext_resource type="Material" path="res://assets/materials/graybox_floor.tres" id="3"]
+[ext_resource type="Script" path="res://scripts/rooms/item_spawn_slot.gd" id="4"]
+
+[sub_resource type="BoxMesh" id="BoxMesh_0"]
+size = Vector3(6.0, 0.12, 7.0)
+
+[sub_resource type="BoxShape3D" id="BoxShape_0"]
+size = Vector3(6.0, 0.12, 7.0)
+
+[sub_resource type="BoxMesh" id="BoxMesh_1"]
+size = Vector3(6.0, 0.12, 7.0)
+
+[sub_resource type="BoxShape3D" id="BoxShape_1"]
+size = Vector3(6.0, 0.12, 7.0)
+
+[sub_resource type="BoxMesh" id="BoxMesh_2"]
+size = Vector3(6.0, 2.4, 0.12)
+
+[sub_resource type="BoxShape3D" id="BoxShape_2"]
+size = Vector3(6.0, 2.4, 0.12)
+
+[sub_resource type="BoxMesh" id="BoxMesh_3"]
+size = Vector3(0.12, 2.4, 7.0)
+
+[sub_resource type="BoxShape3D" id="BoxShape_3"]
+size = Vector3(0.12, 2.4, 7.0)
+
+[sub_resource type="BoxMesh" id="BoxMesh_4"]
+size = Vector3(0.12, 2.4, 7.0)
+
+[sub_resource type="BoxShape3D" id="BoxShape_4"]
+size = Vector3(0.12, 2.4, 7.0)
+
+[sub_resource type="BoxMesh" id="BoxMesh_5"]
+size = Vector3(2.575, 2.4, 0.12)
+
+[sub_resource type="BoxShape3D" id="BoxShape_5"]
+size = Vector3(2.575, 2.4, 0.12)
+
+[sub_resource type="BoxMesh" id="BoxMesh_6"]
+size = Vector3(2.575, 2.4, 0.12)
+
+[sub_resource type="BoxShape3D" id="BoxShape_6"]
+size = Vector3(2.575, 2.4, 0.12)
+
+[sub_resource type="BoxMesh" id="BoxMesh_7"]
+size = Vector3(0.85, 0.3500000000000001, 0.12)
+
+[sub_resource type="BoxShape3D" id="BoxShape_7"]
+size = Vector3(0.85, 0.3500000000000001, 0.12)
 
 [node name="Room_04" type="Node3D"]
 script = ExtResource("1")
 room_id = 4
+
+[node name="Geometry" type="Node3D" parent="."]
+
+[node name="Floor" type="StaticBody3D" parent="Geometry"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -0.06, 0)
+
+[node name="MeshInstance3D" type="MeshInstance3D" parent="Geometry/Floor"]
+mesh = SubResource("BoxMesh_0")
+surface_material_override/0 = ExtResource("3")
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="Geometry/Floor"]
+shape = SubResource("BoxShape_0")
+
+[node name="Ceiling" type="StaticBody3D" parent="Geometry"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 2.46, 0)
+
+[node name="MeshInstance3D" type="MeshInstance3D" parent="Geometry/Ceiling"]
+mesh = SubResource("BoxMesh_1")
+surface_material_override/0 = ExtResource("2")
+
+[node name="WallNorth" type="StaticBody3D" parent="Geometry"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.2, -3.5)
+
+[node name="MeshInstance3D" type="MeshInstance3D" parent="Geometry/WallNorth"]
+mesh = SubResource("BoxMesh_2")
+surface_material_override/0 = ExtResource("2")
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="Geometry/WallNorth"]
+shape = SubResource("BoxShape_2")
+
+[node name="WallEast" type="StaticBody3D" parent="Geometry"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 3.0, 1.2, 0)
+
+[node name="MeshInstance3D" type="MeshInstance3D" parent="Geometry/WallEast"]
+mesh = SubResource("BoxMesh_3")
+surface_material_override/0 = ExtResource("2")
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="Geometry/WallEast"]
+shape = SubResource("BoxShape_3")
+
+[node name="WallWest" type="StaticBody3D" parent="Geometry"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -3.0, 1.2, 0)
+
+[node name="MeshInstance3D" type="MeshInstance3D" parent="Geometry/WallWest"]
+mesh = SubResource("BoxMesh_4")
+surface_material_override/0 = ExtResource("2")
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="Geometry/WallWest"]
+shape = SubResource("BoxShape_4")
+
+[node name="WallSouth_0" type="StaticBody3D" parent="Geometry"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -1.7125, 1.2, 3.5)
+
+[node name="MeshInstance3D" type="MeshInstance3D" parent="Geometry/WallSouth_0"]
+mesh = SubResource("BoxMesh_5")
+surface_material_override/0 = ExtResource("2")
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="Geometry/WallSouth_0"]
+shape = SubResource("BoxShape_5")
+
+[node name="WallSouth_1" type="StaticBody3D" parent="Geometry"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 1.7125000000000001, 1.2, 3.5)
+
+[node name="MeshInstance3D" type="MeshInstance3D" parent="Geometry/WallSouth_1"]
+mesh = SubResource("BoxMesh_6")
+surface_material_override/0 = ExtResource("2")
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="Geometry/WallSouth_1"]
+shape = SubResource("BoxShape_6")
+
+[node name="WallSouth_Lintel" type="StaticBody3D" parent="Geometry"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 2.2249999999999996, 3.5)
+
+[node name="MeshInstance3D" type="MeshInstance3D" parent="Geometry/WallSouth_Lintel"]
+mesh = SubResource("BoxMesh_7")
+surface_material_override/0 = ExtResource("2")
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="Geometry/WallSouth_Lintel"]
+shape = SubResource("BoxShape_7")
+
+[node name="PlayerSpawn" type="Marker3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.1, 1.7)
+
+[node name="EscapeDoor" type="Marker3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.025, 3.38)
+
+[node name="EscapeAttach" type="Marker3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.025, 3.65)
+
+[node name="ItemSpawns" type="Node3D" parent="."]
+
+[node name="Slot_01" type="Marker3D" parent="ItemSpawns"]
+script = ExtResource("4")
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.16549562221404512, 0.0, 2.92)
+rotation = Vector3(0.0, 3.141592653589793, 0)
+slot_index = 1
+surface_kind = "wall_floor"
+wall_normal = Vector3(0, 0, -1)
+
+[node name="Slot_02" type="Marker3D" parent="ItemSpawns"]
+script = ExtResource("4")
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.5262274716867198, 2.28, 0.3152848193573963)
+rotation = Vector3(3.141592653589793, 0.0, 0)
+slot_index = 2
+surface_kind = "ceiling"
+wall_normal = Vector3(0, -1, 0)
+
+[node name="Slot_03" type="Marker3D" parent="ItemSpawns"]
+script = ExtResource("4")
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -1.273757378820739, 1.25, 2.92)
+rotation = Vector3(0.0, 3.141592653589793, 0)
+slot_index = 3
+surface_kind = "wall"
+wall_normal = Vector3(0, 0, -1)
+
+[node name="Slot_04" type="Marker3D" parent="ItemSpawns"]
+script = ExtResource("4")
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -1.140040192320021, 1.15, 2.92)
+rotation = Vector3(0.0, 3.141592653589793, 0)
+slot_index = 4
+surface_kind = "wall"
+wall_normal = Vector3(0, 0, -1)
+
+[node name="Slot_05" type="Marker3D" parent="ItemSpawns"]
+script = ExtResource("4")
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 2.42, 1.45, -0.408278287986358)
+rotation = Vector3(0.0, -1.5707963267948966, 0)
+slot_index = 5
+surface_kind = "wall"
+wall_normal = Vector3(-1, 0, 0)
+
+[node name="Slot_06" type="Marker3D" parent="ItemSpawns"]
+script = ExtResource("4")
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -2.42, 1.1, 1.6153850377573136)
+rotation = Vector3(0.0, 1.5707963267948966, 0)
+slot_index = 6
+surface_kind = "wall"
+wall_normal = Vector3(1, 0, 0)
+
+[node name="Slot_07" type="Marker3D" parent="ItemSpawns"]
+script = ExtResource("4")
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.42342979484783205, 0.95, -2.92)
+slot_index = 7
+surface_kind = "wall"
+wall_normal = Vector3(0, 0, 1)
+
+[node name="Slot_08" type="Marker3D" parent="ItemSpawns"]
+script = ExtResource("4")
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 2.42, 1.0, -1.4623886838048668)
+rotation = Vector3(0.0, -1.5707963267948966, 0)
+slot_index = 8
+surface_kind = "wall"
+wall_normal = Vector3(-1, 0, 0)
+
+[node name="Slot_09" type="Marker3D" parent="ItemSpawns"]
+script = ExtResource("4")
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -2.42, 1.35, 0.5091937572018228)
+rotation = Vector3(0.0, 1.5707963267948966, 0)
+slot_index = 9
+surface_kind = "wall"
+wall_normal = Vector3(1, 0, 0)
+
+[node name="Slot_10" type="Marker3D" parent="ItemSpawns"]
+script = ExtResource("4")
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.15746139501162393, 1.2, -2.92)
+slot_index = 10
+surface_kind = "wall"
+wall_normal = Vector3(0, 0, 1)
+
+[node name="Slot_11" type="Marker3D" parent="ItemSpawns"]
+script = ExtResource("4")
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.9507368236840089, 0.0, -1.5749041487287974)
+slot_index = 11
+surface_kind = "floor"
+wall_normal = Vector3(0, 1, 0)
+
+[node name="Slot_12" type="Marker3D" parent="ItemSpawns"]
+script = ExtResource("4")
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.5423603384213895, 0.0, 0.2889056537623764)
+slot_index = 12
+surface_kind = "floor"
+wall_normal = Vector3(0, 1, 0)
+
+[node name="Slot_13" type="Marker3D" parent="ItemSpawns"]
+script = ExtResource("4")
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.8653319146810872, 0.0, -1.4475541613524674)
+slot_index = 13
+surface_kind = "floor"
+wall_normal = Vector3(0, 1, 0)
+
+[node name="Slot_14" type="Marker3D" parent="ItemSpawns"]
+script = ExtResource("4")
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.7595661362015097, 0.0, -1.1086948866161275)
+slot_index = 14
+surface_kind = "floor"
+wall_normal = Vector3(0, 1, 0)
+
+[node name="Slot_15" type="Marker3D" parent="ItemSpawns"]
+script = ExtResource("4")
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.39777515229600824, 0.0, 0.5561192239183275)
+slot_index = 15
+surface_kind = "floor"
+wall_normal = Vector3(0, 1, 0)
+
+[node name="Slot_16" type="Marker3D" parent="ItemSpawns"]
+script = ExtResource("4")
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -1.0588650180571397, 0.0, 1.6258594156885195)
+slot_index = 16
+surface_kind = "floor"
+wall_normal = Vector3(0, 1, 0)
