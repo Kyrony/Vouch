@@ -3,8 +3,10 @@ class_name RoomMap
 ## One complete authored room map — solid geometry + 16 fixed item spawn slots.
 
 const _LAYOUTS: GDScript = preload("res://scripts/rooms/room_layouts.gd")
+const _INTERACTABLE_BASE: GDScript = preload("res://scripts/interactables/interactable.gd")
 const _GEOMETRY: GDScript = preload("res://scripts/rooms/room_geometry.gd")
 const _ITEMS: GDScript = preload("res://scripts/rooms/item_spawn_system.gd")
+const _PLAYABLE: GDScript = preload("res://scripts/rooms/playable_loop_spawns.gd")
 const _SLOT_SCRIPT: GDScript = preload("res://scripts/rooms/item_spawn_slot.gd")
 const _TUNNEL: GDScript = preload("res://scripts/rooms/tunnel_kit.gd")
 const _NEON: GDScript = preload("res://scripts/rooms/neon_theme.gd")
@@ -109,6 +111,7 @@ func configure(data: Dictionary) -> void:
 		"theme_id": theme_id,
 		"layout": _layout,
 		"accent_material": accent,
+		"spawn_hint": spawn_point.position if spawn_point else _layout.get("spawn", Vector3.ZERO),
 		"has_valve": data.get("has_valve", false),
 		"has_electrical_box": data.get("has_electrical_box", false),
 		"wire_targets": data.get("wire_targets", []),
@@ -123,6 +126,9 @@ func configure(data: Dictionary) -> void:
 	var spawned: Dictionary = _ITEMS.call("populate", self, ctx, rng)
 	light_switch = spawned.get("light_switch")
 	_fireplace = spawned.get("fireplace")
+
+	var spawn_local: Vector3 = spawn_point.position if spawn_point else _layout.get("spawn", Vector3.ZERO)
+	_PLAYABLE.call("spawn_near_player", self, spawn_local, accent, owner_peer_id)
 
 	_ITEMS.call("spawn_room_effects", self, ctx)
 
@@ -155,7 +161,7 @@ func add_clue_prop(kind: String, code: String, in_fireplace: bool = false) -> vo
 			spawn_pos = _fireplace.position + Vector3(0, 0.5, 0.2)
 			flame = _fireplace.get_flame()
 		var paper: StaticBody3D = _ITEMS.call("_make_interactable",
-			preload("res://scripts/interactables/clue_flame_paper.gd"),
+			load("res://scripts/interactables/clue_flame_paper.gd") as Script,
 			Vector3(0.3, 0.02, 0.4), spawn_pos, accent, "Pick up paper"
 		)
 		paper.set("revealed_code", code)
@@ -167,7 +173,7 @@ func add_clue_prop(kind: String, code: String, in_fireplace: bool = false) -> vo
 		if in_fireplace and is_instance_valid(_fireplace) and _fireplace.has_node("ClueSlot"):
 			book_pos = _fireplace.get_node("ClueSlot").position + _fireplace.position
 		var book: StaticBody3D = _ITEMS.call("_make_interactable",
-			preload("res://scripts/interactables/clue_book.gd"),
+			load("res://scripts/interactables/clue_book.gd") as Script,
 			Vector3(0.3, 0.25, 0.35), book_pos, accent, "Read book"
 		)
 		book.set("revealed_text", "A page has a code scrawled in the corner: %s" % code)
@@ -246,7 +252,7 @@ func mark_escape_locked() -> void:
 	var escape_point: Node = get_node("EscapePoint")
 	escape_point.prompt_text += " (locked - needs a code)"
 	var keypad: StaticBody3D = _ITEMS.call("_make_interactable",
-		preload("res://scripts/interactables/code_keypad.gd"),
+		load("res://scripts/interactables/code_keypad.gd") as Script,
 		Vector3(0.24, 0.32, 0.06), Vector3(0.7, 1.0, 0), _accent_material(_theme["accent_color"], theme_id), "Enter code"
 	)
 	keypad.set("room_index", room_index)
@@ -270,12 +276,19 @@ func _build_pm_monitors() -> void:
 
 
 func _build_escape_corridor(corridor_out: Vector3, idx: int) -> void:
-	var grid_pos := Match.room_grid_position(idx)
+	var grid_pos: Vector3 = WorldScale.room_grid_position(idx)
 	var dist := Vector2(grid_pos.x, grid_pos.z).length()
-	var horiz := clampf(dist - WorldScale.HUB_SHAFT_RADIUS - depth * 0.5, WorldScale.CORRIDOR_MIN, WorldScale.CORRIDOR_MAX)
+	var raw_horiz := dist - WorldScale.HUB_SHAFT_RADIUS - depth * 0.5
+	var horiz: float
+	if raw_horiz < 1.0:
+		horiz = 3.0
+	else:
+		horiz = clampf(raw_horiz, WorldScale.CORRIDOR_MIN, WorldScale.CORRIDOR_MAX)
 	var start_z := corridor_out.z + WALL
-	_TUNNEL.call("build_horizontal", self, start_z, horiz, WorldScale.HUB_HALL_W, WorldScale.HUB_HALL_H, true, true)
-	_TUNNEL.call("build_hub_connector", self, start_z + horiz, WorldScale.HUB_HALL_W, WorldScale.HUB_HALL_H)
+	# Escape tunnels ramp upward toward the central shaft / mountain surface.
+	var rise := clampf(horiz * 0.045, 0.35, 2.2)
+	_TUNNEL.call("build_horizontal", self, start_z, horiz, WorldScale.HUB_HALL_W, WorldScale.HUB_HALL_H, true, true, rise)
+	_TUNNEL.call("build_hub_connector", self, start_z + horiz, WorldScale.HUB_HALL_W, WorldScale.HUB_HALL_H, rise)
 
 
 static func _accent_material(color: Color, theme_id: String = "bedroom") -> StandardMaterial3D:

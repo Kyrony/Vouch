@@ -96,6 +96,7 @@ func start_match() -> void:
 		return
 
 	var all_peer_ids: Array = GameState.players.keys()
+	print("LIVE_ESCAPE start_match roster=%d peer_ids=%s" % [all_peer_ids.size(), all_peer_ids])
 
 	# The Puppet Master is picked FIRST and excluded from the normal
 	# faction pool entirely - they're a fifth, independent role. See

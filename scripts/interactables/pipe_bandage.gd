@@ -1,4 +1,4 @@
-extends Interactable
+extends "res://scripts/interactables/interactable.gd"
 class_name PipeBandage
 ## Bandage roll — repairs broken pipe / seals gas leak in this room.
 
@@ -25,10 +25,10 @@ func _apply_repair() -> void:
 	var room := get_parent()
 	if room == null:
 		return
-	var pipe := room.get_node_or_null("BrokenPipe") as BrokenPipe
+	var pipe := room.get_node_or_null("BrokenPipe")
 	if pipe and pipe.has_method("server_repair"):
 		pipe.server_repair()
-	var gas := room.get_node_or_null("GasLeak") as GasLeak
+	var gas := room.get_node_or_null("GasLeak")
 	if gas and gas.has_method("server_repair"):
 		gas.server_repair()
 	if GameState.local_player_node and GameState.local_player_node.has_method("_show_toast"):

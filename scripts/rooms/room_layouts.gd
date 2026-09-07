@@ -300,7 +300,8 @@ static func _stair_nook(id: int, w: float, d: float) -> Dictionary:
 	], [
 		{"pos": Vector3(-2.0, 0.21, 1.0), "size": Vector3(1.8, 0.42, 0.9)},
 	])
-	layout["stairs"] = {"pos": Vector3(3.0, 0, -1.0), "size": Vector2(1.0, 2.2)}
+	layout["loft"] = true
+	layout["stairs"] = {"pos": Vector3(3.0, 0, -1.0), "size": Vector2(1.0, 2.2), "landing_y": HEIGHT * 0.55}
 	return layout
 
 
@@ -322,7 +323,9 @@ static func _split_level(id: int, w: float, d: float) -> Dictionary:
 	], [
 		{"pos": Vector3(2.5, 0.21, 1.5), "size": Vector3(1.8, 0.42, 0.9)},
 	])
-	layout["stairs"] = {"pos": Vector3(-2.5, 0, -1.5), "size": Vector2(1.1, 2.0)}
+	layout["loft"] = true
+	layout["mezzanine"] = {"pos": Vector3(-2.8, HEIGHT * 0.55, 1.8), "size": Vector3(2.4, WALL, 2.0)}
+	layout["stairs"] = {"pos": Vector3(-2.5, 0, -1.5), "size": Vector2(1.1, 2.0), "landing_y": HEIGHT * 0.55}
 	return layout
 
 
@@ -339,7 +342,7 @@ static func _long_ranch(id: int, w: float, d: float) -> Dictionary:
 
 
 static func _bunker_suite(id: int, w: float, d: float) -> Dictionary:
-	return _base("Bunker Suite", id, w, d, "basement", [
+	var layout := _base("Bunker Suite", id, w, d, "basement", [
 		{"pos": Vector3(0, HEIGHT * 0.5, -1.0), "size": Vector3(WALL, HEIGHT, 5.0)},
 		{"pos": Vector3(-2.5, HEIGHT * 0.5, -3.0), "size": Vector3(4.5, HEIGHT, WALL)},
 		{"pos": Vector3(2.5, HEIGHT * 0.5, 1.5), "size": Vector3(4.5, HEIGHT, WALL)},
@@ -348,3 +351,6 @@ static func _bunker_suite(id: int, w: float, d: float) -> Dictionary:
 		{"pos": Vector3(-3.5, 0.275, 0.5), "size": Vector3(1.6, 0.55, 2.0)},
 		{"pos": Vector3(3.5, 0.7, -1.0), "size": Vector3(0.6, 1.4, 0.5)},
 	])
+	layout["mezzanine"] = {"pos": Vector3(2.2, HEIGHT * 0.42, -2.2), "size": Vector3(2.8, WALL, 2.2)}
+	layout["stairs"] = {"pos": Vector3(1.2, 0, 0.5), "size": Vector2(1.0, 1.8), "landing_y": HEIGHT * 0.42}
+	return layout

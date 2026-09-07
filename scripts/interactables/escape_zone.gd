@@ -10,7 +10,7 @@ func _ready() -> void:
 
 
 func _on_body_entered(body: Node) -> void:
-	if not body is Player:
+	if not body.is_in_group("players"):
 		return
 	var peer_id := int(str(body.name))
 	if peer_id <= 0:

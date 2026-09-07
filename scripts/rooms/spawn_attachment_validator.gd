@@ -1,6 +1,10 @@
 extends RefCounted
 class_name SpawnAttachmentValidator
 ## Headless validation — assert spawned items sit on the correct surface.
+##
+## Nodes in group `playable_loop` are exempt: Phone/Walkie are force-placed near
+## PlayerSpawn for interact range (see PlayableLoopSpawns.validate()) and may
+## not satisfy generic flush-wall rules used for slot-spawned props.
 
 const WALL_TOLERANCE: float = 0.14
 const FLOOR_Y_TOLERANCE: float = 0.08
@@ -40,6 +44,9 @@ static func validate(room: Node3D) -> Array[String]:
 
 
 static func _check_node(node: Node, hw: float, hd: float, h: float, errors: Array[String]) -> void:
+	if node.is_in_group("playable_loop"):
+		return
+
 	if node.name == "Fireplace":
 		_check_fireplace(node, hd, errors)
 		return

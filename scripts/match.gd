@@ -13,6 +13,10 @@ class_name Match
 ## TODO(post-MVP): mid-match reconnection handling, and support for
 ## uneven faction sizes.
 
+const _ROOM_POD: GDScript = preload("res://scripts/room_pod.gd")
+const _PATH: GDScript = preload("res://scripts/rooms/escape_path_validator.gd")
+const _ESCAPE_HUB: GDScript = preload("res://scripts/systems/escape_hub.gd")
+
 const ROOM_POD_SCENE_PATH: String = "res://scenes/Match/RoomPod.tscn"
 const PLAYER_SCENE_PATH: String = "res://scenes/Player/Player.tscn"
 
@@ -33,6 +37,8 @@ const PUPPET_MASTER_TARGET_COUNT: int = 2
 
 ## Central underground shaft — built once per match on every peer.
 var _escape_hub: Node3D
+var _escape_hub_room_count: int = 0
+var _expected_room_count: int = 0
 
 ## Server-only bookkeeping: room_index -> RoomPod node.
 var _rooms: Dictionary = {}
@@ -76,6 +82,7 @@ func _get_player_scene() -> PackedScene:
 
 
 func _on_match_started() -> void:
+	_teardown_match_geometry()
 	if not multiplayer.is_server():
 		return
 	_server_build_match()
@@ -83,6 +90,7 @@ func _on_match_started() -> void:
 
 func _server_build_match() -> void:
 	_rooms.clear()
+	EscapeSystem.reset()
 	LinkGraph.reset()
 	PuzzleSystem.reset()
 	PuppetMasterSystem.reset()
@@ -92,6 +100,8 @@ func _server_build_match() -> void:
 
 	var peer_ids: Array = GameState.players.keys()
 	peer_ids.shuffle()
+	_expected_room_count = peer_ids.size()
+	print("LIVE_ESCAPE match_start players=%d peer_ids=%s" % [_expected_room_count, peer_ids])
 
 	for i in range(peer_ids.size()):
 		GameState.server_set_room(peer_ids[i], i)
@@ -105,7 +115,9 @@ func _server_build_match() -> void:
 	for i in range(peer_ids.size()):
 		var peer_id: int = peer_ids[i]
 		var is_pm: bool = GameState.players[peer_id]["is_puppet_master"]
-		_server_spawn_room(i, peer_id, is_pm, puzzle_plan, peer_ids.size())
+		_server_spawn_room(i, peer_id, is_pm, puzzle_plan, peer_ids.size(), i == 0)
+
+	_ensure_flood_valve_in_match(peer_ids)
 
 	# Links must be built AFTER every room has registered its control/effect
 	# nodes with LinkGraph.
@@ -119,6 +131,8 @@ func _server_build_match() -> void:
 	for i in range(peer_ids.size()):
 		var peer_id: int = peer_ids[i]
 		_server_spawn_player(peer_id, i)
+
+	call_deferred("_log_live_escape_path_deferred")
 
 
 ## Decides whether this match has a code-locked escape and, if so, which
@@ -178,7 +192,26 @@ func _grant_puppet_master_targets(peer_ids: Array) -> void:
 	PuppetMasterSystem.server_grant_targets(pm_peer_id, camera_targets, all_other_rooms)
 
 
-func _server_spawn_room(room_index: int, owner_peer_id: int, is_pm: bool, puzzle_plan: Dictionary, total_rooms: int) -> void:
+func _ensure_flood_valve_in_match(peer_ids: Array) -> void:
+	if peer_ids.size() < 2:
+		return
+	for idx in _rooms.keys():
+		var pod = _rooms[idx]
+		if pod and pod.get("light_switch"):
+			var map: Node = pod.get_child(0) if pod.get_child_count() > 0 else null
+			if map and map.has_node("WaterValve"):
+				return
+	for idx in _rooms.keys():
+		var pid := GameState.server_get_peer_by_room(idx)
+		if pid != GameState.puppet_master_peer_id:
+			push_warning("Match: no flood valve spawned — light-switch mystery links still active.")
+			return
+
+
+func _server_spawn_room(room_index: int, owner_peer_id: int, is_pm: bool, puzzle_plan: Dictionary, total_rooms: int, force_valve: bool = false) -> void:
+	var recipe: Dictionary = _ROOM_POD.call("plan_recipe", is_pm)
+	if force_valve and not is_pm and total_rooms >= 2:
+		recipe["has_valve"] = true
 	var data := {
 		"room_index": room_index,
 		"owner_peer_id": owner_peer_id,
@@ -189,7 +222,7 @@ func _server_spawn_room(room_index: int, owner_peer_id: int, is_pm: bool, puzzle
 		"clue_kind": puzzle_plan.get("clue_kind", "") if puzzle_plan.get("clue_index", -1) == room_index else "",
 		"clue_code": puzzle_plan.get("code", "") if puzzle_plan.get("clue_index", -1) == room_index else "",
 	}
-	data.merge(RoomPod.plan_recipe(is_pm))
+	data.merge(recipe)
 	if data.get("has_electrical_box", false):
 		var targets: Array = []
 		var candidates: Array = []
@@ -209,10 +242,19 @@ func _server_spawn_room(room_index: int, owner_peer_id: int, is_pm: bool, puzzle
 			for j in range(total_rooms):
 				if j != room_index:
 					peek_candidates.append(j)
-		if not peek_candidates.is_empty():
+		if peek_candidates.is_empty():
+			data["has_binary_puzzle"] = false
+		else:
 			data["binary_peek_room"] = peek_candidates[randi() % peek_candidates.size()]
 			data["binary_target"] = randi_range(5, 200)
 	RoomUtilities.server_init_room(room_index)
+	print("LIVE_ESCAPE spawn_room index=%d owner=%d total_rooms=%d is_pm=%s scene=%s" % [
+		room_index,
+		owner_peer_id,
+		total_rooms,
+		is_pm,
+		recipe.get("room_scene_id", "?"),
+	])
 	var room: Node = rooms_spawner.spawn(data)
 	if room == null:
 		push_error("Match: failed to spawn room %d for peer %d" % [room_index, owner_peer_id])
@@ -221,7 +263,7 @@ func _server_spawn_room(room_index: int, owner_peer_id: int, is_pm: bool, puzzle
 
 
 func _server_spawn_player(peer_id: int, room_index: int) -> void:
-	var room: RoomPod = _rooms.get(room_index)
+	var room = _rooms.get(room_index)
 	var spawn_xform: Transform3D = room.get_spawn_transform() if room else Transform3D.IDENTITY
 	var faction_id: String = GameState.server_get_faction(peer_id)
 
@@ -232,6 +274,9 @@ func _server_spawn_player(peer_id: int, room_index: int) -> void:
 		"spawn_rotation_y": spawn_xform.basis.get_euler().y,
 	}
 	var player: Node = players_spawner.spawn(data)
+	if player == null:
+		push_error("Match: failed to spawn player for peer %d (Player.gd compile failure?)" % peer_id)
+		return
 	EscapeSystem.server_register_player_node(peer_id, player)
 
 
@@ -239,58 +284,153 @@ func _server_spawn_player(peer_id: int, room_index: int) -> void:
 ## it in response to the replicated spawn message) - must stay
 ## deterministic given identical `data`.
 func _spawn_room_pod(data: Dictionary) -> Node:
-	var scene := _get_room_pod_scene()
+	var scene = _get_room_pod_scene()
 	if scene == null:
 		push_error("Match: failed to load RoomPod scene at %s" % ROOM_POD_SCENE_PATH)
 		return null
-	var raw_node := scene.instantiate()
+	var raw_node: Node = scene.instantiate()
 	if raw_node == null:
 		push_error("Match: RoomPod scene instantiate returned null (path=%s)" % scene.resource_path)
 		return null
-	var room := raw_node as RoomPod
-	if room == null:
+	var room = raw_node
+	if not room.has_method("configure"):
 		push_error("Match: RoomPod scene root is not a RoomPod (script=%s)" % str(raw_node.get_script()))
 		raw_node.free()
 		return null
 	_ensure_escape_hub(int(data.get("total_rooms", 4)))
-	var grid_pos := room_grid_position(data["room_index"])
+	var grid_pos: Vector3 = room_grid_position(data["room_index"])
 	var to_hub := Vector3(-grid_pos.x, 0.0, -grid_pos.z)
 	if to_hub.length() < 0.5:
-		to_hub = Vector3(0.0, 0.0, 1.0)
+		# Room sits on the hub shaft — tunnel must run back toward world origin.
+		to_hub = Vector3(0.0, 0.0, -1.0)
 	else:
 		to_hub = to_hub.normalized()
 	room.rotation.y = atan2(to_hub.x, to_hub.z)
 	room.configure(data)
 	room.position = grid_pos
+	call_deferred("_maybe_log_escape_path", int(data.get("total_rooms", 1)))
 	return room
 
 
 func _ensure_escape_hub(room_count: int) -> void:
-	if is_instance_valid(_escape_hub):
+	if is_instance_valid(_escape_hub) and _escape_hub_room_count == room_count:
 		return
+	if is_instance_valid(_escape_hub):
+		_escape_hub.queue_free()
+		_escape_hub = null
+	_escape_hub_room_count = room_count
 	_escape_hub = Node3D.new()
-	_escape_hub.set_script(preload("res://scripts/systems/escape_hub.gd"))
+	_escape_hub.set_script(_ESCAPE_HUB)
 	_escape_hub.name = "EscapeHub"
 	add_child(_escape_hub)
 	_escape_hub.call("build", room_count)
+	print("LIVE_ESCAPE EscapeHub built room_count=%d path=%s" % [room_count, _escape_hub.get_path()])
+
+
+func teardown_match_geometry() -> void:
+	_teardown_match_geometry()
+
+
+func _teardown_match_geometry() -> void:
+	_rooms.clear()
+	if is_instance_valid(_escape_hub):
+		_escape_hub.queue_free()
+		_escape_hub = null
+	_escape_hub_room_count = 0
+	_expected_room_count = 0
+	if not is_node_ready():
+		return
+	for child in rooms_container.get_children():
+		if child == rooms_spawner:
+			continue
+		child.queue_free()
+	for child in players_container.get_children():
+		if child == players_spawner:
+			continue
+		child.queue_free()
+
+
+func _maybe_log_escape_path(total_rooms: int) -> void:
+	if not is_node_ready():
+		return
+	var room_pods := _count_room_pods()
+	var mouths: Array = _PATH.call("_collect_tunnel_mouths", self)
+	if room_pods < total_rooms:
+		return
+	_log_live_escape_path(total_rooms, room_pods, mouths.size())
+
+
+func _count_room_pods() -> int:
+	var n := 0
+	for child in rooms_container.get_children():
+		if child != rooms_spawner:
+			n += 1
+	return n
+
+
+func _log_live_escape_path_deferred() -> void:
+	var total := _expected_room_count if _expected_room_count > 0 else _count_room_pods()
+	var room_pods := _count_room_pods()
+	var mouths: Array = _PATH.call("_collect_tunnel_mouths", self)
+	_log_live_escape_path(total, room_pods, mouths.size())
+
+
+func _log_live_escape_path(total_rooms: int, room_pods: int, mouth_count: int) -> void:
+	var hub := get_node_or_null("EscapeHub")
+	if hub != null and hub.has_method("log_live_debug"):
+		hub.call("log_live_debug")
+	elif hub == null:
+		print("LIVE_ESCAPE hub=MISSING")
+	_PATH.call("log_path_nodes", self)
+	print("LIVE_ESCAPE summary expected_rooms=%d room_pods=%d tunnel_mouths=%d hub_room_count=%d" % [
+		total_rooms,
+		room_pods,
+		mouth_count,
+		_escape_hub_room_count,
+	])
+	var mouths: Array = _PATH.call("_collect_tunnel_mouths", self)
+	for mouth: Node in mouths:
+		if mouth is Node3D:
+			print("LIVE_ESCAPE mouth %s global=%s" % [mouth.name, (mouth as Node3D).global_transform.origin])
+	if mouth_count < room_pods:
+		push_warning("LIVE_ESCAPE only %d tunnel mouths for %d room pods — PM rooms have no tunnel; otherwise missing corridor" % [
+			mouth_count, room_pods
+		])
+	if OS.get_environment("VOUCH_PLAYABLE_LOOP_TEST") == "1":
+		var path_errors: Array = _PATH.call("validate", self)
+		if not path_errors.is_empty():
+			push_warning("LIVE_ESCAPE path validation failed: %s" % "; ".join(path_errors))
 
 
 ## Runs on EVERY peer, same determinism requirement as `_spawn_room_pod`.
 func _spawn_player(data: Dictionary) -> Node:
-	var scene := _get_player_scene()
+	var scene = _get_player_scene()
 	if scene == null:
 		push_error("Match: failed to load Player scene at %s" % PLAYER_SCENE_PATH)
 		return null
-	var player := scene.instantiate() as Player
+	var player: Node = scene.instantiate()
 	if player == null:
 		push_error("Match: Player scene instantiate returned null (path=%s)" % scene.resource_path)
+		return null
+	var attached: Script = player.get_script()
+	if attached == null:
+		push_error("Match: Player.tscn root has no script — player.gd likely failed to compile (run: godot4 --headless --path . --import)")
+		player.free()
+		return null
+	if not attached.resource_path.ends_with("player.gd"):
+		push_error("Match: Player.tscn has unexpected script %s" % attached.resource_path)
+		player.free()
+		return null
+	if not player.has_method("enter_ladder") or not "faction_id" in player:
+		push_error("Match: Player node missing expected API (script parse failure?)")
+		player.free()
 		return null
 	player.name = str(data["peer_id"])
 	# Must happen here (before add_child), NOT in Player._ready() - the
 	# MultiplayerSynchronizer child needs authority finalized before this
 	# node enters the tree, or its pending spawn silently fails on clients.
 	player.set_multiplayer_authority(data["peer_id"])
-	player.faction_id = data["faction_id"]
+	player.set("faction_id", data.get("faction_id", ""))
 	player.position = data["spawn_position"]
 	player.rotation.y = data["spawn_rotation_y"]
 	return player

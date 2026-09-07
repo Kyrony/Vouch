@@ -2,6 +2,9 @@ extends RefCounted
 class_name ItemSpawnSystem
 ## Assigns interactables to typed ItemSpawnSlot markers (wall / floor / wall_floor).
 
+## Force base class registration before subclass preloads (headless load-order).
+const _INTERACTABLE_BASE: GDScript = preload("res://scripts/interactables/interactable.gd")
+
 const SLOT_COUNT: int = 16
 const WALL_EMBED: float = 0.04
 
@@ -34,10 +37,16 @@ static func populate(room: Node3D, ctx: Dictionary, rng: RandomNumberGenerator) 
 		push_warning("ItemSpawnSystem: expected %d slots, found %d in %s" % [SLOT_COUNT, slots.size(), room.name])
 
 	var pools := _group_slots_by_surface(slots)
-	var requests := _build_requests(ctx, rng)
-	var result := {"light_switch": null, "fireplace": null, "bookcase": null, "peek_monitor": null}
 	var accent: Material = ctx["accent_material"]
+	var room_index: int = ctx["room_index"]
+	var spawn_hint: Vector3 = ctx.get("spawn_hint", Vector3.ZERO)
+	var result := {"light_switch": null, "fireplace": null, "bookcase": null, "peek_monitor": null}
 
+	# light_switch guaranteed here; phone/walkie come from PlayableLoopSpawns in room_map.configure().
+	var sw_req := {"kind": "light_switch", "control_id": "room_%d_light_switch" % room_index}
+	result["light_switch"] = _spawn_guaranteed(room, pools, ctx, accent, sw_req, "wall", spawn_hint)
+
+	var requests := _build_requests(ctx, rng)
 	for req in requests:
 		var surface_key: String = _surface_for_kind(req["kind"])
 		var pool: Array = pools.get(surface_key, [])
@@ -52,8 +61,6 @@ static func populate(room: Node3D, ctx: Dictionary, rng: RandomNumberGenerator) 
 		if node == null:
 			continue
 		match req["kind"]:
-			"light_switch":
-				result["light_switch"] = node
 			"fireplace":
 				result["fireplace"] = node
 			"bookcase":
@@ -188,11 +195,9 @@ static func _build_requests(ctx: Dictionary, rng: RandomNumberGenerator) -> Arra
 	var room_index: int = ctx["room_index"]
 	var theme_id: String = ctx.get("theme_id", "bedroom")
 
-	requests.append({"kind": "light_switch", "control_id": "room_%d_light_switch" % room_index})
-	requests.append({"kind": "phone"})
+	# light_switch, phone, walkie spawned via _spawn_guaranteed() in populate().
 	requests.append({"kind": "camera"})
 	requests.append({"kind": "ladder"})
-	requests.append({"kind": "walkie"})
 	requests.append({"kind": "pipe_bandage"})
 
 	if ctx.get("has_valve", false):
@@ -215,6 +220,44 @@ static func _build_requests(ctx: Dictionary, rng: RandomNumberGenerator) -> Arra
 	return requests
 
 
+static func _spawn_guaranteed(
+	room: Node3D,
+	pools: Dictionary,
+	ctx: Dictionary,
+	accent: Material,
+	req: Dictionary,
+	surface_key: String,
+	spawn_hint: Vector3
+) -> Node:
+	var pool: Array = pools.get(surface_key, [])
+	if pool.is_empty():
+		return null
+	var slot: Marker3D = _pick_slot_near(pool, spawn_hint, surface_key)
+	pool.erase(slot)
+	return _spawn_request(room, req, slot, accent, ctx)
+
+
+static func _pick_slot_near(pool: Array, hint: Vector3, surface_key: String) -> Marker3D:
+	var best: Marker3D = pool[0]
+	var best_dist := INF
+	for slot in pool:
+		if not slot is Marker3D:
+			continue
+		var dist := hint.distance_squared_to(slot.position)
+		if surface_key == "wall" and slot.get("wall_normal"):
+			var n: Vector3 = slot.wall_normal.normalized()
+			if n.z < -0.5:
+				dist *= 0.35
+			if slot.position.y < 0.85 or slot.position.y > 1.55:
+				dist *= 1.8
+		if surface_key == "floor" and slot.position.y > 0.05:
+			dist *= 2.0
+		if dist < best_dist:
+			best_dist = dist
+			best = slot
+	return best
+
+
 static func _spawn_request(room: Node3D, req: Dictionary, slot: Marker3D, accent: Material, ctx: Dictionary) -> Node:
 	var room_index: int = ctx["room_index"]
 	var owner_peer_id: int = ctx["owner_peer_id"]
@@ -232,7 +275,7 @@ static func _spawn_request(room: Node3D, req: Dictionary, slot: Marker3D, accent
 			room.add_child(sw)
 			return sw
 		"phone":
-			var phone := _make_interactable(PHONE_SCRIPT, Vector3(0.12, 0.18, 0.06), pos, accent, "Pick up phone")
+			var phone := _make_interactable(PHONE_SCRIPT, Vector3(0.12, 0.18, 0.06), pos, accent, "Use phone")
 			phone.rotation.y = rot_y
 			phone.set("owner_peer_id", owner_peer_id)
 			phone.name = "Phone"

@@ -1,4 +1,4 @@
-extends Interactable
+extends "res://scripts/interactables/interactable.gd"
 class_name LightSwitch
 ## LightSwitch
 ##
@@ -14,6 +14,12 @@ var room_index: int = -1
 
 
 func _ready() -> void:
+	call_deferred("_register_control")
+
+
+func _register_control() -> void:
+	if not is_inside_tree() or multiplayer.multiplayer_peer == null:
+		return
 	if multiplayer.is_server():
 		LinkGraph.server_register_control(control_id, self, room_index, "light")
 
@@ -27,3 +33,6 @@ func interact(by_peer_id: int) -> void:
 		LinkGraph.server_handle_activation(control_id, by_peer_id)
 	else:
 		LinkGraph.request_activate.rpc_id(1, control_id)
+		var player := GameState.local_player_node
+		if player and player.has_method("_show_toast"):
+			player._show_toast("You flip the switch…")

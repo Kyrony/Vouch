@@ -1,4 +1,4 @@
-extends Interactable
+extends "res://scripts/interactables/interactable.gd"
 ## BinaryTerminal
 ##
 ## Flip bits until the binary string equals the target decimal value.
@@ -10,7 +10,7 @@ var bit_count: int = 8
 var bit_string: String = "00000000"
 var solved: bool = false
 
-var bookcase: MovableProp = null
+var bookcase: Node = null
 var peek_monitor: Node = null
 
 

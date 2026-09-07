@@ -43,7 +43,8 @@ func _refresh_status() -> void:
 
 
 func _build_buttons() -> void:
-	_add_button("Spawn test gun near player", _spawn_gun)
+	if DebugBuild.enabled:
+		_add_button("Spawn test gun near player", _spawn_gun)
 	_add_button("Regenerate local room preview", _regen_room_hint)
 	_add_button("Toggle power in my room", _toggle_power)
 	_add_button("Toggle water in my room", _toggle_water)
@@ -58,12 +59,14 @@ func _add_button(label: String, callback: Callable) -> void:
 
 
 func _spawn_gun() -> void:
-	if not NetworkManager.is_server():
+	if not DebugBuild.enabled or not NetworkManager.is_server():
 		return
 	var player := GameState.local_player_node
 	if not player:
 		return
-	var gun_script: Script = preload("res://scripts/interactables/gun.gd")
+	var gun_script: Script = load("res://scripts/interactables/gun.gd") as Script
+	if gun_script == null:
+		return
 	var gun := StaticBody3D.new()
 	gun.set_script(gun_script)
 	gun.collision_layer = 2
@@ -88,7 +91,7 @@ func _regen_room_hint() -> void:
 func _toggle_power() -> void:
 	if not NetworkManager.is_server() or not GameState.local_player_node:
 		return
-	var room := Match.world_position_to_room_index(GameState.local_player_node.global_position)
+	var room := _room_at_player()
 	var enabled := not RoomUtilities.is_enabled(room, RoomUtilities.UTILITY_POWER)
 	RoomUtilities.server_set_utility(room, RoomUtilities.UTILITY_POWER, enabled)
 	status_label.text = "Power room %d: %s" % [room, "ON" if enabled else "OFF"]
@@ -97,10 +100,17 @@ func _toggle_power() -> void:
 func _toggle_water() -> void:
 	if not NetworkManager.is_server() or not GameState.local_player_node:
 		return
-	var room := Match.world_position_to_room_index(GameState.local_player_node.global_position)
+	var room := _room_at_player()
 	var enabled := not RoomUtilities.is_enabled(room, RoomUtilities.UTILITY_WATER)
 	RoomUtilities.server_set_utility(room, RoomUtilities.UTILITY_WATER, enabled)
 	status_label.text = "Water room %d: %s" % [room, "ON" if enabled else "OFF"]
+
+
+func _room_at_player() -> int:
+	var pos := GameState.local_player_node.global_position
+	var col := int(roundi(pos.x / WorldScale.GRID_SPACING))
+	var row := int(roundi(pos.z / WorldScale.GRID_SPACING))
+	return row * 4 + col
 
 
 func _reset_odds() -> void:

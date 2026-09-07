@@ -35,6 +35,7 @@ var _sync_timer: float = 0.0
 
 
 func _ready() -> void:
+	add_to_group("link_effects")
 	var mat := water_mesh.get_active_material(0)
 	if mat:
 		water_mesh.set_surface_override_material(0, mat.duplicate())
@@ -99,3 +100,26 @@ func _apply_visual(level: float) -> void:
 	var height: float = maxf(room_height * MAX_HEIGHT_FRACTION * level, 0.001)
 	water_mesh.scale.y = height
 	water_mesh.position.y = height / 2.0
+	if multiplayer.is_server() and level >= 0.35:
+		_try_extinguish_room_fires()
+
+
+func client_link_pulse() -> void:
+	if not is_instance_valid(water_mesh):
+		return
+	var mat := water_mesh.get_surface_override_material(0)
+	if mat is StandardMaterial3D:
+		var pulse := mat.duplicate()
+		pulse.emission_enabled = true
+		pulse.emission = Color(0.35, 0.55, 0.72)
+		pulse.emission_energy_multiplier = 0.4
+		water_mesh.set_surface_override_material(0, pulse)
+		var tween := create_tween()
+		tween.tween_callback(func(): _apply_visual(water_level)).set_delay(0.4)
+
+
+func _try_extinguish_room_fires() -> void:
+	var fire := get_node_or_null("/root/FireSystem")
+	if not fire or not fire.has_method("server_extinguish_in_room"):
+		return
+	fire.server_extinguish_in_room(room_index)

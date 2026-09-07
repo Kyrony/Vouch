@@ -14,8 +14,17 @@ const _GEOM: GDScript = preload("res://scripts/rooms/geometry_util.gd")
 
 func _ready() -> void:
 	_build_mountain_graybox()
+	_gate_test_range()
+	if has_node("Ground"):
+		$Ground.add_to_group("escape_outside_floor")
 	if multiplayer.is_server():
 		EscapeSystem.server_register_outside(self)
+
+
+func _gate_test_range() -> void:
+	# REMOVE test gun / dummy range entirely before retail launch.
+	if not DebugBuild.enabled and has_node("TestRange_RemoveBeforeRelease"):
+		get_node("TestRange_RemoveBeforeRelease").queue_free()
 
 
 func get_roam_spawn_transform() -> Transform3D:

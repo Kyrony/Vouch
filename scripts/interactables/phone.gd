@@ -1,4 +1,4 @@
-extends Interactable
+extends "res://scripts/interactables/interactable.gd"
 class_name Phone
 ## Phone
 ##
@@ -18,6 +18,12 @@ func _init() -> void:
 
 
 func _ready() -> void:
+	call_deferred("_register_phone")
+
+
+func _register_phone() -> void:
+	if not is_inside_tree() or multiplayer.multiplayer_peer == null:
+		return
 	if multiplayer.is_server():
 		PhoneSystem.server_register_phone(owner_peer_id, self)
 
