@@ -18,7 +18,7 @@ class_name Player
 ## TODO(post-MVP): server-side movement validation/anti-cheat, footstep
 ## audio, ragdoll/animation, proper first-person arms model.
 
-enum Modal { NONE, PHONE, KEYPAD }
+enum Modal { NONE, PHONE, KEYPAD, BINARY, PAUSE }
 
 const SPEED: float = 4.5
 const JUMP_VELOCITY: float = 4.0
@@ -83,6 +83,14 @@ var _paper_revealed: bool = false
 ## *** TEST-ONLY - REMOVE BEFORE FULL RELEASE. *** See Gun.gd.
 var has_gun: bool = false
 
+var _binary_terminal: Node = null
+var _binary_bit_labels: Array[Label] = []
+var _binary_panel: Panel
+var _binary_target_label: Label
+var _binary_bits_label: Label
+var _binary_feedback_label: Label
+var _pause_menu: Node
+
 ## Set by NetworkManager/Match director's spawn_function before this node
 ## is added to the tree. Purely informational in MVP - see the note in
 ## docs/MVP_GDD.md about why we deliberately do NOT tint remote players by
@@ -117,6 +125,8 @@ func _ready() -> void:
 		if GameState.local_is_puppet_master:
 			faction_label.text = "PUPPET MASTER"
 			faction_label.add_theme_color_override("font_color", Color(0.85, 0.15, 0.85))
+		_build_binary_panel()
+		_pause_menu = get_node_or_null("/root/Main/PauseMenu")
 	else:
 		camera.current = false
 		hud.visible = false
@@ -126,6 +136,18 @@ func _ready() -> void:
 
 func _unhandled_input(event: InputEvent) -> void:
 	if not is_multiplayer_authority() or _eliminated:
+		return
+
+	if event.is_action_pressed("ui_cancel"):
+		if _active_modal == Modal.BINARY:
+			_close_binary_panel()
+		elif _active_modal != Modal.NONE:
+			_close_active_modal()
+		elif is_instance_valid(_pause_menu) and _pause_menu.visible:
+			_pause_menu.hide_menu()
+		elif GameState.phase == GameState.Phase.IN_MATCH:
+			if is_instance_valid(_pause_menu):
+				_pause_menu.show_menu()
 		return
 
 	if event.is_action_pressed("ui_release_mouse"):
@@ -204,13 +226,17 @@ func _apply_ground_velocity(delta: float, locked: bool) -> void:
 
 
 func _apply_ladder_velocity() -> void:
+	var climb_dir := Vector3.UP
+	if is_instance_valid(_current_ladder):
+		climb_dir = _current_ladder.get_climb_up()
 	var climb_input := Input.get_action_strength("move_forward") - Input.get_action_strength("move_back")
-	velocity.y = climb_input * CLIMB_SPEED
+	velocity = climb_dir * climb_input * CLIMB_SPEED
 
-	var strafe := Input.get_action_strength("move_right") - Input.get_action_strength("move_left")
-	var strafe_dir: Vector3 = transform.basis * Vector3(strafe, 0, 0)
-	velocity.x = strafe_dir.x * SPEED * 0.4
-	velocity.z = strafe_dir.z * SPEED * 0.4
+	if climb_dir.is_equal_approx(Vector3.UP):
+		var strafe := Input.get_action_strength("move_right") - Input.get_action_strength("move_left")
+		var strafe_dir: Vector3 = transform.basis * Vector3(strafe, 0, 0)
+		velocity.x += strafe_dir.x * SPEED * 0.4
+		velocity.z += strafe_dir.z * SPEED * 0.4
 
 
 ## Called by Ladder.gd's Area3D when this player's body enters/exits it.
@@ -234,11 +260,24 @@ func _update_interact_prompt() -> void:
 	if interact_ray.is_colliding():
 		var collider := interact_ray.get_collider()
 		if collider is Ladder and not collider.is_carried:
-			prompt_label.text = "[E] %s" % collider.prompt_text
+			var hint: String = collider.prompt_text
+			if collider.is_placed and not collider.is_leaning and not collider.is_leaning_anim:
+				hint = "Pick up ladder (place to lean on wall)"
+			elif collider.is_leaning:
+				hint = collider.prompt_text
+			prompt_label.text = "[E] %s" % hint
 			prompt_label.visible = true
 			return
 		if collider is Ladder and collider.is_carried and collider.carrier_peer_id == multiplayer.get_unique_id():
 			prompt_label.text = "[E] Place ladder"
+			prompt_label.visible = true
+			return
+		var flammable := collider
+		if collider.is_in_group("flammable_props") and not collider.get("is_charred"):
+			var hint: String = str(collider.get("prompt_text"))
+			if collider.has_method("get_display_text") and not collider.get("is_carried"):
+				hint = "Read book / pick up"
+			prompt_label.text = "[E] %s" % hint
 			prompt_label.visible = true
 			return
 		var target := collider as Interactable
@@ -255,7 +294,21 @@ func _update_interact_prompt() -> void:
 func _try_interact() -> void:
 	if not interact_ray.is_colliding():
 		return
-	var target := interact_ray.get_collider() as Interactable
+	var collider := interact_ray.get_collider()
+
+	var ladder_target := collider as Ladder
+	if ladder_target:
+		ladder_target.interact(multiplayer.get_unique_id())
+		return
+
+	if collider.is_in_group("flammable_props") and not collider.get("is_charred"):
+		if collider.has_method("get_display_text") and not collider.get("is_carried"):
+			_show_toast(collider.call("get_display_text"))
+		if collider.has_method("interact"):
+			collider.interact(multiplayer.get_unique_id())
+		return
+
+	var target := collider as Interactable
 	if not target:
 		return
 
@@ -272,11 +325,6 @@ func _try_interact() -> void:
 		target.interact(multiplayer.get_unique_id())
 		has_gun = true
 		_show_toast("Picked up a gun. (TEST ONLY)")
-		return
-
-	var ladder_target := interact_ray.get_collider()
-	if ladder_target is Ladder:
-		ladder_target.interact(multiplayer.get_unique_id())
 		return
 
 	target.interact(multiplayer.get_unique_id())
@@ -411,6 +459,8 @@ func _close_active_modal() -> void:
 			_close_phone_panel()
 		Modal.KEYPAD:
 			_close_keypad_panel()
+		Modal.BINARY:
+			_close_binary_panel()
 
 
 func _open_phone_panel() -> void:
@@ -502,6 +552,96 @@ func _open_keypad_panel(room_index: int) -> void:
 func _close_keypad_panel() -> void:
 	_active_modal = Modal.NONE
 	keypad_panel.visible = false
+	Input.mouse_mode = Input.MOUSE_MODE_CAPTURED
+
+
+func _build_binary_panel() -> void:
+	_binary_panel = Panel.new()
+	_binary_panel.name = "BinaryPanel"
+	_binary_panel.visible = false
+	_binary_panel.set_anchors_preset(Control.PRESET_CENTER)
+	_binary_panel.custom_minimum_size = Vector2(320, 280)
+	_binary_panel.position = Vector2(-160, -140)
+	hud.add_child(_binary_panel)
+	var vbox := VBoxContainer.new()
+	vbox.set_anchors_preset(Control.PRESET_FULL_RECT)
+	vbox.offset_left = 12
+	vbox.offset_top = 12
+	vbox.offset_right = -12
+	vbox.offset_bottom = -12
+	_binary_panel.add_child(vbox)
+	var title := Label.new()
+	title.text = "Binary terminal"
+	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	vbox.add_child(title)
+	_binary_target_label = Label.new()
+	_binary_target_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	vbox.add_child(_binary_target_label)
+	_binary_bits_label = Label.new()
+	_binary_bits_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	_binary_bits_label.add_theme_font_size_override("font_size", 22)
+	vbox.add_child(_binary_bits_label)
+	var grid := GridContainer.new()
+	grid.columns = 4
+	vbox.add_child(grid)
+	for i in range(8):
+		var btn := Button.new()
+		btn.text = "Bit %d" % i
+		btn.pressed.connect(func(): _on_binary_bit_pressed(i))
+		grid.add_child(btn)
+	_binary_feedback_label = Label.new()
+	_binary_feedback_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	vbox.add_child(_binary_feedback_label)
+	var close_btn := Button.new()
+	close_btn.text = "Close [Esc]"
+	close_btn.pressed.connect(_close_binary_panel)
+	vbox.add_child(close_btn)
+
+
+func open_binary_terminal(terminal: Node) -> void:
+	_binary_terminal = terminal
+	_active_modal = Modal.BINARY
+	_binary_panel.visible = true
+	_update_binary_display(int(terminal.get("target_value")), str(terminal.get("bit_string")))
+	Input.mouse_mode = Input.MOUSE_MODE_VISIBLE
+
+
+func apply_binary_flip_result(result: Dictionary) -> void:
+	if not result.get("ok", false):
+		_binary_feedback_label.text = str(result.get("error", "Error"))
+		return
+	if is_instance_valid(_binary_terminal):
+		_binary_terminal.set("bit_string", result.get("bits", _binary_terminal.get("bit_string")))
+	_update_binary_display(int(_binary_terminal.get("target_value")), str(_binary_terminal.get("bit_string")))
+	if result.get("solved", false):
+		_binary_feedback_label.text = "Access granted!"
+		_show_toast("Terminal unlocked — bookcase moved, monitor online.")
+	else:
+		var val := int(result.get("value", 0))
+		_binary_feedback_label.text = "= %d (need %d)" % [val, int(_binary_terminal.get("target_value"))]
+
+
+func _update_binary_display(target: int, bits: String) -> void:
+	_binary_target_label.text = "Target decimal: %d" % target
+	_binary_bits_label.text = bits
+	_binary_feedback_label.text = ""
+
+
+func _on_binary_bit_pressed(bit_index: int) -> void:
+	if not is_instance_valid(_binary_terminal):
+		return
+	if multiplayer.is_server():
+		var result: Dictionary = _binary_terminal.call("server_flip_bit", bit_index)
+		apply_binary_flip_result(result)
+	else:
+		_binary_terminal.request_flip_bit.rpc_id(1, bit_index)
+
+
+func _close_binary_panel() -> void:
+	_active_modal = Modal.NONE
+	_binary_terminal = null
+	if _binary_panel:
+		_binary_panel.visible = false
 	Input.mouse_mode = Input.MOUSE_MODE_CAPTURED
 
 

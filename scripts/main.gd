@@ -14,11 +14,16 @@ extends Node
 
 @onready var lobby: Control = $Lobby
 @onready var world: Node3D = $World
+@onready var pause_menu: Node = $PauseMenu
+@onready var debug_gui: Node = $DebugGui
 
 
 func _ready() -> void:
 	world.visible = false
 	GameState.match_started.connect(_on_match_started)
+	pause_menu.exit_requested.connect(_on_pause_exit)
+	pause_menu.settings_requested.connect(_on_pause_settings)
+	pause_menu.debug_gui_requested.connect(_on_pause_debug)
 	if OS.get_environment("VOUCH_FLOOR_PLAN_TEST") == "1":
 		call_deferred("_run_floor_plan_test")
 	if OS.get_environment("VOUCH_MATCH_SPAWN_TEST") == "1":
@@ -35,6 +40,7 @@ func _run_match_spawn_test() -> void:
 		"is_puppet_master": false,
 		"floor_plan_id": "04",
 		"has_valve": false,
+		"total_rooms": 1,
 	}
 	var room := match_node._spawn_room_pod(data)
 	if room == null:
@@ -71,6 +77,7 @@ func _spawn_test_room(plan_id: String) -> RoomPod:
 		"is_puppet_master": false,
 		"floor_plan_id": plan_id,
 		"has_valve": false,
+		"total_rooms": 1,
 	})
 	add_child(room)
 	return room
@@ -79,3 +86,22 @@ func _spawn_test_room(plan_id: String) -> RoomPod:
 func _on_match_started() -> void:
 	lobby.visible = false
 	world.visible = true
+
+
+func _on_pause_exit() -> void:
+	get_tree().paused = false
+	GameState.phase = GameState.Phase.LOBBY
+	world.visible = false
+	lobby.visible = true
+
+
+func _on_pause_settings() -> void:
+	if is_instance_valid(GameState.local_player_node) and GameState.local_player_node.has_method("_show_toast"):
+		GameState.local_player_node._show_toast("Open Home → Settings before your next match.")
+
+
+func _on_pause_debug() -> void:
+	# REMOVE DEBUG GUI FROM PAUSE MENU BEFORE FINAL LAUNCH
+	pause_menu.hide_menu()
+	if debug_gui.has_method("_toggle"):
+		debug_gui._toggle()
