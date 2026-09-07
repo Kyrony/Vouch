@@ -5,6 +5,7 @@ class_name RoomMap
 const _LAYOUTS: GDScript = preload("res://scripts/rooms/room_layouts.gd")
 const _GEOMETRY: GDScript = preload("res://scripts/rooms/room_geometry.gd")
 const _ITEMS: GDScript = preload("res://scripts/rooms/item_spawn_system.gd")
+const _SLOT_SCRIPT: GDScript = preload("res://scripts/rooms/item_spawn_slot.gd")
 
 const DOOR_W: float = 0.85
 const DOOR_H: float = 2.05
@@ -132,9 +133,7 @@ func configure(data: Dictionary) -> void:
 	if escape_kind != EscapeKind.NONE:
 		var escape_pos: Vector3 = _layout["escape"]
 		if escape_kind == EscapeKind.VENT:
-			var vent_slot := get_node_or_null("ItemSpawns/Slot_16") as Marker3D
-			if vent_slot:
-				escape_pos = vent_slot.position + Vector3(0, -0.3, 0)
+			escape_pos = _vent_escape_position()
 		_ITEMS.call("spawn_escape", self, ctx, escape_pos, escape_kind == EscapeKind.VENT)
 		_build_escape_corridor(_layout["corridor_out"], data["room_index"])
 
@@ -194,15 +193,29 @@ func _ensure_markers() -> void:
 		slots_root = Node3D.new()
 		slots_root.name = "ItemSpawns"
 		add_child(slots_root)
-		var slot_script := preload("res://scripts/rooms/item_spawn_slot.gd")
-		var positions: Array = _layout.get("slots", [])
-		for i in range(16):
-			var slot := Marker3D.new()
-			slot.set_script(slot_script)
-			slot.name = "Slot_%02d" % (i + 1)
-			slot.set("slot_index", i + 1)
-			slot.position = positions[i] if i < positions.size() else Vector3.ZERO
+		var slot_defs: Array = _layout.get("slots", [])
+		for i in range(mini(16, slot_defs.size())):
+			var data: Dictionary = slot_defs[i]
+			var slot: Marker3D = _SLOT_SCRIPT.call("from_dict", i + 1, data)
 			slots_root.add_child(slot)
+
+
+func _vent_escape_position() -> Vector3:
+	var best_y := 0.0
+	var best_pos: Vector3 = _layout.get("escape", Vector3.ZERO)
+	var root := get_node_or_null("ItemSpawns")
+	if not root:
+		return best_pos
+	for c in root.get_children():
+		if not c is Marker3D or not c.get("surface_kind"):
+			continue
+		if c.surface_kind != "wall":
+			continue
+		if c.position.y > best_y:
+			best_y = c.position.y
+			var n: Vector3 = c.wall_normal.normalized()
+			best_pos = c.position - n * 0.04
+	return best_pos
 
 
 func _configure_pm(data: Dictionary, _rng: RandomNumberGenerator) -> void:
@@ -220,7 +233,7 @@ func _pm_layout() -> Dictionary:
 		"spawn": Vector3(0, 0.1, 1.5),
 		"escape": Vector3.ZERO,
 		"corridor_out": Vector3.ZERO,
-		"slots": _LAYOUTS.call("slot_ring", 99, 6.0, 6.0),
+		"slots": _LAYOUTS.call("slot_layout", 99, 6.0, 6.0),
 	}
 
 
