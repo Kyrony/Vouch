@@ -18,7 +18,7 @@ class_name Player
 ## TODO(post-MVP): server-side movement validation/anti-cheat, footstep
 ## audio, ragdoll/animation, proper first-person arms model.
 
-enum Modal { NONE, PHONE, KEYPAD, BINARY, PAUSE }
+enum Modal { NONE, PHONE, KEYPAD, BINARY, WALKIE, PAUSE }
 
 const SPEED: float = 4.5
 const JUMP_VELOCITY: float = 3.2
@@ -91,6 +91,13 @@ var _binary_bits_label: Label
 var _binary_feedback_label: Label
 var _pause_menu: Node
 
+var _crouching: bool = false
+var _highlight_target: Node = null
+var _walkie_panel: Panel
+var _walkie_log: RichTextLabel
+var _walkie_input: LineEdit
+var _walkie_partner_label: Label
+
 ## Set by NetworkManager/Match director's spawn_function before this node
 ## is added to the tree. Purely informational in MVP - see the note in
 ## docs/MVP_GDD.md about why we deliberately do NOT tint remote players by
@@ -119,6 +126,8 @@ func _ready() -> void:
 		PuppetMasterSystem.sabotage_result.connect(_on_sabotage_result)
 		PuppetMasterSystem.you_were_eliminated.connect(_on_you_were_eliminated)
 		ContactBook.contacts_changed.connect(_refresh_contacts_list)
+		WalkieSystem.message_received.connect(_on_walkie_received)
+		WalkieSystem.message_sent_confirmation.connect(_on_walkie_sent)
 
 		if not GameState.local_faction_id.is_empty():
 			_on_faction_assigned(GameState.local_faction_id)
@@ -126,6 +135,7 @@ func _ready() -> void:
 			faction_label.text = "PUPPET MASTER"
 			faction_label.add_theme_color_override("font_color", Color(0.85, 0.15, 0.85))
 		_build_binary_panel()
+		_build_walkie_panel()
 		_pause_menu = get_node_or_null("/root/Main/PauseMenu")
 	else:
 		camera.current = false
@@ -141,6 +151,8 @@ func _unhandled_input(event: InputEvent) -> void:
 	if event.is_action_pressed("ui_cancel"):
 		if _active_modal == Modal.BINARY:
 			_close_binary_panel()
+		elif _active_modal == Modal.WALKIE:
+			_close_walkie_panel()
 		elif _active_modal != Modal.NONE:
 			_close_active_modal()
 		elif is_instance_valid(_pause_menu) and _pause_menu.visible:
@@ -185,14 +197,15 @@ func _physics_process(delta: float) -> void:
 
 	var locked := _is_input_locked() or _eliminated
 
-	if _on_ladder and not locked:
-		_apply_ladder_velocity()
-	else:
-		_apply_ground_velocity(delta, locked)
-
-	move_and_slide()
-
 	if not _eliminated:
+		_update_crouch_state()
+		if _on_ladder and not locked:
+			_apply_ladder_velocity()
+		else:
+			_apply_ground_velocity(delta, locked)
+
+		move_and_slide()
+
 		_update_interact_prompt()
 		_process_destroy_hold(delta)
 		_process_held_paper(delta)
@@ -216,6 +229,8 @@ func _apply_ground_velocity(delta: float, locked: bool) -> void:
 	var current_room := Match.world_position_to_room_index(global_position)
 	var water_level: float = GameState.room_water_levels.get(current_room, 0.0)
 	var effective_speed := SPEED * (1.0 - water_level * 0.6)
+	if _crouching:
+		effective_speed *= 0.55
 
 	if direction:
 		velocity.x = direction.x * effective_speed
@@ -254,7 +269,8 @@ func exit_ladder(ladder: Ladder) -> void:
 
 
 func _update_interact_prompt() -> void:
-	if _is_input_locked():
+	if _is_input_locked() or _eliminated:
+		_set_highlight(null)
 		prompt_label.visible = false
 		return
 	if interact_ray.is_colliding():
@@ -267,6 +283,7 @@ func _update_interact_prompt() -> void:
 				hint = collider.prompt_text
 			prompt_label.text = "[E] %s" % hint
 			prompt_label.visible = true
+			_set_highlight(null)
 			return
 		if collider is Ladder and collider.is_carried and collider.carrier_peer_id == multiplayer.get_unique_id():
 			prompt_label.text = "[E] Place ladder"
@@ -279,6 +296,7 @@ func _update_interact_prompt() -> void:
 				hint = "Read book / pick up"
 			prompt_label.text = "[E] %s" % hint
 			prompt_label.visible = true
+			_set_highlight(null)
 			return
 		var target := collider as Interactable
 		if target:
@@ -287,7 +305,9 @@ func _update_interact_prompt() -> void:
 				hint += "  [hold F: destroy]"
 			prompt_label.text = "[E] %s" % hint
 			prompt_label.visible = true
+			_set_highlight(target)
 			return
+	_set_highlight(null)
 	prompt_label.visible = false
 
 
@@ -461,6 +481,8 @@ func _close_active_modal() -> void:
 			_close_keypad_panel()
 		Modal.BINARY:
 			_close_binary_panel()
+		Modal.WALKIE:
+			_close_walkie_panel()
 
 
 func _open_phone_panel() -> void:
@@ -476,6 +498,109 @@ func _close_phone_panel() -> void:
 	_active_modal = Modal.NONE
 	phone_panel.visible = false
 	Input.mouse_mode = Input.MOUSE_MODE_CAPTURED
+
+
+func _set_highlight(target: Node) -> void:
+	if _highlight_target == target:
+		return
+	if _highlight_target is Interactable:
+		(_highlight_target as Interactable).set_highlighted(false)
+	_highlight_target = target
+	if target is Interactable:
+		target.set_highlighted(true)
+
+
+func _update_crouch_state() -> void:
+	if not is_multiplayer_authority() or _on_ladder:
+		return
+	var want := Input.is_action_pressed("crouch") and is_on_floor()
+	if want == _crouching:
+		return
+	_crouching = want
+	var shape := $CollisionShape3D.shape as CapsuleShape3D
+	shape.height = WorldScale.PLAYER_CROUCH_HEIGHT if _crouching else WorldScale.PLAYER_HEIGHT
+	$CollisionShape3D.position.y = shape.height * 0.5
+	head.position.y = WorldScale.PLAYER_EYE_CROUCH if _crouching else WorldScale.PLAYER_EYE_STAND
+
+
+func open_walkie_panel() -> void:
+	_active_modal = Modal.WALKIE
+	_walkie_panel.visible = true
+	if multiplayer.is_server():
+		_walkie_partner_label.text = "Partner: %s" % WalkieSystem.server_get_partner_label(multiplayer.get_unique_id())
+	else:
+		_walkie_partner_label.text = "Partner: faction channel"
+	_walkie_input.grab_focus()
+	Input.mouse_mode = Input.MOUSE_MODE_VISIBLE
+
+
+func _close_walkie_panel() -> void:
+	_active_modal = Modal.NONE
+	_walkie_panel.visible = false
+	Input.mouse_mode = Input.MOUSE_MODE_CAPTURED
+
+
+func _build_walkie_panel() -> void:
+	_walkie_panel = Panel.new()
+	_walkie_panel.name = "WalkiePanel"
+	_walkie_panel.visible = false
+	_walkie_panel.set_anchors_preset(Control.PRESET_CENTER)
+	_walkie_panel.custom_minimum_size = Vector2(340, 260)
+	_walkie_panel.position = Vector2(-170, -130)
+	hud.add_child(_walkie_panel)
+	var vbox := VBoxContainer.new()
+	vbox.set_anchors_preset(Control.PRESET_FULL_RECT)
+	vbox.offset_left = 12
+	vbox.offset_top = 12
+	vbox.offset_right = -12
+	vbox.offset_bottom = -12
+	_walkie_panel.add_child(vbox)
+	var title := Label.new()
+	title.text = "Walkie-talkie (faction pair)"
+	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	vbox.add_child(title)
+	_walkie_partner_label = Label.new()
+	_walkie_partner_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	vbox.add_child(_walkie_partner_label)
+	_walkie_log = RichTextLabel.new()
+	_walkie_log.custom_minimum_size = Vector2(0, 120)
+	_walkie_log.bbcode_enabled = true
+	vbox.add_child(_walkie_log)
+	var row := HBoxContainer.new()
+	vbox.add_child(row)
+	_walkie_input = LineEdit.new()
+	_walkie_input.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_walkie_input.placeholder_text = "Push message to partner..."
+	_walkie_input.max_length = 140
+	row.add_child(_walkie_input)
+	var send := Button.new()
+	send.text = "Send"
+	send.pressed.connect(_on_walkie_send_pressed)
+	row.add_child(send)
+	var close_btn := Button.new()
+	close_btn.text = "Close [Esc]"
+	close_btn.pressed.connect(_close_walkie_panel)
+	vbox.add_child(close_btn)
+
+
+func _on_walkie_send_pressed() -> void:
+	var message := _walkie_input.text.strip_edges()
+	if message.is_empty():
+		return
+	if multiplayer.is_server():
+		WalkieSystem.server_handle_send_text(multiplayer.get_unique_id(), message)
+	else:
+		WalkieSystem.request_send_text.rpc_id(1, message)
+	_walkie_input.text = ""
+
+
+func _on_walkie_received(from_label: String, message: String) -> void:
+	_walkie_log.append_text("[b]%s:[/b] %s\n" % [from_label, message])
+	_show_toast("Walkie: %s" % message)
+
+
+func _on_walkie_sent() -> void:
+	_walkie_log.append_text("[i]-- sent to partner --[/i]\n")
 
 
 func _on_phone_send_pressed() -> void:

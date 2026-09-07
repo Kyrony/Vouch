@@ -76,6 +76,7 @@ from 2D plans — each scene is a single baked living space with fixed width/len
 
 Headless validation: `VOUCH_ROOM_SPAWN_TEST=1 godot4 --headless --path .`
 Headless match spawn: `VOUCH_MATCH_SPAWN_TEST=1 godot4 --headless --path .`
+Headless attachment: `VOUCH_ATTACHMENT_TEST=1 godot4 --headless --path .`
 
 ### World layout (underground escape hub → mountain surface)
 

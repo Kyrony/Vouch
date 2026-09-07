@@ -1,6 +1,8 @@
 extends Node
 ## Main — root scene (Lobby + World).
 
+const _ATTACHMENT: GDScript = preload("res://scripts/rooms/spawn_attachment_validator.gd")
+
 @onready var lobby: Control = $Lobby
 @onready var world: Node3D = $World
 @onready var pause_menu: Node = $PauseMenu
@@ -15,6 +17,8 @@ func _ready() -> void:
 	pause_menu.debug_gui_requested.connect(_on_pause_debug)
 	if OS.get_environment("VOUCH_ROOM_SPAWN_TEST") == "1":
 		call_deferred("_run_room_spawn_test")
+	elif OS.get_environment("VOUCH_ATTACHMENT_TEST") == "1":
+		call_deferred("_run_attachment_test")
 	if OS.get_environment("VOUCH_MATCH_SPAWN_TEST") == "1":
 		call_deferred("_run_match_spawn_test")
 
@@ -28,7 +32,11 @@ func _run_match_spawn_test() -> void:
 		"rng_seed": 12345,
 		"is_puppet_master": false,
 		"room_scene_id": 4,
-		"has_valve": false,
+		"has_valve": true,
+		"has_electrical_box": true,
+		"has_fireplace": true,
+		"has_drain": true,
+		"has_exhaust": true,
 		"total_rooms": 1,
 	}
 	var room := match_node._spawn_room_pod(data)
@@ -58,17 +66,52 @@ func _run_room_spawn_test() -> void:
 	get_tree().quit(0)
 
 
-func _spawn_test_room(room_id: int) -> RoomPod:
+func _run_attachment_test() -> void:
+	print("=== ATTACHMENT TEST START ===")
+	for room_id in [1, 4, 12, 15, 20]:
+		var room := _spawn_test_room(room_id, true)
+		if room == null:
+			push_error("ATTACHMENT TEST FAILED room=%02d (spawn)" % room_id)
+			get_tree().quit(1)
+			return
+		var map: Node3D = room.get_child(0) if room.get_child_count() > 0 else room
+		var errors: Array = _ATTACHMENT.call("validate", map)
+		if not errors.is_empty():
+			for err in errors:
+				push_error("ATTACHMENT room=%02d: %s" % [room_id, err])
+			get_tree().quit(1)
+			return
+		print("  room %02d attachment OK" % room_id)
+		room.queue_free()
+		await get_tree().process_frame
+	print("=== ATTACHMENT TEST: ALL OK ===")
+	get_tree().quit(0)
+
+
+func _spawn_test_room(room_id: int, full_items: bool = false) -> RoomPod:
 	var room: RoomPod = preload("res://scenes/Match/RoomPod.tscn").instantiate()
-	room.configure({
+	var data := {
 		"room_index": 0,
 		"owner_peer_id": 1,
 		"rng_seed": room_id * 1000,
 		"is_puppet_master": false,
 		"room_scene_id": room_id,
-		"has_valve": false,
 		"total_rooms": 1,
-	})
+	}
+	if full_items:
+		data.merge({
+			"has_valve": true,
+			"has_electrical_box": true,
+			"has_fireplace": true,
+			"has_drain": true,
+			"has_exhaust": true,
+			"has_binary_puzzle": true,
+			"binary_target": 42,
+			"binary_peek_room": 1,
+		})
+	else:
+		data["has_valve"] = false
+	room.configure(data)
 	add_child(room)
 	return room
 

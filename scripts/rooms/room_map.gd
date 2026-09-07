@@ -7,6 +7,7 @@ const _GEOMETRY: GDScript = preload("res://scripts/rooms/room_geometry.gd")
 const _ITEMS: GDScript = preload("res://scripts/rooms/item_spawn_system.gd")
 const _SLOT_SCRIPT: GDScript = preload("res://scripts/rooms/item_spawn_slot.gd")
 const _TUNNEL: GDScript = preload("res://scripts/rooms/tunnel_kit.gd")
+const _NEON: GDScript = preload("res://scripts/rooms/neon_theme.gd")
 
 const WALL: float = WorldScale.WALL_THICK
 
@@ -100,7 +101,7 @@ func configure(data: Dictionary) -> void:
 	else:
 		escape_kind = EscapeKind.VENT
 
-	var accent := _accent_material(_theme["accent_color"])
+	var accent := _accent_material(_theme["accent_color"], theme_id)
 	var ctx := {
 		"room_index": room_index,
 		"owner_peer_id": owner_peer_id,
@@ -146,7 +147,7 @@ func get_spawn_transform() -> Transform3D:
 
 
 func add_clue_prop(kind: String, code: String, in_fireplace: bool = false) -> void:
-	var accent := _accent_material(_theme["accent_color"])
+	var accent := _accent_material(_theme["accent_color"], theme_id)
 	if kind == "flame_paper":
 		var spawn_pos := Vector3(0, 0.9, 0)
 		var flame: Node3D = null
@@ -246,7 +247,7 @@ func mark_escape_locked() -> void:
 	escape_point.prompt_text += " (locked - needs a code)"
 	var keypad: StaticBody3D = _ITEMS.call("_make_interactable",
 		preload("res://scripts/interactables/code_keypad.gd"),
-		Vector3(0.24, 0.32, 0.06), Vector3(0.7, 1.0, 0), _accent_material(_theme["accent_color"]), "Enter code"
+		Vector3(0.24, 0.32, 0.06), Vector3(0.7, 1.0, 0), _accent_material(_theme["accent_color"], theme_id), "Enter code"
 	)
 	keypad.set("room_index", room_index)
 	keypad.name = "CodeKeypad"
@@ -277,8 +278,6 @@ func _build_escape_corridor(corridor_out: Vector3, idx: int) -> void:
 	_TUNNEL.call("build_hub_connector", self, start_z + horiz, WorldScale.HUB_HALL_W, WorldScale.HUB_HALL_H)
 
 
-static func _accent_material(color: Color) -> StandardMaterial3D:
-	var mat := StandardMaterial3D.new()
-	mat.albedo_color = color
-	mat.roughness = 0.6
-	return mat
+static func _accent_material(color: Color, theme_id: String = "bedroom") -> StandardMaterial3D:
+	var neon: Color = _NEON.call("neon_for_theme", theme_id)
+	return _NEON.call("accent_material", color, neon)
