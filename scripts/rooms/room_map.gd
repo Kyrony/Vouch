@@ -10,6 +10,9 @@ const _SLOT_SCRIPT: GDScript = preload("res://scripts/rooms/item_spawn_slot.gd")
 const _TUNNEL: GDScript = preload("res://scripts/rooms/tunnel_kit.gd")
 const _NEON: GDScript = preload("res://scripts/rooms/neon_theme.gd")
 const _SPAWN_VALIDATOR: GDScript = preload("res://scripts/rooms/graybox_spawn_validator.gd")
+const _BUNKER: GDScript = preload("res://scripts/rooms/graybox_bunker_validator.gd")
+const _GEOM: GDScript = preload("res://scripts/rooms/geometry_util.gd")
+const _GRAYBOX_WALL: Material = preload("res://assets/materials/graybox_wall.tres")
 
 const WALL: float = WorldScale.WALL_THICK
 
@@ -90,7 +93,19 @@ func configure(data: Dictionary) -> void:
 	rng.seed = data["rng_seed"]
 
 	if is_puppet_master:
-		_configure_pm(data, rng)
+		if not EscapePathSettings.bunker_only():
+			_configure_pm(data, rng)
+		return
+
+	if EscapePathSettings.bunker_only():
+		_seal_posz_wall()
+		if _theme.is_empty():
+			_theme = _theme_for_layout(_layout)
+			theme_id = _theme["id"]
+			theme_name = _theme["name"]
+		var accent := _accent_material(_theme["accent_color"], theme_id)
+		var spawn_local: Vector3 = spawn_point.position if spawn_point else _layout.get("spawn", Vector3.ZERO)
+		_PLAYABLE.call("spawn_near_player", self, spawn_local, accent, owner_peer_id, width, depth)
 		return
 
 	if _theme.is_empty():
@@ -129,16 +144,17 @@ func configure(data: Dictionary) -> void:
 	_fireplace = spawned.get("fireplace")
 
 	var spawn_local: Vector3 = spawn_point.position if spawn_point else _layout.get("spawn", Vector3.ZERO)
-	_PLAYABLE.call("spawn_near_player", self, spawn_local, accent, owner_peer_id)
+	_PLAYABLE.call("spawn_near_player", self, spawn_local, accent, owner_peer_id, width, depth)
 
 	_ITEMS.call("spawn_room_effects", self, ctx)
 
-	var escape_pos: Vector3 = _escape_position()
-	if escape_kind == EscapeKind.VENT:
-		escape_pos = _vent_escape_position()
-	_ITEMS.call("spawn_escape", self, ctx, escape_pos, escape_kind == EscapeKind.VENT)
-	if not is_puppet_master:
-		_build_escape_corridor(_corridor_out_position(), data["room_index"])
+	if EscapePathSettings.is_enabled():
+		var escape_pos: Vector3 = _escape_position()
+		if escape_kind == EscapeKind.VENT:
+			escape_pos = _vent_escape_position()
+		_ITEMS.call("spawn_escape", self, ctx, escape_pos, escape_kind == EscapeKind.VENT)
+		if not is_puppet_master:
+			_build_escape_corridor(_corridor_out_position(), data["room_index"])
 
 	if data.get("requires_code", false):
 		mark_escape_locked()
@@ -217,6 +233,31 @@ func _corridor_out_position() -> Vector3:
 
 static func validate_spawn(room: Node3D) -> Array[String]:
 	return _SPAWN_VALIDATOR.call("validate", room)
+
+
+static func validate_bunker(room: Node3D) -> Array[String]:
+	return _BUNKER.call("validate", room)
+
+
+func _seal_posz_wall() -> void:
+	var geometry := get_node_or_null("Geometry") as Node3D
+	if geometry == null:
+		return
+	for segment_name in ["WallPosZ_Left", "WallPosZ_Right", "WallPosZ_Header"]:
+		var segment := geometry.get_node_or_null(segment_name)
+		if segment == null:
+			continue
+		geometry.remove_child(segment)
+		segment.free()
+	if geometry.get_node_or_null("WallPosZ") != null:
+		return
+	var h := WorldScale.CEILING_H
+	var hd := depth * 0.5
+	var body: StaticBody3D = _GEOM.call("box", Vector3(width, h, WALL), Vector3(0, h * 0.5, hd), _GRAYBOX_WALL)
+	body.name = "WallPosZ"
+	geometry.add_child(body)
+
+
 func _ensure_markers() -> void:
 	spawn_point = get_node_or_null("PlayerSpawn") as Marker3D
 	if spawn_point == null:
@@ -303,6 +344,9 @@ func _build_pm_monitors() -> void:
 
 
 func _build_escape_corridor(corridor_out: Vector3, idx: int) -> void:
+	# TODO(post-MVP): replace ramp stack with a short flat hall from +Z door when re-enabled.
+	if not EscapePathSettings.is_enabled():
+		return
 	var grid_pos: Vector3 = WorldScale.room_grid_position(idx)
 	var dist := Vector2(grid_pos.x, grid_pos.z).length()
 	var raw_horiz := dist - WorldScale.HUB_SHAFT_RADIUS - depth * 0.5

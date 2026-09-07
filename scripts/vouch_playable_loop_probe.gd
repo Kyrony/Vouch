@@ -1,10 +1,14 @@
 extends SceneTree
 ## Uses the same Match.tscn + RoomsSpawner.spawn path as live Start Match.
 ## Run: godot4 --headless --path . -s res://scripts/vouch_playable_loop_probe.gd
+## Full escape + items: VOUCH_ESCAPE_PATH=1 godot4 --headless --path . -s res://scripts/vouch_playable_loop_probe.gd
 
-const _PLAYABLE: GDScript = preload("res://scripts/rooms/playable_loop_spawns.gd")
 const _ROOM_POD: GDScript = preload("res://scripts/room_pod.gd")
 const _PATH: GDScript = preload("res://scripts/rooms/escape_path_validator.gd")
+const _SPAWN: GDScript = preload("res://scripts/rooms/graybox_spawn_validator.gd")
+const _BUNKER: GDScript = preload("res://scripts/rooms/graybox_bunker_validator.gd")
+const _PLAYABLE: GDScript = preload("res://scripts/rooms/playable_loop_spawns.gd")
+const _ESCAPE_SETTINGS: GDScript = preload("res://scripts/autoload/escape_path_settings.gd")
 
 
 func _initialize() -> void:
@@ -15,7 +19,9 @@ func _run_probe() -> void:
 	await process_frame
 	var err: String = await _probe()
 	if err.is_empty():
-		print("PLAYABLE LOOP PROBE OK (live Match API, 2 rooms)")
+		var room_count := 1 if _ESCAPE_SETTINGS.bunker_only() else 2
+		var mode := "escape path" if _ESCAPE_SETTINGS.escape_path_enabled() else "bunker-only"
+		print("PLAYABLE LOOP PROBE OK (live Match API, %d room(s), %s)" % [room_count, mode])
 		quit(0)
 	push_error("PLAYABLE LOOP PROBE FAILED: %s" % err)
 	quit(1)
@@ -29,7 +35,7 @@ func _probe() -> String:
 	if not match_node.is_node_ready():
 		await match_node.ready
 
-	var specs: Array = _two_player_room_specs()
+	var specs: Array = _room_specs()
 	var spawn_err: String = _PATH.call("spawn_rooms_like_live", match_node, specs)
 	if not spawn_err.is_empty():
 		main.queue_free()
@@ -39,6 +45,49 @@ func _probe() -> String:
 	await physics_frame
 	await physics_frame
 
+	if _ESCAPE_SETTINGS.bunker_only():
+		return _probe_bunker_only(match_node, main)
+	if _ESCAPE_SETTINGS.escape_path_enabled():
+		return _probe_escape_path(match_node, main)
+	return _probe_bunker_only(match_node, main)
+
+
+func _probe_bunker_only(match_node: Node, main: Node) -> String:
+	if match_node.get_node_or_null("EscapeHub") != null:
+		main.queue_free()
+		return "EscapeHub must not exist in bunker-only mode"
+	var mouths: Array = _PATH.call("_collect_tunnel_mouths", match_node)
+	if not mouths.is_empty():
+		main.queue_free()
+		return "tunnel mouths forbidden in bunker-only mode"
+	var room_pods := _count_room_pods(match_node)
+	if room_pods != 1:
+		main.queue_free()
+		return "bunker-only expects 1 room pod, got %d" % room_pods
+	var room0: Node = _first_room_pod(match_node)
+	if room0 == null:
+		main.queue_free()
+		return "no RoomPod under RoomsContainer"
+	var map0: Node = room0.get_child(0)
+	var spawn_errors: Array = _SPAWN.call("validate", map0)
+	if not spawn_errors.is_empty():
+		main.queue_free()
+		return "; ".join(spawn_errors)
+	var bunker_errors: Array = _BUNKER.call("validate", map0)
+	if not bunker_errors.is_empty():
+		main.queue_free()
+		return "; ".join(bunker_errors)
+	var spawn_local: Vector3 = map0.get_node("PlayerSpawn").position
+	print("  bunker-only: spawn=%s phone_dist=%.2fm walkie_dist=%.2fm" % [
+		spawn_local,
+		spawn_local.distance_to(map0.get_node("Phone").position),
+		Vector2(spawn_local.x - map0.get_node("WalkieTalkie").position.x, spawn_local.z - map0.get_node("WalkieTalkie").position.z).length(),
+	])
+	main.queue_free()
+	return ""
+
+
+func _probe_escape_path(match_node: Node, main: Node) -> String:
 	var hub := match_node.get_node_or_null("EscapeHub")
 	if hub == null:
 		main.queue_free()
@@ -83,9 +132,10 @@ func _probe() -> String:
 	return ""
 
 
-func _two_player_room_specs() -> Array:
+func _room_specs() -> Array:
+	var room_count := 1 if _ESCAPE_SETTINGS.bunker_only() else 2
 	var specs: Array = []
-	for room_index in range(2):
+	for room_index in range(room_count):
 		var recipe: Dictionary = _ROOM_POD.call("plan_recipe", false)
 		recipe["room_scene_id"] = 1 if room_index == 0 else 3
 		var data := {
@@ -93,7 +143,7 @@ func _two_player_room_specs() -> Array:
 			"owner_peer_id": room_index + 1,
 			"rng_seed": 9000 + room_index * 1111,
 			"is_puppet_master": false,
-			"total_rooms": 2,
+			"total_rooms": room_count,
 			"has_valve": true,
 			"has_electrical_box": true,
 			"has_fireplace": true,
@@ -103,6 +153,14 @@ func _two_player_room_specs() -> Array:
 		data.merge(recipe)
 		specs.append(data)
 	return specs
+
+
+func _count_room_pods(match_node: Node) -> int:
+	var n := 0
+	for c in match_node.get_node("RoomsContainer").get_children():
+		if str(c.name).begins_with("RoomPod"):
+			n += 1
+	return n
 
 
 func _first_room_pod(match_node: Node) -> Node:

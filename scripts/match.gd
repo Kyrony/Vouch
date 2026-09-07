@@ -100,24 +100,38 @@ func _server_build_match() -> void:
 
 	var peer_ids: Array = GameState.players.keys()
 	peer_ids.shuffle()
-	_expected_room_count = peer_ids.size()
-	print("LIVE_ESCAPE match_start players=%d peer_ids=%s" % [_expected_room_count, peer_ids])
+	var bunker_only := EscapePathSettings.bunker_only()
+	_expected_room_count = 1 if bunker_only else peer_ids.size()
+	print("LIVE_ESCAPE match_start players=%d rooms=%d peer_ids=%s bunker_only=%s" % [
+		peer_ids.size(), _expected_room_count, peer_ids, bunker_only,
+	])
 
-	for i in range(peer_ids.size()):
-		GameState.server_set_room(peer_ids[i], i)
+	if bunker_only:
+		for peer_id in peer_ids:
+			GameState.server_set_room(peer_id, 0)
+	else:
+		for i in range(peer_ids.size()):
+			GameState.server_set_room(peer_ids[i], i)
 
 	WalkieSystem.server_pair_players(peer_ids)
 
 	# Puzzle placement is decided BEFORE any room is spawned so it can be
 	# baked into each room's deterministic spawn data (see RoomPod.configure).
-	var puzzle_plan := _plan_puzzle(peer_ids.size())
+	var puzzle_plan := _plan_puzzle(_expected_room_count)
 
-	for i in range(peer_ids.size()):
-		var peer_id: int = peer_ids[i]
-		var is_pm: bool = GameState.players[peer_id]["is_puppet_master"]
-		_server_spawn_room(i, peer_id, is_pm, puzzle_plan, peer_ids.size(), i == 0)
-
-	_ensure_flood_valve_in_match(peer_ids)
+	if bunker_only:
+		var owner_peer: int = peer_ids[0]
+		for pid in peer_ids:
+			if not GameState.players[pid]["is_puppet_master"]:
+				owner_peer = pid
+				break
+		_server_spawn_room(0, owner_peer, false, puzzle_plan, 1, false)
+	else:
+		for i in range(peer_ids.size()):
+			var peer_id: int = peer_ids[i]
+			var is_pm: bool = GameState.players[peer_id]["is_puppet_master"]
+			_server_spawn_room(i, peer_id, is_pm, puzzle_plan, peer_ids.size(), i == 0)
+		_ensure_flood_valve_in_match(peer_ids)
 
 	# Links must be built AFTER every room has registered its control/effect
 	# nodes with LinkGraph.
@@ -130,7 +144,8 @@ func _server_build_match() -> void:
 
 	for i in range(peer_ids.size()):
 		var peer_id: int = peer_ids[i]
-		_server_spawn_player(peer_id, i)
+		var room_idx := 0 if bunker_only else i
+		_server_spawn_player(peer_id, room_idx)
 
 	call_deferred("_log_live_escape_path_deferred")
 
@@ -297,7 +312,8 @@ func _spawn_room_pod(data: Dictionary) -> Node:
 		push_error("Match: RoomPod scene root is not a RoomPod (script=%s)" % str(raw_node.get_script()))
 		raw_node.free()
 		return null
-	_ensure_escape_hub(int(data.get("total_rooms", 4)))
+	if EscapePathSettings.is_enabled():
+		_ensure_escape_hub(int(data.get("total_rooms", 4)))
 	var grid_pos: Vector3 = room_grid_position(data["room_index"])
 	var to_hub := Vector3(-grid_pos.x, 0.0, -grid_pos.z)
 	if to_hub.length() < 0.5:
@@ -306,13 +322,15 @@ func _spawn_room_pod(data: Dictionary) -> Node:
 	else:
 		to_hub = to_hub.normalized()
 	room.rotation.y = atan2(to_hub.x, to_hub.z)
-	room.configure(data)
 	room.position = grid_pos
+	room.configure(data)
 	call_deferred("_maybe_log_escape_path", int(data.get("total_rooms", 1)))
 	return room
 
 
 func _ensure_escape_hub(room_count: int) -> void:
+	if not EscapePathSettings.is_enabled():
+		return
 	if is_instance_valid(_escape_hub) and _escape_hub_room_count == room_count:
 		return
 	if is_instance_valid(_escape_hub):
@@ -396,7 +414,7 @@ func _log_live_escape_path(total_rooms: int, room_pods: int, mouth_count: int) -
 		push_warning("LIVE_ESCAPE only %d tunnel mouths for %d room pods — PM rooms have no tunnel; otherwise missing corridor" % [
 			mouth_count, room_pods
 		])
-	if OS.get_environment("VOUCH_PLAYABLE_LOOP_TEST") == "1":
+	if OS.get_environment("VOUCH_PLAYABLE_LOOP_TEST") == "1" and EscapePathSettings.is_enabled():
 		var path_errors: Array = _PATH.call("validate", self)
 		if not path_errors.is_empty():
 			push_warning("LIVE_ESCAPE path validation failed: %s" % "; ".join(path_errors))
