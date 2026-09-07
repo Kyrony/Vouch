@@ -3,6 +3,7 @@ class_name OutdoorBuilder
 ## v0.5 yard: cul-de-sac + stem + curbs, outdoor pins, soft-gated escape.
 
 const _GEOM: GDScript = preload("res://scripts/rooms/geometry_util.gd")
+const _KIT: GDScript = preload("res://scripts/horror/environment/modular_kit.gd")
 const _V05: GDScript = preload("res://scripts/horror/world/neighborhood_v05.gd")
 
 
@@ -71,7 +72,10 @@ static func _build_family_shed(root: Node3D, mats, markers: Array) -> void:
 	shed.name = "FamilyShed"
 	shed.position = _V05.FAMILY_SHED_POS
 	root.add_child(shed)
-	shed.add_child(_GEOM.call("box", Vector3(3.4, 2.3, 2.8), Vector3(0, 1.15, 0), mats.wall))
+	_KIT.call("add_box", shed, Vector3(3.4, 2.15, 2.8), Vector3(0, 1.08, 0), mats.siding)
+	var roof: StaticBody3D = _KIT.call("add_box", shed, Vector3(3.7, 0.14, 3.1), Vector3(0, 2.28, 0), mats.shingle) as StaticBody3D
+	roof.rotation.z = 0.16
+	_KIT.call("add_box", shed, Vector3(0.85, 1.45, 0.1), Vector3(0, 0.72, 1.42), mats.wood)
 	_add_child_marker(shed, Vector3(0, 0.3, 0), "family_shed", markers)
 
 

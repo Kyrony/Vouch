@@ -89,6 +89,9 @@ func _probe_horror_match() -> String:
 	var steal_err: String = _CHECK.call("validate_life_steal")
 	if not steal_err.is_empty():
 		return steal_err
+	var phone_err: String = _CHECK.call("validate_phone_hud", world_node)
+	if not phone_err.is_empty():
+		return phone_err
 	print("  horror spawns=%d pickups=%d child_points=%d towers=%d pins=%s" % [
 		spawn_count, pickups.get_child_count(), child_points.size(), TowerRules.get_active_ids().size(),
 		ChildSpawnRNG.spawn_id_list(),

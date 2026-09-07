@@ -28,6 +28,7 @@ func _process(delta: float) -> void:
 	if _tick_accum >= 0.1:
 		_tick_accum = 0.0
 		PlayerEffects.server_tick(0.1)
+		PhoneDevice.server_tick(0.1)
 
 
 func server_init_match(player_count: int) -> void:

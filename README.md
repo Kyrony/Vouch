@@ -77,7 +77,7 @@ field as a placeholder — session codes are post-MVP.
 | All | Move / Look / Jump | `W A S D` / Mouse / `Space` |
 | Survivor | Pick up item | `E` |
 | Survivor | Find missing child (near glow marker) | `E` |
-| Survivor | Use selected hotbar item | `R` |
+| Survivor | Use selected hotbar item / toggle **phone LED** | `R` |
 | Survivor | Drop selected item | `G` |
 | Survivor | Select hotbar slot | `1`–`8` |
 | Puppet Master | Possess dead family body / body swap (near target) | `Q` |
@@ -251,6 +251,10 @@ Host RNG picks **one** per match (`ChildSpawnRNG`). Teams map to **families** A�
 See [`docs/blueprints/v0.5/`](docs/blueprints/v0.5/) for Leonardo v0.5 sheets.
 
 **Towers (soft-go):** many candidate masts; **3 active per match**; **1 forced near the PM**. Phone + mast use **service / weak / dead** radii. Scratch on the slate only (not a voice or SMS line).
+
+**HUD + smartphone (soft-go):** Leonardo’s v2 neon-horror icon language is wired in `scripts/horror/ui/neon_hud.gd` and `assets/horror/hud/` (heart / cyan pulse / violet glitch-eye / yellow **phone LED** / signal full-weak-dead). The inventory `phone` is diegetic `ITEM_DEVICE_SMARTPHONE_01` — graphite/gold mesh, camera LED spotlight, eng-tunable battery drain on `PhoneDevice`. Sheet ~15%/min LED and ~2%/min passive are concept only. No handheld flashlight item. Textures are wiring refs; Leonardo may redraw them before Steam.
+
+**Environment kits (soft-go):** Family houses use modular porch / foundation / stairs / crawl graybox (`under_porch_crawl` under house A — no grave wording). PM bunker gets sealed concrete + pipes/shelves and a utility closet for `bunker_utility` (red/yellow neon, fluorescent; no gore, no guns). See `assets/horror/kits/README.md`. Kit plan sizes are art targets; live footprints stay v0.5.
 
 **HUD:** neon heart (health), cyan bar (stamina), violet bar (fear), phone + spotty signal.
 

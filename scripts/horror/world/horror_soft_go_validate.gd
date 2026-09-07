@@ -61,6 +61,9 @@ static func validate_world(world: Node3D) -> String:
 	var layout_err := validate_v05_layout(world)
 	if not layout_err.is_empty():
 		return layout_err
+	var kit_err := validate_kit_graybox(world)
+	if not kit_err.is_empty():
+		return kit_err
 	return ""
 
 
@@ -119,6 +122,40 @@ static func validate_v05_layout(world: Node3D) -> String:
 	return ""
 
 
+static func validate_kit_graybox(world: Node3D) -> String:
+	var house_a: Node = world.get_node_or_null("FamilyHouses/FamilyHouse_A")
+	if house_a == null:
+		return "FamilyHouse_A missing"
+	for piece in ["Foundation", "Porch", "Stairs", "HouseBody", "UnderPorchCrawl"]:
+		if house_a.get_node_or_null(piece) == null:
+			return "FamilyHouse_A missing modular piece %s" % piece
+	var crawl: Node = house_a.get_node("UnderPorchCrawl")
+	if crawl.get_node_or_null("ChildSpawn_under_porch_crawl") == null:
+		return "under_porch_crawl marker is not inside UnderPorchCrawl"
+	if crawl.find_child("CrawlMood", true, false) == null:
+		return "under-porch crawl missing mood light"
+	var bedroom: Node = house_a.find_child("Bedroom", true, false)
+	if bedroom == null:
+		return "FamilyHouse_A missing Bedroom (kit floor plan)"
+	var mansion: Node = world.get_node_or_null("PMMansion")
+	if mansion == null:
+		return "PMMansion missing"
+	var bunker: Node = mansion.find_child("Bunker", true, false)
+	if bunker == null:
+		return "Bunker missing"
+	for piece in ["Pipes", "NeonStrips", "Fluorescent", "Workbench", "UtilityCloset"]:
+		if bunker.get_node_or_null(piece) == null:
+			return "Bunker missing kit piece %s" % piece
+	var util: Node = bunker.get_node("UtilityCloset")
+	if util.get_node_or_null("Shelves") == null:
+		return "UtilityCloset missing shelves"
+	if util.find_child("ChildSpawn_bunker_utility", true, false) == null:
+		return "bunker_utility marker missing from UtilityCloset"
+	if mansion.find_child("Basement", true, false) == null:
+		return "Basement missing"
+	return ""
+
+
 static func validate_tower_roll(world: Node3D) -> String:
 	var rules := _towers()
 	if rules == null:
@@ -148,6 +185,54 @@ static func validate_tower_roll(world: Node3D) -> String:
 	var max_d: float = float(rules.call("near_pm_max"))
 	if forced_node.global_position.distance_to(pm) > max_d:
 		return "forced tower %s too far from PM (%.1f)" % [forced, forced_node.global_position.distance_to(pm)]
+	return ""
+
+
+static func validate_phone_hud(world: Node3D) -> String:
+	var pd: Node = Engine.get_main_loop().root.get_node_or_null("PhoneDevice")
+	if pd == null:
+		return "PhoneDevice autoload missing"
+	if str(pd.ITEM_ID) != "phone":
+		return "inventory id must stay phone (got %s)" % pd.ITEM_ID
+	if str(pd.ITEM_PRODUCTION_ID) != "ITEM_DEVICE_SMARTPHONE_01":
+		return "smartphone production id mismatch"
+	var led_min: float = float(pd.LED_DRAIN_PER_SEC) * 60.0
+	var passive_min: float = float(pd.PASSIVE_DRAIN_PER_SEC) * 60.0
+	# Sheet listed ~15%/min LED and ~2%/min passive as concept — eng owns the live numbers.
+	if is_equal_approx(led_min, 15.0) or is_equal_approx(passive_min, 2.0):
+		return "phone drain locked to Leonardo sheet marketing numbers — use eng tunables"
+	if led_min <= 0.0 or passive_min < 0.0:
+		return "phone drain rates invalid (LED=%.2f%%/min passive=%.2f%%/min)" % [led_min, passive_min]
+	if float(pd.LED_MIN_BATTERY) <= 0.0:
+		return "dead battery must disable the phone LED"
+	var saw_phone := false
+	for node in world.get_tree().get_nodes_in_group("world_pickups"):
+		var item_id := str(node.get("item_id"))
+		if item_id == "flashlight" or item_id.contains("flashlight") or item_id.contains("torch"):
+			return "classic flashlight item is forbidden — phone LED only"
+		if item_id == "phone":
+			saw_phone = true
+			if node.get_node_or_null("Smartphone") == null:
+				return "phone pickup missing graphite/gold Smartphone visual"
+			if node.find_child("CameraLED", true, false) == null:
+				return "phone pickup missing CameraLED"
+	if not saw_phone:
+		return "smartphone world pickup missing"
+	var hud_script: GDScript = load("res://scripts/horror/ui/neon_hud.gd")
+	if hud_script == null:
+		return "neon_hud.gd failed to load"
+	var hud: Object = hud_script.new()
+	if not hud.has_method("set_signal_band") or not hud.has_method("set_phone_device"):
+		hud.free()
+		return "NeonHud missing signal/phone LED API"
+	hud.call("set_signal_band", "service")
+	if str(hud.get("signal_band")) != "full":
+		hud.free()
+		return "NeonHud did not map service -> full"
+	hud.free()
+	var rules := _towers()
+	if rules and not rules.has_method("signal_band"):
+		return "TowerRules.signal_band missing"
 	return ""
 
 

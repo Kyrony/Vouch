@@ -109,6 +109,11 @@ func _probe() -> String:
 		player.free()
 		main.queue_free()
 		return steal_err
+	var phone_err: String = _CHECK.call("validate_phone_hud", world)
+	if not phone_err.is_empty():
+		player.free()
+		main.queue_free()
+		return phone_err
 	var pm_count := 0
 	for child in player.get_children():
 		if str(child.name).begins_with("PuppetMasterController"):

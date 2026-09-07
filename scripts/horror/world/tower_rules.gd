@@ -113,6 +113,21 @@ func nearest_tower_strength(world_pos: Vector3) -> float:
 	return 0.0
 
 
+func signal_band(world_pos: Vector3) -> String:
+	## HUD / phone-screen band: full / weak / dead (service maps to full).
+	var tower := tower_band(world_pos)
+	if tower == "service":
+		return "full"
+	if tower == "weak":
+		return "weak"
+	var phone := phone_band(world_pos)
+	if phone == "service":
+		return "full"
+	if phone == "weak":
+		return "weak"
+	return "dead"
+
+
 @rpc("authority", "call_local", "reliable")
 func _client_set_active(ids: Array, forced_id: String) -> void:
 	var incoming: Array = ids.duplicate()
