@@ -13,10 +13,11 @@ func configure(p_room_index: int) -> void:
 
 
 func interact(_by_peer_id: int) -> void:
+	var msg := "Air moves through the vent."
 	if not RoomUtilities.is_enabled(room_index, RoomUtilities.UTILITY_GAS):
-		print("[ExhaustVent] gas utility off — vent stalled")
-		return
-	if not RoomUtilities.is_enabled(room_index, RoomUtilities.UTILITY_COMMS):
-		print("[ExhaustVent] faint static on the comms line")
-		return
-	print("[ExhaustVent] air moves through the vent")
+		msg = "Gas line is dead — vent does nothing."
+	elif not RoomUtilities.is_enabled(room_index, RoomUtilities.UTILITY_COMMS):
+		msg = "Static crackles through the vent grille."
+	var player := GameState.local_player_node
+	if player and player.has_method("_show_toast"):
+		player._show_toast(msg)

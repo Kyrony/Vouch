@@ -92,6 +92,9 @@ func server_connect_next_wire(_by_peer_id: int) -> void:
 			RoomUtilities.server_set_utility(wire_targets[i], RoomUtilities.UTILITY_POWER, false)
 	_client_apply_connected.rpc(connected_wire)
 	_apply_connected(connected_wire)
+	var player := _find_player(_by_peer_id)
+	if player and player.has_method("_show_toast"):
+		player._show_toast("Live wire routed — power restored somewhere.")
 
 
 @rpc("authority", "call_remote", "reliable")
@@ -130,3 +133,10 @@ func _rpc_request_wire(wire_idx: int) -> void:
 	if not multiplayer.is_server():
 		return
 	interact_wire_index(wire_idx, multiplayer.get_remote_sender_id())
+
+
+func _find_player(peer_id: int) -> Node3D:
+	for node in get_tree().get_nodes_in_group("players"):
+		if str(node.name) == str(peer_id):
+			return node as Node3D
+	return null

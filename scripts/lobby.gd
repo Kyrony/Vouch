@@ -65,6 +65,11 @@ const REMAP_ACTION_LABELS: Dictionary = {
 
 @onready var character_back_button: Button = $CharacterPanel/VBoxContainer/BackButton
 
+@onready var lobby_code_row: HBoxContainer = $PlayPanel/VBoxContainer/LobbyCodeRow
+@onready var lobby_code_input: LineEdit = $PlayPanel/VBoxContainer/LobbyCodeRow/LobbyCodeInput
+
+const _UI: GDScript = preload("res://scripts/ui/ui_theme.gd")
+
 ## Set while waiting for the next input event to finish a key-remap.
 var _awaiting_remap_action: String = ""
 var _remap_buttons: Dictionary = {}
@@ -93,6 +98,7 @@ func _ready() -> void:
 	_build_remap_rows()
 	_setup_settings_controls()
 	_setup_match_settings_controls()
+	_apply_ui_theme()
 
 	_show_panel(home_panel)
 	_on_roster_updated(NetworkManager.lobby_roster)
@@ -137,7 +143,7 @@ func _on_exit_pressed() -> void:
 func _on_host_pressed() -> void:
 	var err := NetworkManager.host_game()
 	if err == OK:
-		status_label.text = "Hosting on port %d. Share your IP with friends." % NetworkManager.DEFAULT_PORT
+		status_label.text = "Hosting on port %d. Friends join via direct IP (see below)." % NetworkManager.DEFAULT_PORT
 		start_match_button.visible = true
 		_refresh_match_settings_access()
 	else:
@@ -310,3 +316,14 @@ func _refresh_settings_labels() -> void:
 	sensitivity_value_label.text = "%.2fx" % sensitivity_slider.value
 	master_volume_value_label.text = "%d%%" % roundi(master_volume_slider.value * 100)
 	sfx_volume_value_label.text = "%d%%" % roundi(sfx_volume_slider.value * 100)
+
+
+func _apply_ui_theme() -> void:
+	for panel in [home_panel, play_panel, settings_panel, character_panel]:
+		if panel.get_node_or_null("VBoxContainer"):
+			pass
+	_UI.call("apply_label_hierarchy", status_label, "body")
+	if is_instance_valid(lobby_code_input):
+		lobby_code_input.placeholder_text = "Lobby codes not wired yet — use direct IP"
+		lobby_code_input.editable = false
+		lobby_code_input.tooltip_text = "Session codes and relay are post-MVP. Join with the host LAN IP."

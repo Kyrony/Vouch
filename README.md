@@ -57,7 +57,8 @@ machine:
 To test across two real machines on the same network instead: host on
 one machine, then on the other type the host's LAN IP into the Join
 field. There's no lobby-code/relay system yet (see below), so direct IP
-is required for now.
+is required for now. The Play screen shows a disabled **Lobby code**
+field as a placeholder — session codes are post-MVP.
 
 ## Controls
 
@@ -200,6 +201,38 @@ persists locally between sessions.
 Every stub above has a `TODO(post-MVP)` comment at its definition site
 pointing at what's missing.
 
+## Friends-ready playtest (James checklist)
+
+Use this before a friends session. Each item maps to a GDD MVP check:
+
+| # | Check | Pass criteria |
+| --- | --- | --- |
+| 1 | **Start Match** | Host sees joined list → Start Match loads both clients into rooms |
+| 2 | **Spawn alone** | Each player spawns in their own sealed room |
+| 3 | **Mystery link** | Flip light switch → local “tick” toast; another room’s light/flood changes |
+| 4 | **Phone beat** | Pick up phone → compose/send text (random recipient stub) |
+| 5 | **Walkie beat** | Pick up walkie → faction-pair text panel opens and sends |
+| 6 | **Escape Outside** | Open door/vent → walk tunnel + shaft stairs → enter clearing zone |
+
+**Test gun / Outside range:** gated off unless `VOUCH_DEBUG_BUILD=1` or a Godot debug export. Remove entirely before retail.
+
+**Lobby codes:** not implemented — join with direct IP (stub field on Play screen documents this).
+
+## Script ownership (playability pass — 10 tasks)
+
+| Task | Feature | Owner script(s) |
+| --- | --- | --- |
+| 1 | Stairs → valid landings | `scripts/rooms/room_geometry.gd`, `scripts/rooms/room_layouts.gd` |
+| 2 | Puzzle / RPC audit | `scripts/systems/link_graph.gd`, `scripts/interactables/*` (switches, valves, terminal, electrical) |
+| 3 | Verticality (ramps, mezz) | `scripts/rooms/tunnel_kit.gd`, `scripts/rooms/room_map.gd`, `scripts/systems/escape_hub.gd`, `scripts/rooms/room_layouts.gd` |
+| 4 | UI skin | `scripts/ui/ui_theme.gd`, `scripts/lobby.gd`, `scripts/rooms/neon_theme.gd` |
+| 5 | Item glow feedback | `scripts/interactables/interactable.gd`, `scripts/player.gd` |
+| 6 | Item sync fixes | `scripts/interactables/ladder.gd`, `flammable_prop.gd`, `clue_flame_paper.gd` |
+| 7 | Water (stylized rule) | `scripts/interactables/broken_pipe.gd`, `scripts/interactables/drain.gd`, `scripts/systems/escape_system.gd` |
+| 8 | Fire (stylized rule) | `scripts/systems/fire_system.gd`, `scripts/interactables/fireplace.gd`, `flammable_prop.gd` |
+| 9 | Playable loop strip | `scripts/match.gd`, `scripts/room_pod.gd`, `scripts/autoload/match_settings.gd` |
+| 10 | Friends-ready gate | `scripts/autoload/debug_build.gd`, `scripts/outside.gd`, `scripts/debug_gui.gd`, `README.md` |
+
 ## Script ownership (room interiors)
 
 Each concern lives in one script/class. Brief map for the 10 interior-polish systems:
@@ -226,6 +259,11 @@ VOUCH_ATTACHMENT_TEST=1 godot4 --headless --path .
 ```
 
 ## Test-only tools (*** REMOVE BEFORE FULL RELEASE ***)
+
+Gated by `DebugBuild` (`scripts/autoload/debug_build.gd`): enabled only when
+`VOUCH_DEBUG_BUILD=1` is set or the export is a Godot debug build. When disabled,
+the Outside `TestRange_RemoveBeforeRelease` node is removed at runtime and the
+debug menu cannot spawn guns.
 
 The Outside courtyard has a `TestRange_RemoveBeforeRelease` node with a
 pickup `Gun`, **`TestProjectile`**, and a few `DummyTarget` props, used solely to manually

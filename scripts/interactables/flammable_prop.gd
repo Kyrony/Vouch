@@ -20,6 +20,7 @@ var _base_mat: StandardMaterial3D
 
 func _ready() -> void:
 	add_to_group("flammable_props")
+	add_to_group("wood_props")
 	collision_layer = 2
 	collision_mask = 1
 	contact_monitor = true
@@ -106,24 +107,23 @@ func server_pickup(by_peer_id: int) -> void:
 func server_drop(by_peer_id: int) -> void:
 	if not multiplayer.is_server() or not is_carried or carrier_peer_id != by_peer_id:
 		return
+	var player := _find_player(by_peer_id)
+	var drop_pos := global_position
+	if player:
+		drop_pos = player.global_position + player.transform.basis * Vector3(0.3, 0.2, -0.8)
 	is_carried = false
 	carrier_peer_id = -1
 	freeze = false
-	var drop_pos := global_position
-	if _find_player(by_peer_id):
-		drop_pos = _find_player(by_peer_id).global_position + _find_player(by_peer_id).transform.basis * Vector3(0.3, 0.2, -0.8)
-	_client_carry.rpc(by_peer_id, false)
-	_apply_carry(by_peer_id, false)
-	global_position = drop_pos
-	apply_central_impulse(Vector3(0, 0.5, -1.0))
+	_client_carry.rpc(by_peer_id, false, drop_pos)
+	_apply_carry(by_peer_id, false, drop_pos)
 
 
 @rpc("authority", "call_remote", "reliable")
-func _client_carry(by_peer_id: int, carrying: bool) -> void:
-	_apply_carry(by_peer_id, carrying)
+func _client_carry(by_peer_id: int, carrying: bool, drop_pos: Vector3 = Vector3.ZERO) -> void:
+	_apply_carry(by_peer_id, carrying, drop_pos)
 
 
-func _apply_carry(by_peer_id: int, carrying: bool) -> void:
+func _apply_carry(by_peer_id: int, carrying: bool, drop_pos: Vector3 = Vector3.ZERO) -> void:
 	is_carried = carrying
 	carrier_peer_id = by_peer_id if carrying else -1
 	prompt_text = "Drop" if carrying else "Pick up"
@@ -134,10 +134,14 @@ func _apply_carry(by_peer_id: int, carrying: bool) -> void:
 			reparent(player)
 			position = Vector3(0.35, -0.1, -0.7)
 			rotation = Vector3.ZERO
+			visible = true
 	else:
 		var world := get_tree().root.get_node_or_null("Main/World")
 		if world:
 			reparent(world)
+		if drop_pos != Vector3.ZERO:
+			global_position = drop_pos
+		visible = true
 
 
 func server_on_ignited() -> void:
@@ -173,6 +177,18 @@ func server_finish_burn() -> void:
 	is_charred = true
 	is_burning = false
 	_client_charred.rpc()
+
+
+func server_extinguish() -> void:
+	is_burning = false
+	_client_extinguish.rpc()
+
+
+@rpc("authority", "call_remote", "reliable")
+func _client_extinguish() -> void:
+	is_burning = false
+	if _mesh and _base_mat:
+		_mesh.set_surface_override_material(0, _base_mat.duplicate())
 
 
 @rpc("authority", "call_remote", "reliable")

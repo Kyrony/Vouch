@@ -183,7 +183,7 @@ func _unhandled_input(event: InputEvent) -> void:
 
 	if event.is_action_pressed("interact"):
 		_try_interact()
-	elif event.is_action_pressed("fire") and has_gun and Input.mouse_mode == Input.MOUSE_MODE_CAPTURED:
+	elif event.is_action_pressed("fire") and has_gun and DebugBuild.enabled and Input.mouse_mode == Input.MOUSE_MODE_CAPTURED:
 		_fire_gun()
 
 
@@ -342,9 +342,15 @@ func _try_interact() -> void:
 		return
 
 	if target is Gun and not target.is_picked_up:
+		if not DebugBuild.enabled:
+			_show_toast("Nothing useful here.")
+			return
 		target.interact(multiplayer.get_unique_id())
 		has_gun = true
 		_show_toast("Picked up a gun. (TEST ONLY)")
+		return
+
+	if target is Gun:
 		return
 
 	target.interact(multiplayer.get_unique_id())

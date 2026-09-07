@@ -13,6 +13,8 @@ class_name Match
 ## TODO(post-MVP): mid-match reconnection handling, and support for
 ## uneven faction sizes.
 
+const _ROOM_POD: GDScript = preload("res://scripts/room_pod.gd")
+
 const ROOM_POD_SCENE_PATH: String = "res://scenes/Match/RoomPod.tscn"
 const PLAYER_SCENE_PATH: String = "res://scenes/Player/Player.tscn"
 
@@ -105,7 +107,9 @@ func _server_build_match() -> void:
 	for i in range(peer_ids.size()):
 		var peer_id: int = peer_ids[i]
 		var is_pm: bool = GameState.players[peer_id]["is_puppet_master"]
-		_server_spawn_room(i, peer_id, is_pm, puzzle_plan, peer_ids.size())
+		_server_spawn_room(i, peer_id, is_pm, puzzle_plan, peer_ids.size(), i == 0)
+
+	_ensure_flood_valve_in_match(peer_ids)
 
 	# Links must be built AFTER every room has registered its control/effect
 	# nodes with LinkGraph.
@@ -178,7 +182,26 @@ func _grant_puppet_master_targets(peer_ids: Array) -> void:
 	PuppetMasterSystem.server_grant_targets(pm_peer_id, camera_targets, all_other_rooms)
 
 
-func _server_spawn_room(room_index: int, owner_peer_id: int, is_pm: bool, puzzle_plan: Dictionary, total_rooms: int) -> void:
+func _ensure_flood_valve_in_match(peer_ids: Array) -> void:
+	if peer_ids.size() < 2:
+		return
+	for idx in _rooms.keys():
+		var pod = _rooms[idx]
+		if pod and pod.get("light_switch"):
+			var map: Node = pod.get_child(0) if pod.get_child_count() > 0 else null
+			if map and map.has_node("WaterValve"):
+				return
+	for idx in _rooms.keys():
+		var pid := GameState.server_get_peer_by_room(idx)
+		if pid != GameState.puppet_master_peer_id:
+			push_warning("Match: no flood valve spawned — light-switch mystery links still active.")
+			return
+
+
+func _server_spawn_room(room_index: int, owner_peer_id: int, is_pm: bool, puzzle_plan: Dictionary, total_rooms: int, force_valve: bool = false) -> void:
+	var recipe: Dictionary = _ROOM_POD.call("plan_recipe", is_pm)
+	if force_valve and not is_pm and total_rooms >= 2:
+		recipe["has_valve"] = true
 	var data := {
 		"room_index": room_index,
 		"owner_peer_id": owner_peer_id,
@@ -189,7 +212,7 @@ func _server_spawn_room(room_index: int, owner_peer_id: int, is_pm: bool, puzzle
 		"clue_kind": puzzle_plan.get("clue_kind", "") if puzzle_plan.get("clue_index", -1) == room_index else "",
 		"clue_code": puzzle_plan.get("code", "") if puzzle_plan.get("clue_index", -1) == room_index else "",
 	}
-	data.merge(RoomPod.plan_recipe(is_pm))
+	data.merge(recipe)
 	if data.get("has_electrical_box", false):
 		var targets: Array = []
 		var candidates: Array = []
@@ -209,7 +232,9 @@ func _server_spawn_room(room_index: int, owner_peer_id: int, is_pm: bool, puzzle
 			for j in range(total_rooms):
 				if j != room_index:
 					peek_candidates.append(j)
-		if not peek_candidates.is_empty():
+		if peek_candidates.is_empty():
+			data["has_binary_puzzle"] = false
+		else:
 			data["binary_peek_room"] = peek_candidates[randi() % peek_candidates.size()]
 			data["binary_target"] = randi_range(5, 200)
 	RoomUtilities.server_init_room(room_index)
@@ -221,7 +246,7 @@ func _server_spawn_room(room_index: int, owner_peer_id: int, is_pm: bool, puzzle
 
 
 func _server_spawn_player(peer_id: int, room_index: int) -> void:
-	var room: RoomPod = _rooms.get(room_index)
+	var room = _rooms.get(room_index)
 	var spawn_xform: Transform3D = room.get_spawn_transform() if room else Transform3D.IDENTITY
 	var faction_id: String = GameState.server_get_faction(peer_id)
 
@@ -239,16 +264,16 @@ func _server_spawn_player(peer_id: int, room_index: int) -> void:
 ## it in response to the replicated spawn message) - must stay
 ## deterministic given identical `data`.
 func _spawn_room_pod(data: Dictionary) -> Node:
-	var scene := _get_room_pod_scene()
+	var scene = _get_room_pod_scene()
 	if scene == null:
 		push_error("Match: failed to load RoomPod scene at %s" % ROOM_POD_SCENE_PATH)
 		return null
-	var raw_node := scene.instantiate()
+	var raw_node: Node = scene.instantiate()
 	if raw_node == null:
 		push_error("Match: RoomPod scene instantiate returned null (path=%s)" % scene.resource_path)
 		return null
-	var room := raw_node as RoomPod
-	if room == null:
+	var room = raw_node
+	if not room.has_method("configure"):
 		push_error("Match: RoomPod scene root is not a RoomPod (script=%s)" % str(raw_node.get_script()))
 		raw_node.free()
 		return null
@@ -277,11 +302,11 @@ func _ensure_escape_hub(room_count: int) -> void:
 
 ## Runs on EVERY peer, same determinism requirement as `_spawn_room_pod`.
 func _spawn_player(data: Dictionary) -> Node:
-	var scene := _get_player_scene()
+	var scene = _get_player_scene()
 	if scene == null:
 		push_error("Match: failed to load Player scene at %s" % PLAYER_SCENE_PATH)
 		return null
-	var player := scene.instantiate() as Player
+	var player: Node = scene.instantiate()
 	if player == null:
 		push_error("Match: Player scene instantiate returned null (path=%s)" % scene.resource_path)
 		return null

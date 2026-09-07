@@ -25,7 +25,7 @@ func _ready() -> void:
 
 func _run_match_spawn_test() -> void:
 	world.visible = true
-	var match_node: Match = $World/Match
+	var match_node = $World/Match
 	var data := {
 		"room_index": 0,
 		"owner_peer_id": 1,
@@ -39,7 +39,7 @@ func _run_match_spawn_test() -> void:
 		"has_exhaust": true,
 		"total_rooms": 1,
 	}
-	var room := match_node._spawn_room_pod(data)
+	var room = match_node._spawn_room_pod(data)
 	if room == null:
 		push_error("MATCH SPAWN TEST FAILED")
 		get_tree().quit(1)
@@ -50,16 +50,21 @@ func _run_match_spawn_test() -> void:
 
 func _run_room_spawn_test() -> void:
 	print("=== ROOM MAP SPAWN TEST START ===")
-	for room_id in [1, 4, 12, 15, 20]:
-		var room := _spawn_test_room(room_id)
+	for room_id in [1, 4, 12, 15, 16, 17, 18, 20]:
+		var room = _spawn_test_room(room_id)
 		if room == null:
 			push_error("ROOM SPAWN TEST FAILED room=%02d" % room_id)
 			get_tree().quit(1)
 			return
-		var map := room.get_child(0) if room.get_child_count() > 0 else room
-		var slots := map.get_node_or_null("ItemSpawns")
-		var slot_count := slots.get_child_count() if slots else 0
+		var map = room.get_child(0) if room.get_child_count() > 0 else room
+		var slots = map.get_node_or_null("ItemSpawns")
+		var slot_count = slots.get_child_count() if slots else 0
 		print("  room %02d OK footprint=%.0fx%.0f slots=%d" % [room_id, room.width, room.depth, slot_count])
+		var stair_err := _validate_stairs(map)
+		if not stair_err.is_empty():
+			push_error("ROOM STAIR TEST FAILED room=%02d: %s" % [room_id, stair_err])
+			get_tree().quit(1)
+			return
 		room.queue_free()
 		await get_tree().process_frame
 	print("=== ROOM MAP SPAWN TEST: ALL OK ===")
@@ -69,12 +74,12 @@ func _run_room_spawn_test() -> void:
 func _run_attachment_test() -> void:
 	print("=== ATTACHMENT TEST START ===")
 	for room_id in [1, 4, 12, 15, 20]:
-		var room := _spawn_test_room(room_id, true)
+		var room = _spawn_test_room(room_id, true)
 		if room == null:
 			push_error("ATTACHMENT TEST FAILED room=%02d (spawn)" % room_id)
 			get_tree().quit(1)
 			return
-		var map: Node3D = room.get_child(0) if room.get_child_count() > 0 else room
+		var map: Node = room.get_child(0) if room.get_child_count() > 0 else room
 		var errors: Array = _ATTACHMENT.call("validate", map)
 		if not errors.is_empty():
 			for err in errors:
@@ -88,8 +93,23 @@ func _run_attachment_test() -> void:
 	get_tree().quit(0)
 
 
-func _spawn_test_room(room_id: int, full_items: bool = false) -> RoomPod:
-	var room: RoomPod = preload("res://scenes/Match/RoomPod.tscn").instantiate()
+func _validate_stairs(map: Node) -> String:
+	var geometry := map.get_node_or_null("Geometry")
+	if geometry == null:
+		return ""
+	var landing_count := 0
+	for child in geometry.get_children():
+		if child is StaticBody3D and child.position.y > 0.4:
+			landing_count += 1
+	var layout_script: GDScript = preload("res://scripts/rooms/room_layouts.gd")
+	var layout: Dictionary = layout_script.call("get_layout", int(map.get("room_id")))
+	if layout.has("stairs") and landing_count == 0:
+		return "stairs present but no landing geometry"
+	return ""
+
+
+func _spawn_test_room(room_id: int, full_items: bool = false):
+	var room = preload("res://scenes/Match/RoomPod.tscn").instantiate()
 	var data := {
 		"room_index": 0,
 		"owner_peer_id": 1,

@@ -197,14 +197,27 @@ func _notify_effect(peer_id: int, effect_id: String) -> void:
 
 @rpc("authority", "call_remote", "reliable")
 func _client_local_feedback(feedback_kind: String) -> void:
-	# MVP: just log it. TODO: hook up a tick/buzzer SFX + a subtle UI ping.
-	print("[LinkGraph] local feedback: %s (something happened somewhere)" % feedback_kind)
+	var player := GameState.local_player_node
+	if player and player.has_method("_show_toast"):
+		match feedback_kind:
+			"tick":
+				player._show_toast("Something clicked into place somewhere…")
+			_:
+				player._show_toast("Feedback: %s" % feedback_kind)
+	else:
+		print("[LinkGraph] local feedback: %s" % feedback_kind)
 
 
 @rpc("authority", "call_remote", "reliable")
 func _client_effect_triggered(effect_id: String) -> void:
-	# MVP: just log it. TODO: hook up per-effect local presentation
-	# (flicker the light, buzz the door, etc). The receiving prop node
-	# itself already changed state via server_apply_effect() replication;
-	# this signal is for extra "you've been hit" framing/SFX.
+	var player := GameState.local_player_node
+	if player and player.has_method("_show_toast"):
+		player._show_toast("Something changed in your room.")
+	_pulse_local_effect(effect_id)
 	print("[LinkGraph] your prop was affected: %s" % effect_id)
+
+
+func _pulse_local_effect(effect_id: String) -> void:
+	for node in get_tree().get_nodes_in_group("link_effects"):
+		if node.get("effect_id") == effect_id and node.has_method("client_link_pulse"):
+			node.client_link_pulse()

@@ -49,6 +49,18 @@ func _build_stairwell() -> void:
 	var start_x := radius - 0.55
 	var start_z := 0.35
 
+	# Entry ramp from tunnel floor into the rising stairwell.
+	var ramp_steps := 4
+	for i in range(ramp_steps):
+		var y := riser * 0.25 * (i + 0.5)
+		var z := start_z - tread * (i + 1)
+		add_child(_GEOM.call("box",
+			Vector3(tread * 1.1, riser * 0.5, tread * 0.9),
+			Vector3(start_x, y, z),
+			_floor_mat,
+			1
+		))
+
 	for i in range(steps):
 		var y := -_depth + riser * (i + 0.5)
 		var z := start_z + tread * i

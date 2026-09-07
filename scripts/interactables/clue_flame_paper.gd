@@ -28,11 +28,11 @@ func _init() -> void:
 	destroyable = true
 
 
-func interact(_by_peer_id: int) -> void:
+func interact(by_peer_id: int) -> void:
 	if is_destroyed or is_picked_up:
 		return
 	if multiplayer.is_server():
-		server_pickup()
+		server_pickup(by_peer_id)
 	else:
 		_rpc_request_pickup.rpc_id(1)
 
@@ -41,24 +41,41 @@ func interact(_by_peer_id: int) -> void:
 func _rpc_request_pickup() -> void:
 	if not multiplayer.is_server():
 		return
-	server_pickup()
+	server_pickup(multiplayer.get_remote_sender_id())
 
 
-func server_pickup() -> void:
+func server_pickup(by_peer_id: int) -> void:
 	if not multiplayer.is_server() or is_destroyed or is_picked_up:
 		return
 	is_picked_up = true
-	_client_apply_picked_up.rpc()
-	_apply_picked_up()
+	_client_apply_picked_up.rpc(by_peer_id)
+	_apply_picked_up(by_peer_id)
 
 
 @rpc("authority", "call_remote", "reliable")
-func _client_apply_picked_up() -> void:
-	_apply_picked_up()
+func _client_apply_picked_up(holder_peer_id: int = -1) -> void:
+	_apply_picked_up(holder_peer_id)
 
 
-func _apply_picked_up() -> void:
-	visible = false
+func _apply_picked_up(holder_peer_id: int = -1) -> void:
+	is_picked_up = true
 	for child in get_children():
 		if child is CollisionShape3D:
 			child.disabled = true
+	var holder := _find_player(holder_peer_id)
+	if holder:
+		reparent(holder)
+		position = Vector3(0.25, -0.05, -0.55)
+		rotation = Vector3(-0.35, 0, 0)
+		visible = true
+	else:
+		visible = false
+
+
+func _find_player(peer_id: int) -> Node3D:
+	if peer_id <= 0:
+		return null
+	for node in get_tree().get_nodes_in_group("players"):
+		if str(node.name) == str(peer_id):
+			return node as Node3D
+	return null

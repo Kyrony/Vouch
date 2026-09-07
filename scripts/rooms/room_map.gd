@@ -274,8 +274,10 @@ func _build_escape_corridor(corridor_out: Vector3, idx: int) -> void:
 	var dist := Vector2(grid_pos.x, grid_pos.z).length()
 	var horiz := clampf(dist - WorldScale.HUB_SHAFT_RADIUS - depth * 0.5, WorldScale.CORRIDOR_MIN, WorldScale.CORRIDOR_MAX)
 	var start_z := corridor_out.z + WALL
-	_TUNNEL.call("build_horizontal", self, start_z, horiz, WorldScale.HUB_HALL_W, WorldScale.HUB_HALL_H, true, true)
-	_TUNNEL.call("build_hub_connector", self, start_z + horiz, WorldScale.HUB_HALL_W, WorldScale.HUB_HALL_H)
+	# Escape tunnels ramp upward toward the central shaft / mountain surface.
+	var rise := clampf(horiz * 0.045, 0.35, 2.2)
+	_TUNNEL.call("build_horizontal", self, start_z, horiz, WorldScale.HUB_HALL_W, WorldScale.HUB_HALL_H, true, true, rise)
+	_TUNNEL.call("build_hub_connector", self, start_z + horiz, WorldScale.HUB_HALL_W, WorldScale.HUB_HALL_H, rise)
 
 
 static func _accent_material(color: Color, theme_id: String = "bedroom") -> StandardMaterial3D:

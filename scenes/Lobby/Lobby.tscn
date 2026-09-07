@@ -125,6 +125,21 @@ placeholder_text = "Host IP (blank = 127.0.0.1)"
 layout_mode = 2
 text = "Join"
 
+[node name="LobbyCodeRow" type="HBoxContainer" parent="PlayPanel/VBoxContainer"]
+layout_mode = 2
+theme_override_constants/separation = 8
+
+[node name="LobbyCodeLabel" type="Label" parent="PlayPanel/VBoxContainer/LobbyCodeRow"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.55, 0.62, 0.68, 1)
+text = "Lobby code"
+
+[node name="LobbyCodeInput" type="LineEdit" parent="PlayPanel/VBoxContainer/LobbyCodeRow"]
+layout_mode = 2
+size_flags_horizontal = 3
+placeholder_text = "Lobby codes not wired yet — use direct IP above"
+editable = false
+
 [node name="StartMatchButton" type="Button" parent="PlayPanel/VBoxContainer"]
 layout_mode = 2
 text = "Start Match (host only)"
@@ -496,7 +511,7 @@ layout_mode = 2
 theme_override_colors/font_color = Color(0.7, 0.72, 0.76, 1)
 horizontal_alignment = 1
 autowrap_mode = 3
-text = "Coming soon: cosmetic customization. Faction color is never player-chosen, by design. Stub panel for now."
+text = "Character customization is not in this build. Faction color is assigned at match start and is never player-chosen."
 
 [node name="BackButton" type="Button" parent="CharacterPanel/VBoxContainer"]
 layout_mode = 2
