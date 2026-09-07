@@ -16,6 +16,7 @@ class_name Match
 const _ROOM_POD: GDScript = preload("res://scripts/room_pod.gd")
 const _PATH: GDScript = preload("res://scripts/rooms/escape_path_validator.gd")
 const _ESCAPE_HUB: GDScript = preload("res://scripts/systems/escape_hub.gd")
+const _HORROR: GDScript = preload("res://scripts/horror/match_horror.gd")
 
 const ROOM_POD_SCENE_PATH: String = "res://scenes/Match/RoomPod.tscn"
 const PLAYER_SCENE_PATH: String = "res://scenes/Player/Player.tscn"
@@ -83,12 +84,17 @@ func _get_player_scene() -> PackedScene:
 
 func _on_match_started() -> void:
 	_teardown_match_geometry()
+	if HorrorModeSettings.is_horror_mode():
+		_HORROR.call("build_world_all_peers", self)
 	if not multiplayer.is_server():
 		return
 	_server_build_match()
 
 
 func _server_build_match() -> void:
+	if HorrorModeSettings.is_horror_mode():
+		_HORROR.call("server_build", self)
+		return
 	_rooms.clear()
 	EscapeSystem.reset()
 	LinkGraph.reset()
@@ -350,6 +356,8 @@ func teardown_match_geometry() -> void:
 
 
 func _teardown_match_geometry() -> void:
+	if HorrorModeSettings.is_horror_mode():
+		_HORROR.call("teardown", self)
 	_rooms.clear()
 	if is_instance_valid(_escape_hub):
 		_escape_hub.queue_free()
@@ -451,4 +459,17 @@ func _spawn_player(data: Dictionary) -> Node:
 	player.set("faction_id", data.get("faction_id", ""))
 	player.position = data["spawn_position"]
 	player.rotation.y = data["spawn_rotation_y"]
+	if data.get("horror_mode", false):
+		player.set("horror_mode", true)
+		if data.get("is_puppet_master", false):
+			player.set("is_horror_puppet_master", true)
+			_HORROR.call("attach_pm_controller", player)
 	return player
+
+
+func _log_horror_match_ready(player_count: int, spawn_count: int) -> void:
+	print("HORROR summary players=%d bunker_spawns=%d world=%s" % [
+		player_count,
+		spawn_count,
+		get_node_or_null("HorrorWorld") != null,
+	])

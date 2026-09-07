@@ -70,6 +70,26 @@ field as a placeholder — session codes are post-MVP.
 
 ## Controls
 
+### Horror bunker escape (default)
+
+| Role | Action | Key |
+| --- | --- | --- |
+| All | Move / Look / Jump | `W A S D` / Mouse / `Space` |
+| Survivor | Pick up item | `E` |
+| Survivor | Use selected hotbar item | `R` |
+| Survivor | Drop selected item | `G` |
+| Survivor | Select hotbar slot | `1`–`8` |
+| Puppet Master | Body swap (near survivor) | `Q` |
+| Puppet Master | Float upward (hold) | `Space` (in air) |
+| Puppet Master | Life steal (hold near survivor) | `E` (hold) |
+| All | Pause / release mouse | `Esc` |
+
+**Goal:** Survivors spawn at random points in the **shared underground bunker**, loot items, climb the **surface house** stair shaft, and reach the **field escape zone** (+Z field). One **Puppet Master** hunts them — drain health with hold-interact or eliminate everyone. PM wins if all survivors are drained/eliminated before they escape.
+
+Legacy sealed-room / tunnel modes: `VOUCH_BUNKER_ONLY=1` or `VOUCH_ESCAPE_PATH=1`.
+
+### Legacy controls
+
 | Action | Key (remappable in Settings) |
 | --- | --- |
 | Move | `W A S D` |
@@ -269,10 +289,14 @@ VOUCH_PLAYER_SCRIPT_TEST=1 godot4 --headless --path .
 rm -rf .godot
 godot4 --headless --path . -s res://scripts/vouch_player_spawn_probe.gd
 
-# Playable loop (phone/walkie) — bunker-only by default; full escape path needs VOUCH_ESCAPE_PATH=1:
+# Horror match smoke (default mode):
+VOUCH_HORROR_MATCH_TEST=1 godot4 --headless --path .
+
+# Playable loop (phone/walkie) — bunker-only: VOUCH_BUNKER_ONLY=1; full escape path needs VOUCH_ESCAPE_PATH=1:
 VOUCH_PLAYABLE_LOOP_TEST=1 godot4 --headless --path .
 VOUCH_ESCAPE_PATH=1 VOUCH_PLAYABLE_LOOP_TEST=1 godot4 --headless --path .
 godot4 --headless --path . -s res://scripts/vouch_playable_loop_probe.gd
+godot4 --headless --path . -s res://scripts/vouch_horror_match_probe.gd
 
 VOUCH_ROOM_SPAWN_TEST=1 godot4 --headless --path .
 VOUCH_MATCH_SPAWN_TEST=1 godot4 --headless --path .

@@ -8,6 +8,7 @@ const _PATH: GDScript = preload("res://scripts/rooms/escape_path_validator.gd")
 const _SPAWN: GDScript = preload("res://scripts/rooms/graybox_spawn_validator.gd")
 const _BUNKER: GDScript = preload("res://scripts/rooms/graybox_bunker_validator.gd")
 const _ESCAPE_SETTINGS: GDScript = preload("res://scripts/autoload/escape_path_settings.gd")
+const _HORROR: GDScript = preload("res://scripts/horror/match_horror.gd")
 const EXPECTED_SLOT_COUNT: int = 16
 
 @onready var lobby: Control = $Lobby
@@ -24,6 +25,8 @@ func _ready() -> void:
 	pause_menu.debug_gui_requested.connect(_on_pause_debug)
 	if OS.get_environment("VOUCH_PLAYABLE_LOOP_TEST") == "1":
 		call_deferred("_run_playable_loop_test")
+	elif OS.get_environment("VOUCH_HORROR_MATCH_TEST") == "1":
+		call_deferred("_run_horror_match_test")
 	elif OS.get_environment("VOUCH_PLAYER_SCRIPT_TEST") == "1":
 		call_deferred("_run_player_script_test")
 	elif OS.get_environment("VOUCH_ROOM_SPAWN_TEST") == "1":
@@ -37,6 +40,49 @@ func _ready() -> void:
 func _run_playable_loop_test() -> void:
 	world.visible = true
 	call_deferred("_run_playable_loop_test_async")
+
+
+func _run_horror_match_test() -> void:
+	world.visible = true
+	call_deferred("_run_horror_match_test_async")
+
+
+func _run_horror_match_test_async() -> void:
+	var err: String = await _probe_horror_match()
+	if not err.is_empty():
+		push_error("HORROR MATCH TEST FAILED: %s" % err)
+		get_tree().quit(1)
+		return
+	print("HORROR MATCH TEST OK")
+	get_tree().quit(0)
+
+
+func _probe_horror_match() -> String:
+	if not HorrorModeSettings.is_horror_mode():
+		return "Horror mode disabled — unset VOUCH_BUNKER_ONLY / VOUCH_ESCAPE_PATH"
+	var match_node = $World/Match
+	if not match_node.is_node_ready():
+		await match_node.ready
+	_HORROR.call("build_world_all_peers", match_node)
+	await get_tree().process_frame
+	await get_tree().physics_frame
+	var world_node := match_node.get_node_or_null("HorrorWorld")
+	if world_node == null:
+		return "HorrorWorld missing"
+	var spawn_count: int = world_node.call("get_spawn_point_count")
+	if spawn_count < 4:
+		return "expected >= 4 spawns, got %d" % spawn_count
+	var pickups := world_node.get_node_or_null("Pickups")
+	if pickups == null or pickups.get_child_count() < 1:
+		return "no pickups"
+	if world_node.get_node_or_null("Bunker") == null:
+		return "Bunker missing"
+	if world_node.get_node_or_null("SurfaceHouse") == null:
+		return "SurfaceHouse missing"
+	if world_node.get_node_or_null("Field") == null:
+		return "Field missing"
+	print("  horror spawns=%d pickups=%d" % [spawn_count, pickups.get_child_count()])
+	return ""
 
 
 func _run_playable_loop_test_async() -> void:

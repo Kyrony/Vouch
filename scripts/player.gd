@@ -107,6 +107,17 @@ var _walkie_partner_label: Label
 ## faction color (that would leak the mystery/social-deduction info).
 var faction_id: String = ""
 
+var horror_mode: bool = false
+var is_horror_puppet_master: bool = false
+
+var _pm_controller: Node = null
+var _health_bar: ProgressBar = null
+var _hotbar_labels: Array[Label] = []
+var _local_health: float = 100.0
+var _local_max_health: float = 100.0
+var _inventory_slots: Array = []
+var _inventory_selected: int = 0
+
 
 func _ready() -> void:
 	add_to_group("players")
@@ -117,6 +128,10 @@ func _ready() -> void:
 	if is_multiplayer_authority():
 		camera.current = true
 		hud.visible = true
+		if horror_mode or HorrorModeSettings.is_horror_mode():
+			horror_mode = true
+		if is_horror_puppet_master:
+			GameState.local_is_puppet_master = true
 		Input.mouse_mode = Input.MOUSE_MODE_CAPTURED
 		GameState.local_player_node = self
 
@@ -134,11 +149,15 @@ func _ready() -> void:
 
 		if not GameState.local_faction_id.is_empty():
 			_on_faction_assigned(GameState.local_faction_id)
-		if GameState.local_is_puppet_master:
+		if GameState.local_is_puppet_master or is_horror_puppet_master:
 			faction_label.text = "PUPPET MASTER"
 			faction_label.add_theme_color_override("font_color", Color(0.85, 0.15, 0.85))
 		_build_binary_panel()
 		_build_walkie_panel()
+		_build_horror_hud()
+		if horror_mode:
+			PlayerHealth.local_health_changed.connect(_on_local_health_changed)
+			PlayerInventory.local_inventory_changed.connect(_on_local_inventory_changed)
 		_pause_menu = get_node_or_null("/root/Main/PauseMenu")
 	else:
 		camera.current = false
@@ -186,6 +205,14 @@ func _unhandled_input(event: InputEvent) -> void:
 
 	if event.is_action_pressed("interact"):
 		_try_interact()
+	elif horror_mode and not is_horror_puppet_master:
+		if event.is_action_pressed("use_item"):
+			_request_use_item()
+		if event.is_action_pressed("drop_item"):
+			_request_drop_item()
+		for i in range(8):
+			if event.is_action_pressed("hotbar_%d" % (i + 1)):
+				_request_select_slot(i)
 	elif event.is_action_pressed("fire") and has_gun and DebugBuild.enabled and Input.mouse_mode == Input.MOUSE_MODE_CAPTURED:
 		_fire_gun()
 
@@ -206,6 +233,11 @@ func _physics_process(delta: float) -> void:
 			_apply_ladder_velocity()
 		else:
 			_apply_ground_velocity(delta, locked)
+
+		if horror_mode and is_horror_puppet_master:
+			_pm_controller = get_node_or_null("PuppetMasterController")
+			if _pm_controller:
+				_pm_controller.call("process_movement", delta, locked)
 
 		move_and_slide()
 
@@ -278,6 +310,11 @@ func _update_interact_prompt() -> void:
 		return
 	if interact_ray.is_colliding():
 		var collider := interact_ray.get_collider()
+		if horror_mode and not is_horror_puppet_master and collider.is_in_group("world_pickups"):
+			var hint: String = collider.call("get_prompt") if collider.has_method("get_prompt") else "Pick up item"
+			prompt_label.text = "[E] %s" % hint
+			prompt_label.visible = true
+			return
 		if _PATHS.is_ladder(collider) and not collider.is_carried:
 			var hint: String = collider.prompt_text
 			if collider.is_placed and not collider.is_leaning and not collider.is_leaning_anim:
@@ -318,6 +355,13 @@ func _try_interact() -> void:
 	if not interact_ray.is_colliding():
 		return
 	var collider := interact_ray.get_collider()
+
+	if horror_mode and not is_horror_puppet_master and collider.is_in_group("world_pickups"):
+		if multiplayer.is_server():
+			collider.call("server_try_pickup", multiplayer.get_unique_id())
+		else:
+			PlayerInventory.request_pickup.rpc_id(1, collider.get_path())
+		return
 
 	var ladder_target: Node = collider if _PATHS.is_ladder(collider) else null
 	if ladder_target:
@@ -943,3 +987,75 @@ func _show_toast(text: String) -> void:
 
 func _on_toast_timer_timeout() -> void:
 	toast_label.visible = false
+
+
+# --- Horror mode: health + inventory HUD ---------------------------------
+
+func _build_horror_hud() -> void:
+	_health_bar = ProgressBar.new()
+	_health_bar.name = "HealthBar"
+	_health_bar.custom_minimum_size = Vector2(220, 16)
+	_health_bar.position = Vector2(20, 44)
+	_health_bar.max_value = 100
+	_health_bar.value = 100
+	_health_bar.visible = false
+	hud.add_child(_health_bar)
+
+	var hotbar := HBoxContainer.new()
+	hotbar.name = "Hotbar"
+	hotbar.position = Vector2(20, 680)
+	hotbar.add_theme_constant_override("separation", 6)
+	hud.add_child(hotbar)
+	for i in range(8):
+		var slot := Label.new()
+		slot.custom_minimum_size = Vector2(72, 28)
+		slot.text = "[%d]" % (i + 1)
+		slot.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		slot.add_theme_color_override("font_color", Color(0.75, 0.75, 0.8))
+		hotbar.add_child(slot)
+		_hotbar_labels.append(slot)
+
+
+func _on_local_health_changed(hp: float, cap: float) -> void:
+	_local_health = hp
+	_local_max_health = cap
+	if _health_bar:
+		_health_bar.visible = horror_mode and not is_horror_puppet_master
+		_health_bar.max_value = cap
+		_health_bar.value = hp
+
+
+func _on_local_inventory_changed(slots: Array, selected: int) -> void:
+	_inventory_slots = slots
+	_inventory_selected = selected
+	_refresh_hotbar()
+
+
+func _refresh_hotbar() -> void:
+	for i in range(mini(_hotbar_labels.size(), 8)):
+		var item := ""
+		if i < _inventory_slots.size():
+			item = str(_inventory_slots[i])
+		var prefix := ">" if i == _inventory_selected else ""
+		_hotbar_labels[i].text = "%s[%d] %s" % [prefix, i + 1, item if not item.is_empty() else "-"]
+
+
+func _request_use_item() -> void:
+	if multiplayer.is_server():
+		PlayerInventory.request_use_selected()
+	else:
+		PlayerInventory.request_use_selected.rpc_id(1)
+
+
+func _request_drop_item() -> void:
+	if multiplayer.is_server():
+		PlayerInventory.request_drop_selected()
+	else:
+		PlayerInventory.request_drop_selected.rpc_id(1)
+
+
+func _request_select_slot(index: int) -> void:
+	if multiplayer.is_server():
+		PlayerInventory.server_set_selected(multiplayer.get_unique_id(), index)
+	else:
+		PlayerInventory.request_select_slot.rpc_id(1, index)
