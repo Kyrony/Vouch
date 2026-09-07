@@ -24,6 +24,7 @@ const REMAPPABLE_ACTIONS: Array[String] = [
 	"jump",
 	"interact",
 	"destroy",
+	"crouch",
 ]
 
 const DEFAULT_SENSITIVITY: float = 1.0

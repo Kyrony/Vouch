@@ -66,6 +66,7 @@ is required for now.
 | Move | `W A S D` |
 | Look | Mouse (sensitivity adjustable in Settings) |
 | Jump | `Space` |
+| Crouch | `Ctrl` (hold) |
 | Interact / pick up | `E` |
 | Destroy (marked props only - **hold**, not tap) | `F` (hold ~1s) |
 | Fire test gun (*** test-only, see below ***) | Left mouse button |
@@ -143,6 +144,8 @@ persists locally between sessions.
   locally (`scripts/autoload/contact_book.gd`) - a personal memory aid,
   never synced to anyone else; the rename flow works by mouse click or
   by keyboard/gamepad focus + confirm.
+- **Walkie-talkie**: faction-paired text channel between two teammates (`WalkieSystem` + room pickup). Open with **E** on the walkie prop; type and send like a private radio stub.
+- **Pipe bandage**: pickup item that seals a room's broken pipe / gas leak when used.
 - **Escape + win-check** (`scripts/systems/escape_system.gd`): open your
   escape door/vent (animated swing/slide — walk through, no teleport),
   follow a **concrete bunker tunnel** to the shared hub, climb the shaft
@@ -173,7 +176,7 @@ persists locally between sessions.
 
 ## What's explicitly NOT implemented (don't assume otherwise)
 
-- **Voice comms.** Only text-first phone stub exists.
+- **Voice comms.** Walkie-talkie text stub exists; no voice yet.
 - **Lobby codes / matchmaking / relay.** Direct IP only - no NAT
   traversal, no session codes.
 - **Fully hand-authored/varied room shapes.** **20 distinct fixed room maps**
@@ -196,6 +199,31 @@ persists locally between sessions.
 
 Every stub above has a `TODO(post-MVP)` comment at its definition site
 pointing at what's missing.
+
+## Script ownership (room interiors)
+
+Each concern lives in one script/class. Brief map for the 10 interior-polish systems:
+
+| # | Feature | Owner script(s) |
+| --- | --- | --- |
+| 1 | Attachment headless tests | `scripts/main.gd` (`VOUCH_*` flags), `scripts/rooms/spawn_attachment_validator.gd` |
+| 2 | Room scale / climbable stairs | `scripts/world_scale.gd`, `scripts/rooms/room_geometry.gd`, `scripts/rooms/room_layouts.gd` |
+| 3 | Hover / target highlight | `scripts/interactables/interactable.gd` (`set_highlighted`), `scripts/player.gd` (`_set_highlight`) |
+| 4 | Retro neon accents | `scripts/rooms/neon_theme.gd`, wired via `room_geometry.gd` trim + `room_map.gd` accent materials |
+| 5 | Spawn / slot orchestration | `scripts/rooms/item_spawn_system.gd`, `scripts/rooms/item_spawn_slot.gd`, `scripts/rooms/room_map.gd` |
+| 6 | Camera ceiling/wall slots | `scripts/rooms/item_spawn_slot.gd` (`ceiling`), `scripts/rooms/item_spawn_system.gd` (camera → ceiling) |
+| 7 | Player crouch | `scripts/player.gd`, `scripts/autoload/settings_manager.gd`, `project.godot` `crouch` action |
+| 8 | Walkie-talkie comms | `scripts/systems/walkie_system.gd` (autoload), `scripts/interactables/walkie_talkie.gd`, `scripts/player.gd` (HUD panel), `scripts/match.gd` (pairing) |
+| 9 | Visible pipes / gas lines | `scripts/rooms/room_utilities_visual.gd`, called from `item_spawn_system.gd` |
+| 10 | Pipe bandage repair | `scripts/interactables/pipe_bandage.gd`, `broken_pipe.gd` / `gas_leak.gd` (`server_repair`) |
+
+Headless validation:
+
+```bash
+VOUCH_ROOM_SPAWN_TEST=1 godot4 --headless --path .
+VOUCH_MATCH_SPAWN_TEST=1 godot4 --headless --path .
+VOUCH_ATTACHMENT_TEST=1 godot4 --headless --path .
+```
 
 ## Test-only tools (*** REMOVE BEFORE FULL RELEASE ***)
 
@@ -230,10 +258,10 @@ scripts/
   main.gd, match.gd, outside.gd, lobby.gd, player.gd, room_pod.gd
   autoload/                  GameState, FactionData, NetworkManager, ContactBook,
                              SettingsManager, MatchSettings, RoomUtilities
-  systems/                   LinkGraph, PhoneSystem, EscapeSystem, PuzzleSystem, PuppetMasterSystem
+  systems/                   LinkGraph, PhoneSystem, WalkieSystem, EscapeSystem, PuzzleSystem, PuppetMasterSystem
   interactables/              Interactable base (+ destroy mixin) and every prop type:
-                              LightSwitch, WaterValve, Door (door/vent), Phone, RoomLight,
-                              BrokenPipe, SecurityCamera, Ladder, CodeKeypad, ClueBook,
+                              LightSwitch, WaterValve, Door (door/vent), Phone, WalkieTalkie, PipeBandage,
+                              RoomLight, BrokenPipe, SecurityCamera, Ladder, CodeKeypad, ClueBook,
                               ClueFlamePaper, Flame, MovableProp, ElectricalBox,
                               GasValve, GasLeak, Gun*, DummyTarget*,
                               TestProjectile* (* test-only)
@@ -267,6 +295,7 @@ Registered in `project.godot` under `[autoload]`:
 - **LinkGraph** - mystery control/effect registry and guaranteed-no-
   self-link resolution.
 - **PhoneSystem** - random-recipient text routing + per-match line ids.
+- **WalkieSystem** - host-authoritative faction-pair text comms (walkie-talkie MVP).
 - **EscapeSystem** - escape handling + faction win-check + flood-block
   check.
 - **PuzzleSystem** - code-lock registry and unlock attempts.

@@ -75,6 +75,17 @@ func server_apply_effect() -> void:
 		_sync_timer = 0.0
 
 
+func server_repair() -> void:
+	if not multiplayer.is_server():
+		return
+	_trickling = false
+	_trickle_target = 0.0
+	water_level = 0.0
+	GameState.room_water_levels[room_index] = 0.0
+	_apply_visual(0.0)
+	_client_sync_state.rpc(0.0)
+
+
 @rpc("authority", "call_remote", "reliable")
 func _client_sync_state(level: float) -> void:
 	water_level = level

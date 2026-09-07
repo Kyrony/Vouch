@@ -2,8 +2,8 @@ extends RefCounted
 class_name RoomLayouts
 ## Twenty unique fixed room maps — each layout is a complete sealed space (not modules / CSG plans).
 
-const HEIGHT: float = 2.6
-const WALL: float = 0.12
+const HEIGHT: float = WorldScale.CEILING_H
+const WALL: float = WorldScale.WALL_THICK
 
 
 static func get_layout(room_id: int) -> Dictionary:
@@ -80,10 +80,17 @@ static func slot_layout(room_id: int, w: float, d: float) -> Array:
 		"wall_normal": Vector3(0, 0, -1),
 	})
 
-	# 9× wall (switch, phone, camera, exhaust, valves, electrical, terminal, monitor, gas)
-	var wall_heights := [1.25, 1.15, 2.35, 1.45, 1.1, 0.95, 1.0, 1.35, 1.2]
-	var wall_faces := ["s", "s", "e", "w", "n", "e", "w", "n", "s"]
-	for i in range(9):
+	# 1× ceiling (security camera)
+	slots.append({
+		"position": Vector3(rng.randf_range(-hw * 0.25, hw * 0.25), HEIGHT - 0.12, rng.randf_range(-hd * 0.25, hd * 0.25)),
+		"surface_type": "ceiling",
+		"wall_normal": Vector3(0, -1, 0),
+	})
+
+	# 8× wall (switch, phone, exhaust, valves, electrical, terminal, monitor, gas)
+	var wall_heights := [1.25, 1.15, 1.45, 1.1, 0.95, 1.0, 1.35, 1.2]
+	var wall_faces := ["s", "s", "e", "w", "n", "e", "w", "n"]
+	for i in range(8):
 		var face: String = wall_faces[i]
 		var t := rng.randf_range(0.22, 0.78)
 		slots.append(_wall_slot(hw, hd, flush, face, wall_heights[i], t))
