@@ -76,7 +76,7 @@ func server_handle_send_text(sender_peer: int, message: String) -> void:
 		if GameState.players.has(peer_id) and (GameState.players[peer_id]["escaped"] or GameState.players[peer_id]["eliminated"]):
 			continue
 		var phone_node = _phones[peer_id]
-		if is_instance_valid(phone_node) and phone_node.is_destroyed:
+		if is_instance_valid(phone_node) and bool(phone_node.get("is_destroyed")):
 			continue
 		candidates.append(peer_id)
 

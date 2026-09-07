@@ -101,7 +101,13 @@ func start_match() -> void:
 	# The Puppet Master is picked FIRST and excluded from the normal
 	# faction pool entirely - they're a fifth, independent role. See
 	# PuppetMasterSystem / docs/MVP_GDD.md.
-	var pm_peer_id := PuppetMasterSystem.server_assign_puppet_master(all_peer_ids)
+	var pm_peer_id := -1
+	if HorrorModeSettings.is_horror_mode():
+		if all_peer_ids.size() >= 2:
+			pm_peer_id = all_peer_ids[randi() % all_peer_ids.size()]
+			GameState.server_set_puppet_master(pm_peer_id)
+	else:
+		pm_peer_id = PuppetMasterSystem.server_assign_puppet_master(all_peer_ids)
 
 	_assign_factions(all_peer_ids, pm_peer_id)
 	PhoneSystem.server_assign_line_ids(all_peer_ids)

@@ -6,6 +6,8 @@ const LADDER := "res://scripts/interactables/ladder.gd"
 const CLUE_FLAME_PAPER := "res://scripts/interactables/clue_flame_paper.gd"
 const GUN := "res://scripts/interactables/gun.gd"
 const PHONE := "res://scripts/interactables/phone.gd"
+const RADIO_TOWER := "res://scripts/horror/environment/radio_tower.gd"
+const SIGNAL_PHONE := "res://scripts/horror/environment/signal_phone.gd"
 const CODE_KEYPAD := "res://scripts/interactables/code_keypad.gd"
 const SECURITY_CAMERA := "res://scripts/interactables/security_camera.gd"
 const TEST_PROJECTILE := "res://scripts/interactables/test_projectile.gd"
@@ -51,6 +53,14 @@ static func is_gun(node: Object) -> bool:
 
 static func is_phone(node: Object) -> bool:
 	return is_script(node, PHONE)
+
+
+static func is_radio_tower(node: Object) -> bool:
+	return is_script(node, RADIO_TOWER)
+
+
+static func is_signal_phone(node: Object) -> bool:
+	return is_script(node, SIGNAL_PHONE)
 
 
 static func is_code_keypad(node: Object) -> bool:
