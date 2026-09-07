@@ -33,7 +33,9 @@ func _process(delta: float) -> void:
 func server_init_match(player_count: int) -> void:
 	if not multiplayer.is_server():
 		return
-	ChildSpawnRNG.server_roll(self, player_count + int(Time.get_ticks_usec() % 9973))
+	var seed_base := player_count + int(Time.get_ticks_usec() % 9973)
+	ChildSpawnRNG.server_roll(self, seed_base)
+	TowerRules.server_roll(self, seed_base + 17)
 
 
 func get_family_spawn_transform(family_index: int) -> Transform3D:
@@ -89,7 +91,7 @@ func _scatter_pickups() -> void:
 	add_child(pickups)
 	var defs := [
 		{"id": "medkit", "pos": Vector3(-34, 0.5, 6)},
-		{"id": "flashlight", "pos": Vector3(14, 0.5, 6)},
+		{"id": "phone", "pos": Vector3(14, 0.5, 6)},
 		{"id": "bandage", "pos": Vector3(0, -13.5, -62)},
 		{"id": "battery", "pos": Vector3(42, 0.5, -18)},
 		{"id": "crowbar", "pos": Vector3(-12, 0.5, 10)},

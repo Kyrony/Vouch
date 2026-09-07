@@ -24,8 +24,8 @@ func _build_visual() -> void:
 	match item_id:
 		"medkit":
 			mat.albedo_color = Color(0.85, 0.2, 0.2)
-		"flashlight":
-			mat.albedo_color = Color(0.9, 0.85, 0.3)
+		"phone":
+			mat.albedo_color = Color(0.22, 0.16, 0.12)
 		"keycard":
 			mat.albedo_color = Color(0.2, 0.7, 0.9)
 		_:

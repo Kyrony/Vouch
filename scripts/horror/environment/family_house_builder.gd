@@ -21,8 +21,9 @@ static func build(parent: Node3D, origin: Vector3, family_index: int, mats) -> D
 
 	# Front door (+Z)
 	_GB.call("add_wall_panel", root, Vector3(2, 1.5, 5), Vector3(8, 3, 0.25), mats.wall, true, 2.0)
-	# Porch
+	# Porch — dirt hide under the boards (alive, trapped)
 	root.add_child(_GEOM.call("box", Vector3(3.5, 0.15, 2), Vector3(2, 0.08, 6.2), mats.floor))
+	root.add_child(_GEOM.call("box", Vector3(3.2, 0.35, 1.8), Vector3(2, -0.28, 6.2), mats.dirt))
 	# Kitchen counter
 	root.add_child(_GEOM.call("box", Vector3(2.5, 0.9, 0.5), Vector3(4, 0.45, -3.5), mats.wall))
 
@@ -41,8 +42,18 @@ static func build(parent: Node3D, origin: Vector3, family_index: int, mats) -> D
 	light.omni_range = 12
 	root.add_child(light)
 
+	var porch_hide: Marker3D = null
+	if family_index == 0:
+		porch_hide = Marker3D.new()
+		porch_hide.name = "ChildSpawn_under_porch_crawl"
+		porch_hide.position = Vector3(2, -0.1, 6.2)
+		porch_hide.add_to_group("child_spawn_points")
+		porch_hide.set_meta("spawn_id", "under_porch_crawl")
+		root.add_child(porch_hide)
+
 	return {
 		"root": root,
 		"bedroom_spawn": bedroom_spawn,
 		"family_index": family_index,
+		"porch_hide": porch_hide,
 	}

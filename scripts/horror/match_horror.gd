@@ -18,6 +18,8 @@ static func server_build(match_node: Node) -> void:
 	PlayerInventory.reset()
 	PlayerEffects.reset()
 	ChildSpawnRNG.reset()
+	TowerRules.reset()
+	PhoneSystem.reset()
 	EscapeSystem.reset()
 	PuppetMasterSystem.reset()
 
@@ -52,6 +54,9 @@ static func server_build(match_node: Node) -> void:
 	if pm_peer == -1:
 		_spawn_pm_ai(match_node, world)
 
+	PhoneSystem.server_assign_line_ids(peer_ids)
+	for peer_id in peer_ids:
+		PhoneSystem.server_register_phone(peer_id, match_node)
 	_grant_pm_horror(pm_peer)
 	match_node.call_deferred("_log_horror_match_ready", peer_ids.size(), world.call("get_spawn_point_count"))
 

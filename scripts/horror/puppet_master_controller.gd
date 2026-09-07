@@ -14,6 +14,11 @@ var _floating: bool = false
 var _steal_active: bool = false
 var _steal_bar: ProgressBar
 var _cooldown_bar: ProgressBar
+var _ring_root: Node3D
+var _steal_time_left: float = 0.0
+var _steal_cd_left: float = 0.0
+var _steal_duration: float = 6.0
+var _steal_cooldown: float = 10.0
 
 
 func setup(player: CharacterBody3D) -> void:
@@ -24,6 +29,9 @@ func setup(player: CharacterBody3D) -> void:
 		set_process(true)
 		set_physics_process(true)
 		_build_steal_bars()
+		_build_radius_rings()
+		if PlayerEffects.has_signal("local_effect_state"):
+			PlayerEffects.local_effect_state.connect(_on_local_effect_state)
 
 
 func _build_steal_bars() -> void:
@@ -239,15 +247,57 @@ func _rpc_life_steal_tick(victim_peer: int, dist: float) -> void:
 
 func _update_steal_ui() -> void:
 	var peer := multiplayer.get_unique_id()
-	var active := PlayerEffects.server_has_effect(peer, _PM.LIFE_STEAL_EFFECT)
-	_steal_bar.visible = active
-	if active:
-		var nearest := _nearest_survivor(_PM.LIFE_STEAL_MAX_RANGE)
-		if nearest != null:
-			var hp := PlayerHealth.server_get_health(int(str(nearest.name))) if multiplayer.is_server() else 100.0
-			_steal_bar.value = hp
-	# Cooldown indicator stub — show when effect on cooldown
-	_cooldown_bar.visible = not active and not PlayerEffects.server_effect_cooldown_ready(peer, _PM.LIFE_STEAL_EFFECT)
+	var times := PlayerEffects.get_effect_times(peer, _PM.LIFE_STEAL_EFFECT)
+	_steal_time_left = times.x
+	_steal_cd_left = times.y
+	var active := times.x > 0.0
+	_steal_bar.visible = false
+	_cooldown_bar.visible = false
+	_set_rings_visible(active)
+	var hud := _player.get_node_or_null("HUD/NeonHud")
+	if hud and hud.has_method("set_steal"):
+		var dur_r := times.x / maxf(_steal_duration, 0.01)
+		var cd_r := 1.0 - (times.y / maxf(_steal_cooldown, 0.01)) if times.y > 0.0 else 1.0
+		hud.call("set_steal", active, dur_r, cd_r)
+
+
+func _on_local_effect_state(effect_id: String, time_left: float, cooldown_left: float, duration: float, cooldown: float) -> void:
+	if effect_id != _PM.LIFE_STEAL_EFFECT:
+		return
+	_steal_time_left = time_left
+	_steal_cd_left = cooldown_left
+	_steal_duration = maxf(duration, 0.01)
+	_steal_cooldown = maxf(cooldown, 0.01)
+
+
+func _build_radius_rings() -> void:
+	_ring_root = Node3D.new()
+	_ring_root.name = "LifeStealRings"
+	_player.add_child(_ring_root)
+	for r in [3.0, 5.5, 8.0]:
+		var mi := MeshInstance3D.new()
+		var torus := TorusMesh.new()
+		torus.inner_radius = r - 0.06
+		torus.outer_radius = r
+		torus.rings = 24
+		torus.ring_segments = 16
+		mi.mesh = torus
+		mi.position = Vector3(0, 0.12, 0)
+		var mat := StandardMaterial3D.new()
+		mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+		mat.albedo_color = Color(0.7, 0.12, 0.1, 0.22)
+		mat.emission_enabled = true
+		mat.emission = Color(0.45, 0.08, 0.06)
+		mat.emission_energy_multiplier = 0.35
+		mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+		mi.set_surface_override_material(0, mat)
+		_ring_root.add_child(mi)
+	_ring_root.visible = false
+
+
+func _set_rings_visible(on: bool) -> void:
+	if _ring_root:
+		_ring_root.visible = on
 
 
 func _nearest_survivor(max_dist: float) -> Node:

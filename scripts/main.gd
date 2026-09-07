@@ -78,10 +78,17 @@ func _probe_horror_match() -> String:
 	for node_name in ["FamilyHouses", "PMMansion", "UncleHouse", "Outdoor"]:
 		if world_node.get_node_or_null(node_name) == null:
 			return "neighborhood node missing: %s" % node_name
+	var _CHECK: GDScript = load("res://scripts/horror/world/horror_soft_go_validate.gd")
+	var pin_err: String = _CHECK.call("validate_world", world_node)
+	if not pin_err.is_empty():
+		return pin_err
+	var tower_err: String = _CHECK.call("validate_tower_roll", world_node)
+	if not tower_err.is_empty():
+		return tower_err
 	var child_points := world_node.get_tree().get_nodes_in_group("child_spawn_points")
-	if child_points.size() < 12:
-		return "expected >= 12 child spawn points, got %d" % child_points.size()
-	print("  horror spawns=%d pickups=%d child_points=%d" % [spawn_count, pickups.get_child_count(), child_points.size()])
+	print("  horror spawns=%d pickups=%d child_points=%d towers=%d" % [
+		spawn_count, pickups.get_child_count(), child_points.size(), TowerRules.get_active_ids().size(),
+	])
 	return ""
 
 

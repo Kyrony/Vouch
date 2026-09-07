@@ -1,20 +1,22 @@
 extends Node
-## ChildSpawnRNG — host picks 1 of 12 child spawn points per match.
+## ChildSpawnRNG — host picks 1 of 11 Lauren-cleared alive-only child pins.
 
+## Alive-only hide sites. No grave pins.
 const SPAWN_IDS: Array[String] = [
-	"uncle_bedroom",
-	"bunker_utility",
+	"pm_attic",
 	"master_bedroom",
-	"attic_crawlspace",
-	"uncle_locked_closet",
-	"basement_storage",
-	"duct_junction",
-	"mansion_kitchen",
-	"mansion_library",
-	"family_closet",
-	"outdoor_shed",
-	"mansion_study",
+	"bunker_utility",
+	"basement",
+	"uncle_bedroom",
+	"uncle_garage",
+	"family_shed",
+	"storm_drain",
+	"under_porch_crawl",
+	"garden_well",
+	"car_trunk",
 ]
+
+const EXPECTED_COUNT: int = 11
 
 var _active_spawn_id: String = ""
 var _active_global_pos: Vector3 = Vector3.ZERO
@@ -125,3 +127,7 @@ func _spawn_visual(world: Node3D, marker: Marker3D) -> void:
 
 static func spawn_id_list() -> Array[String]:
 	return SPAWN_IDS.duplicate()
+
+
+static func expected_count() -> int:
+	return EXPECTED_COUNT

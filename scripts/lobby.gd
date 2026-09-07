@@ -330,7 +330,11 @@ func _apply_ui_theme() -> void:
 	var subtitle := home_panel.get_node_or_null("VBoxContainer/SubtitleLabel") as Label
 	if subtitle and HorrorModeSettings.is_horror_mode():
 		subtitle.text = "Find the missing child. The old man is watching."
-		subtitle.add_theme_color_override("font_color", Color(0.55, 0.48, 0.52))
+		subtitle.add_theme_color_override("font_color", Color(0.62, 0.68, 0.78))
+	if HorrorModeSettings.is_horror_mode():
+		var neon: GDScript = load("res://scripts/horror/ui/neon_menu.gd")
+		neon.call("apply", self)
+		start_match_button.text = "Start Match"
 	for panel in [home_panel, play_panel, settings_panel, character_panel]:
 		if panel.get_node_or_null("VBoxContainer"):
 			pass

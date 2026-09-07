@@ -65,10 +65,16 @@ func _probe() -> String:
 			main.queue_free()
 			return "neighborhood node missing: %s" % node_name
 
-	var child_points := world.get_tree().get_nodes_in_group("child_spawn_points")
-	if child_points.size() < 12:
+	var _CHECK: GDScript = load("res://scripts/horror/world/horror_soft_go_validate.gd")
+	var pin_err: String = _CHECK.call("validate_world", world)
+	if not pin_err.is_empty():
 		main.queue_free()
-		return "expected >= 12 child spawn points, got %d" % child_points.size()
+		return pin_err
+	var tower_err: String = _CHECK.call("validate_tower_roll", world)
+	if not tower_err.is_empty():
+		main.queue_free()
+		return tower_err
+	var child_points := world.get_tree().get_nodes_in_group("child_spawn_points")
 
 	var player_scene: PackedScene = load("res://scenes/Player/Player.tscn")
 	if player_scene == null:
@@ -87,8 +93,8 @@ func _probe() -> String:
 	match_node.get_node("PlayersContainer").add_child(player)
 	await physics_frame
 
-	print("  horror spawns=%d pickups=%d child_points=%d neighborhood=OK" % [
-		spawn_count, pickups.get_child_count(), child_points.size(),
+	print("  horror spawns=%d pickups=%d child_points=%d towers=%d neighborhood=OK" % [
+		spawn_count, pickups.get_child_count(), child_points.size(), TowerRules.get_active_ids().size(),
 	])
 	main.queue_free()
 	return ""

@@ -85,7 +85,7 @@ field as a placeholder — session codes are post-MVP.
 | Puppet Master | Life steal aura (radius, then cooldown) | `E` |
 | All | Pause / release mouse | `Esc` |
 
-**Goal:** Each **family team** spawns in their own **1-story house bedroom**. One missing child is hidden at a random location among **12 spawn points** (see below). Find the child marker, then reach the **field escape zone** (+Z yard). The **Puppet Master** (old man) hunts from the **PM mansion** — activate a **radius life-steal aura** (stronger when closer) with duration + recharge cooldown. PM wins if all survivors are drained/eliminated before families escape with the child.
+**Goal:** Each **family team** spawns in their own **1-story house bedroom**. One missing child is hidden at a random location among **11 alive-only spawn pins** (see below). Find the child marker, then reach the **field escape zone** (+Z yard). Trust tools are **phone + live radio masts** (spotty radius, 3 active per match, one forced near the PM). The **Puppet Master** hunts from the **PM mansion** — radius life-steal aura with neon ring + recharge. PM wins if all survivors are drained before families escape with the child.
 
 Legacy sealed-room / tunnel modes: `VOUCH_BUNKER_ONLY=1` or `VOUCH_ESCAPE_PATH=1`.
 
@@ -230,24 +230,27 @@ persists locally between sessions.
 Every stub above has a `TODO(post-MVP)` comment at its definition site
 pointing at what's missing.
 
-## Horror child spawn points (12)
+## Horror child spawn points (11, alive-only)
 
-Host RNG picks **one** per match (`ChildSpawnRNG`). Teams map to **families** (house bedroom spawns).
+Host RNG picks **one** per match (`ChildSpawnRNG`). Teams map to **families** (house bedroom spawns). All pins are living hides — no grave sites.
 
 | # | `spawn_id` | Location |
 | --- | --- | --- |
-| 1 | `uncle_bedroom` | Uncle house across the street |
-| 2 | `bunker_utility` | PM mansion underground bunker |
-| 3 | `master_bedroom` | PM mansion main floor |
-| 4 | `attic_crawlspace` | PM mansion attic |
-| 5 | `uncle_locked_closet` | Uncle house locked closet (child found alive) |
-| 6 | `basement_storage` | PM mansion basement |
-| 7 | `duct_junction` | PM mansion crawlable duct hub |
-| 8 | `mansion_kitchen` | PM mansion main floor |
-| 9 | `mansion_library` | PM mansion main floor |
-| 10 | `family_closet` | First family house closet |
-| 11 | `outdoor_shed` | Yard shed stub |
-| 12 | `mansion_study` | PM mansion main floor |
+| 1 | `pm_attic` | PM mansion attic |
+| 2 | `master_bedroom` | PM mansion main floor |
+| 3 | `bunker_utility` | PM mansion underground bunker |
+| 4 | `basement` | PM mansion basement |
+| 5 | `uncle_bedroom` | Uncle house across the street |
+| 6 | `uncle_garage` | Uncle house attached garage |
+| 7 | `family_shed` | Yard shed |
+| 8 | `storm_drain` | Street storm drain |
+| 9 | `under_porch_crawl` | Under-porch dirt hide (trapped, alive) |
+| 10 | `garden_well` | Garden well / crawl |
+| 11 | `car_trunk` | Parked car trunk |
+
+**Towers (soft-go):** many candidate masts; **3 active per match**; **1 forced near the PM**. Phone + mast radii carry a short scratch on the slate (not a voice or SMS line).
+
+**HUD:** neon heart (health), cyan bar (stamina), violet bar (fear), phone + spotty signal.
 
 ## Friends-ready playtest (James checklist)
 
@@ -349,7 +352,8 @@ scripts/horror/            Horror neighborhood factory (default play mode)
   characters/              PuppetMasterData, possession constants
   environment/             FamilyHouse, PMMansion, UncleHouse, Outdoor graybox builders
   items/                   EffectDefinitions, PlayerEffects (meter stacks)
-  world/                   NeighborhoodLayout, ChildSpawnRNG (12 spawn points)
+  world/                   NeighborhoodLayout, ChildSpawnRNG (11 alive-only pins), TowerRules
+  ui/                      Neon HUD (heart / cyan / violet / phone signal) + neon menu
   horror_world.gd          World orchestrator
   match_horror.gd          Host-authoritative horror match builder
   puppet_master_controller.gd  PM float, possession, radius life-steal
@@ -408,7 +412,8 @@ Registered in `project.godot` under `[autoload]`:
 - **PlayerHealth** - horror mode HP drain/heal (host-authoritative).
 - **PlayerInventory** - horror survivor 8-slot hotbar.
 - **PlayerEffects** - fear/stamina meters + timed effect stacks (life-steal aura cooldown).
-- **ChildSpawnRNG** - per-match missing-child location (1 of 12 spawn points).
+- **ChildSpawnRNG** - per-match missing-child location (1 of 11 alive-only pins).
+- **TowerRules** - 3 live masts per match (1 forced near PM); phone + tower radii.
 - **LinkGraph** - mystery control/effect registry and guaranteed-no-
   self-link resolution.
 - **PhoneSystem** - random-recipient text routing + per-match line ids.

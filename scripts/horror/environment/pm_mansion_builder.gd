@@ -27,7 +27,7 @@ static func build(parent: Node3D, origin: Vector3, mats) -> Dictionary:
 	_build_basement(root, mats, child_markers)
 	_build_bunker(root, mats, child_markers)
 	_build_attic(root, mats, child_markers)
-	_build_ducts(root, mats, child_markers)
+	_build_ducts(root, mats)
 
 	var emergency := OmniLight3D.new()
 	emergency.position = Vector3(0, 2.5, 0)
@@ -48,21 +48,14 @@ static func _build_main_floor(root: Node3D, mats, child_markers: Array) -> void:
 	floor_root.name = "MainFloor"
 	root.add_child(floor_root)
 
-	# Outer shell 44 x 32 x 3
 	_GB.call("add_room_box", floor_root, Vector3(44, 3, 32), Vector3.ZERO, mats, true, true)
 
-	# Interior walls -> 8 rooms (4x2 grid-ish)
-	# Longitudinal splits
 	for x in [-11.0, 0.0, 11.0]:
 		_GB.call("add_wall_panel", floor_root, Vector3(x, 1.5, 0), Vector3(0.25, 3, 32), mats.wall, true, 1.6)
-	# Latitudinal split
 	_GB.call("add_wall_panel", floor_root, Vector3(0, 1.5, 8), Vector3(44, 3, 0.25), mats.wall, true, 1.8)
 	_GB.call("add_wall_panel", floor_root, Vector3(0, 1.5, -8), Vector3(44, 3, 0.25), mats.wall, true, 1.8)
-
-	# Front entrance (+Z)
 	_GB.call("add_wall_panel", floor_root, Vector3(0, 1.5, 16), Vector3(44, 3, 0.25), mats.wall, true, 2.5)
 
-	# Room labels via props
 	var prop_positions := [
 		{"name": "Foyer", "pos": Vector3(0, 0, 12)},
 		{"name": "Kitchen", "pos": Vector3(-16, 0, 4)},
@@ -77,9 +70,6 @@ static func _build_main_floor(root: Node3D, mats, child_markers: Array) -> void:
 		floor_root.add_child(_GEOM.call("box", Vector3(1.5, 0.8, 0.8), Vector3(p["pos"].x, 0.4, p["pos"].z), mats.wood))
 
 	_add_child_marker(floor_root, Vector3(6, 0.5, -6), "master_bedroom", child_markers)
-	_add_child_marker(floor_root, Vector3(-16, 0.5, 4), "mansion_kitchen", child_markers)
-	_add_child_marker(floor_root, Vector3(-5, 0.5, -6), "mansion_library", child_markers)
-	_add_child_marker(floor_root, Vector3(16, 0.5, 4), "mansion_study", child_markers)
 
 
 static func _build_basement(root: Node3D, mats, child_markers: Array) -> void:
@@ -91,9 +81,7 @@ static func _build_basement(root: Node3D, mats, child_markers: Array) -> void:
 	_GB.call("add_wall_panel", bs, Vector3(-9, 1.75, 0), Vector3(0.25, 3.5, 26), mats.wall, true, 1.6)
 	_GB.call("add_wall_panel", bs, Vector3(9, 1.75, 0), Vector3(0.25, 3.5, 26), mats.wall, true, 1.6)
 	bs.add_child(_GEOM.call("box", Vector3(2, 1, 1.2), Vector3(-12, 0.5, -8), mats.wall))
-	_add_child_marker(bs, Vector3(10, 0.5, 6), "basement_storage", child_markers)
-
-	# Stair opening shaft visual
+	_add_child_marker(bs, Vector3(10, 0.5, 6), "basement", child_markers)
 	root.add_child(_GEOM.call("box", Vector3(2.5, 4.2, 2.5), Vector3(14, -2.1, 10), mats.wall))
 
 
@@ -126,15 +114,13 @@ static func _build_attic(root: Node3D, mats, child_markers: Array) -> void:
 	_GB.call("add_room_box", at, Vector3(34, 2.2, 24), Vector3.ZERO, mats, true, true)
 	_GB.call("add_wall_panel", at, Vector3(0, 1.1, 0), Vector3(0.25, 2.2, 24), mats.wall, true, 1.4)
 	at.add_child(_GEOM.call("box", Vector3(3, 0.6, 1.5), Vector3(-8, 0.3, -6), mats.wood))
-	_add_child_marker(at, Vector3(8, 0.5, 4), "attic_crawlspace", child_markers)
+	_add_child_marker(at, Vector3(8, 0.5, 4), "pm_attic", child_markers)
 
 
-static func _build_ducts(root: Node3D, mats, child_markers: Array) -> void:
+static func _build_ducts(root: Node3D, mats) -> void:
 	var ducts := Node3D.new()
 	ducts.name = "DuctSystem"
 	root.add_child(ducts)
-
-	# Crawlable horizontal runs (1.1m tall tunnels)
 	var segments := [
 		{"size": Vector3(3, 1.1, 18), "pos": Vector3(-8, 1.0, 0)},
 		{"size": Vector3(22, 1.1, 3), "pos": Vector3(0, 1.0, -10)},
@@ -146,11 +132,8 @@ static func _build_ducts(root: Node3D, mats, child_markers: Array) -> void:
 		var tunnel: StaticBody3D = _GEOM.call("box", seg["size"], seg["pos"], mats.duct)
 		tunnel.add_to_group("crawl_ducts")
 		ducts.add_child(tunnel)
-		# Hollow feel: leave floor gap by adding thinner floor strip
 		var floor_strip: StaticBody3D = _GEOM.call("box", Vector3(seg["size"].x - 0.4, 0.08, seg["size"].z - 0.4), seg["pos"] + Vector3(0, -seg["size"].y * 0.5 + 0.04, 0), mats.floor)
 		ducts.add_child(floor_strip)
-
-	_add_child_marker(ducts, Vector3(0, 1.0, -10), "duct_junction", child_markers)
 
 
 static func _add_child_marker(parent: Node3D, local_pos: Vector3, spawn_id: String, out: Array) -> void:

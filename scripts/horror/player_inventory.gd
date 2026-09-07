@@ -167,7 +167,7 @@ func _apply_use_item(peer_id: int, item_id: String) -> void:
 	match item_id:
 		"medkit", "bandage":
 			PlayerHealth.server_heal(peer_id, 40.0)
-		"flashlight":
+		"phone":
 			pass
 		"keycard":
 			pass

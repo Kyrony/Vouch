@@ -8,6 +8,7 @@ const _EffectDefs: GDScript = preload("res://scripts/horror/items/effect_definit
 
 signal meters_changed(peer_id: int, health: float, stamina: float, fear: float)
 signal local_meters_changed(health: float, stamina: float, fear: float)
+signal local_effect_state(effect_id: String, time_left: float, cooldown_left: float, duration: float, cooldown: float)
 
 const DEFAULT_MAX: float = 100.0
 const STAMINA_REGEN: float = 6.0
@@ -69,6 +70,7 @@ func server_apply_effect(peer_id: int, effect_id: String) -> bool:
 		"cooldown_left": 0.0,
 	})
 	_active_effects[peer_id] = effects
+	_broadcast_effect(peer_id, effect_id)
 	return true
 
 
@@ -88,6 +90,16 @@ func server_effect_cooldown_ready(peer_id: int, effect_id: String) -> bool:
 		if e["id"] == effect_id and float(e.get("cooldown_left", 0.0)) > 0.0:
 			return false
 	return true
+
+
+func get_effect_times(peer_id: int, effect_id: String) -> Vector2:
+	## Returns (time_left, cooldown_left).
+	if not _active_effects.has(peer_id):
+		return Vector2.ZERO
+	for e in _active_effects[peer_id]:
+		if e["id"] == effect_id:
+			return Vector2(float(e.get("time_left", 0.0)), float(e.get("cooldown_left", 0.0)))
+	return Vector2.ZERO
 
 
 func server_tick(delta: float) -> void:
@@ -137,7 +149,16 @@ func _tick_effects(peer_id: int, delta: float) -> void:
 				var cd: float = float(def.get("cooldown", 0.0))
 				if cd > 0.0:
 					remaining.append({"id": e["id"], "time_left": 0.0, "cooldown_left": cd})
+	var still: Dictionary = {}
+	for e in remaining:
+		still[str(e["id"])] = true
 	_active_effects[peer_id] = remaining
+	for e in remaining:
+		_broadcast_effect(peer_id, str(e["id"]))
+	for e in effects:
+		var eid := str(e["id"])
+		if not still.has(eid):
+			_broadcast_effect(peer_id, eid)
 
 
 func _apply_meter_delta(peer_id: int, meter: int, delta: float) -> void:
@@ -161,6 +182,36 @@ func _broadcast_meters(peer_id: int) -> void:
 		_client_meters.rpc_id(peer_id, m.x, m.y, m.z)
 
 
+func _broadcast_effect(peer_id: int, effect_id: String) -> void:
+	var def: Dictionary = _EffectDefs.get_def(effect_id)
+	var times := get_effect_times(peer_id, effect_id)
+	var duration := float(def.get("duration", 1.0))
+	var cooldown := float(def.get("cooldown", 0.0))
+	if peer_id == multiplayer.get_unique_id():
+		local_effect_state.emit(effect_id, times.x, times.y, duration, cooldown)
+	else:
+		_client_effect_state.rpc_id(peer_id, effect_id, times.x, times.y, duration, cooldown)
+
+
 @rpc("authority", "call_remote", "reliable")
 func _client_meters(hp: float, stamina: float, fear: float) -> void:
 	local_meters_changed.emit(hp, stamina, fear)
+
+
+@rpc("authority", "call_remote", "reliable")
+func _client_effect_state(effect_id: String, time_left: float, cooldown_left: float, duration: float, cooldown: float) -> void:
+	if not _active_effects.has(multiplayer.get_unique_id()):
+		_active_effects[multiplayer.get_unique_id()] = []
+	var peer := multiplayer.get_unique_id()
+	var effects: Array = _active_effects[peer]
+	var found := false
+	for e in effects:
+		if e["id"] == effect_id:
+			e["time_left"] = time_left
+			e["cooldown_left"] = cooldown_left
+			found = true
+			break
+	if not found and (time_left > 0.0 or cooldown_left > 0.0):
+		effects.append({"id": effect_id, "time_left": time_left, "cooldown_left": cooldown_left})
+	_active_effects[peer] = effects
+	local_effect_state.emit(effect_id, time_left, cooldown_left, duration, cooldown)

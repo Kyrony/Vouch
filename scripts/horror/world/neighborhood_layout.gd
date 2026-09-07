@@ -6,6 +6,7 @@ const _FAMILY: GDScript = preload("res://scripts/horror/environment/family_house
 const _UNCLE: GDScript = preload("res://scripts/horror/environment/uncle_house_builder.gd")
 const _MANSION: GDScript = preload("res://scripts/horror/environment/pm_mansion_builder.gd")
 const _OUTDOOR: GDScript = preload("res://scripts/horror/environment/outdoor_builder.gd")
+const _TRUST: GDScript = preload("res://scripts/horror/environment/trust_field_builder.gd")
 const _MATS: GDScript = preload("res://scripts/horror/environment/graybox_materials.gd")
 
 ## Family houses along -X row; uncle across the street (+Z); mansion north (-Z).
@@ -32,18 +33,10 @@ static func build(parent: Node3D, max_families: int = 4) -> Dictionary:
 		var result: Dictionary = _FAMILY.call("build", families_root, FAMILY_OFFSETS[i], i, mats)
 		family_spawns.append(result["bedroom_spawn"])
 
-	# Extra child spawn in family closet (uses first unused family house slot)
-	if family_count > 0:
-		var closet := Marker3D.new()
-		closet.name = "ChildSpawn_family_closet"
-		closet.position = FAMILY_OFFSETS[0] + Vector3(-6, 0.5, -3)
-		closet.add_to_group("child_spawn_points")
-		closet.set_meta("spawn_id", "family_closet")
-		families_root.add_child(closet)
-
 	var uncle_result: Dictionary = _UNCLE.call("build", parent, UNCLE_ORIGIN, mats)
 	var mansion_result: Dictionary = _MANSION.call("build", parent, MANSION_ORIGIN, mats)
 	var outdoor_result: Dictionary = _OUTDOOR.call("build", parent, mats)
+	var trust_result: Dictionary = _TRUST.call("build", parent)
 
 	return {
 		"family_spawns": family_spawns,
@@ -52,4 +45,5 @@ static func build(parent: Node3D, max_families: int = 4) -> Dictionary:
 		"mansion_root": mansion_result["root"],
 		"outdoor_root": outdoor_result["root"],
 		"family_count": family_count,
+		"tower_candidates": trust_result["candidate_count"],
 	}
