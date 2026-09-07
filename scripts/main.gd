@@ -193,6 +193,10 @@ func _assert_room_map_built(room_pod: Node, label: String) -> String:
 		return "%s: expected %d item slots, got %d" % [label, EXPECTED_SLOT_COUNT, slots.get_child_count()]
 	if map.get_node_or_null("LightSwitch") == null:
 		return "%s: LightSwitch missing (ItemSpawnSystem.populate did not run)" % label
+	if map.get_node_or_null("Phone") == null:
+		return "%s: Phone missing (playable comms guarantee failed)" % label
+	if map.get_node_or_null("WalkieTalkie") == null:
+		return "%s: WalkieTalkie missing (playable comms guarantee failed)" % label
 	return ""
 
 

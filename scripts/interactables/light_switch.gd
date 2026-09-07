@@ -27,3 +27,6 @@ func interact(by_peer_id: int) -> void:
 		LinkGraph.server_handle_activation(control_id, by_peer_id)
 	else:
 		LinkGraph.request_activate.rpc_id(1, control_id)
+		var player := GameState.local_player_node
+		if player and player.has_method("_show_toast"):
+			player._show_toast("You flip the switch…")

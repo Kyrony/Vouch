@@ -37,10 +37,18 @@ static func populate(room: Node3D, ctx: Dictionary, rng: RandomNumberGenerator) 
 		push_warning("ItemSpawnSystem: expected %d slots, found %d in %s" % [SLOT_COUNT, slots.size(), room.name])
 
 	var pools := _group_slots_by_surface(slots)
-	var requests := _build_requests(ctx, rng)
-	var result := {"light_switch": null, "fireplace": null, "bookcase": null, "peek_monitor": null}
 	var accent: Material = ctx["accent_material"]
+	var room_index: int = ctx["room_index"]
+	var spawn_hint: Vector3 = ctx.get("spawn_hint", Vector3.ZERO)
+	var result := {"light_switch": null, "fireplace": null, "bookcase": null, "peek_monitor": null}
 
+	# Task 9 playable loop: guaranteed comms props near spawn (non-PM rooms only).
+	var sw_req := {"kind": "light_switch", "control_id": "room_%d_light_switch" % room_index}
+	result["light_switch"] = _spawn_guaranteed(room, pools, ctx, accent, sw_req, "wall", spawn_hint)
+	_spawn_guaranteed(room, pools, ctx, accent, {"kind": "phone"}, "wall", spawn_hint)
+	_spawn_guaranteed(room, pools, ctx, accent, {"kind": "walkie"}, "floor", spawn_hint)
+
+	var requests := _build_requests(ctx, rng)
 	for req in requests:
 		var surface_key: String = _surface_for_kind(req["kind"])
 		var pool: Array = pools.get(surface_key, [])
@@ -55,8 +63,6 @@ static func populate(room: Node3D, ctx: Dictionary, rng: RandomNumberGenerator) 
 		if node == null:
 			continue
 		match req["kind"]:
-			"light_switch":
-				result["light_switch"] = node
 			"fireplace":
 				result["fireplace"] = node
 			"bookcase":
@@ -70,6 +76,8 @@ static func populate(room: Node3D, ctx: Dictionary, rng: RandomNumberGenerator) 
 		var prop_scene: PackedScene = [CRATE_SCENE, SHELF_SCENE, BARREL_SCENE][rng.randi() % 3]
 		var req := {"kind": "prop", "scene": prop_scene}
 		_spawn_request(room, req, slot, accent, ctx)
+
+	_ensure_playable_comms(room, ctx, accent, spawn_hint)
 
 	if ctx.get("has_binary_puzzle", false) and result["bookcase"] and result["peek_monitor"]:
 		var term := room.get_node_or_null("BinaryTerminal")
@@ -191,11 +199,9 @@ static func _build_requests(ctx: Dictionary, rng: RandomNumberGenerator) -> Arra
 	var room_index: int = ctx["room_index"]
 	var theme_id: String = ctx.get("theme_id", "bedroom")
 
-	requests.append({"kind": "light_switch", "control_id": "room_%d_light_switch" % room_index})
-	requests.append({"kind": "phone"})
+	# light_switch, phone, walkie spawned via _spawn_guaranteed() in populate().
 	requests.append({"kind": "camera"})
 	requests.append({"kind": "ladder"})
-	requests.append({"kind": "walkie"})
 	requests.append({"kind": "pipe_bandage"})
 
 	if ctx.get("has_valve", false):
@@ -218,6 +224,63 @@ static func _build_requests(ctx: Dictionary, rng: RandomNumberGenerator) -> Arra
 	return requests
 
 
+static func _spawn_guaranteed(
+	room: Node3D,
+	pools: Dictionary,
+	ctx: Dictionary,
+	accent: Material,
+	req: Dictionary,
+	surface_key: String,
+	spawn_hint: Vector3
+) -> Node:
+	var pool: Array = pools.get(surface_key, [])
+	if pool.is_empty():
+		return null
+	var slot: Marker3D = _pick_slot_near(pool, spawn_hint, surface_key)
+	pool.erase(slot)
+	return _spawn_request(room, req, slot, accent, ctx)
+
+
+static func _pick_slot_near(pool: Array, hint: Vector3, surface_key: String) -> Marker3D:
+	var best: Marker3D = pool[0]
+	var best_dist := INF
+	for slot in pool:
+		if not slot is Marker3D:
+			continue
+		var dist := hint.distance_squared_to(slot.position)
+		if surface_key == "wall" and slot.get("wall_normal"):
+			var n: Vector3 = slot.wall_normal.normalized()
+			if n.z < -0.5:
+				dist *= 0.35
+			if slot.position.y < 0.85 or slot.position.y > 1.55:
+				dist *= 1.8
+		if surface_key == "floor" and slot.position.y > 0.05:
+			dist *= 2.0
+		if dist < best_dist:
+			best_dist = dist
+			best = slot
+	return best
+
+
+static func _ensure_playable_comms(room: Node3D, ctx: Dictionary, accent: Material, spawn_hint: Vector3) -> void:
+	var owner_peer_id: int = ctx["owner_peer_id"]
+	if room.get_node_or_null("Phone") == null:
+		var phone_pos := spawn_hint + Vector3(0.85, 1.1, -0.45)
+		var phone := _make_interactable(PHONE_SCRIPT, Vector3(0.12, 0.18, 0.06), phone_pos, accent, "Use phone")
+		phone.set("owner_peer_id", owner_peer_id)
+		phone.name = "Phone"
+		room.add_child(phone)
+		push_warning("ItemSpawnSystem: Phone fallback spawn in %s" % room.name)
+	if room.get_node_or_null("WalkieTalkie") == null:
+		var walkie_pos := spawn_hint + Vector3(-0.55, 0.05, 0.35)
+		var wk := _make_interactable(WALKIE_SCRIPT, Vector3(0.1, 0.06, 0.18), walkie_pos, accent, "Use walkie-talkie")
+		wk.set("owner_peer_id", owner_peer_id)
+		wk.name = "WalkieTalkie"
+		room.add_child(wk)
+		WalkieSystem.server_register_walkie(owner_peer_id, wk)
+		push_warning("ItemSpawnSystem: WalkieTalkie fallback spawn in %s" % room.name)
+
+
 static func _spawn_request(room: Node3D, req: Dictionary, slot: Marker3D, accent: Material, ctx: Dictionary) -> Node:
 	var room_index: int = ctx["room_index"]
 	var owner_peer_id: int = ctx["owner_peer_id"]
@@ -235,7 +298,7 @@ static func _spawn_request(room: Node3D, req: Dictionary, slot: Marker3D, accent
 			room.add_child(sw)
 			return sw
 		"phone":
-			var phone := _make_interactable(PHONE_SCRIPT, Vector3(0.12, 0.18, 0.06), pos, accent, "Pick up phone")
+			var phone := _make_interactable(PHONE_SCRIPT, Vector3(0.12, 0.18, 0.06), pos, accent, "Use phone")
 			phone.rotation.y = rot_y
 			phone.set("owner_peer_id", owner_peer_id)
 			phone.name = "Phone"

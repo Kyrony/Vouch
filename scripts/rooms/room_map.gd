@@ -110,6 +110,7 @@ func configure(data: Dictionary) -> void:
 		"theme_id": theme_id,
 		"layout": _layout,
 		"accent_material": accent,
+		"spawn_hint": spawn_point.position if spawn_point else _layout.get("spawn", Vector3.ZERO),
 		"has_valve": data.get("has_valve", false),
 		"has_electrical_box": data.get("has_electrical_box", false),
 		"wire_targets": data.get("wire_targets", []),

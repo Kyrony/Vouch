@@ -3,7 +3,8 @@ class_name EscapeHub
 ## EscapeHub
 ##
 ## Central underground shaft where every room's concrete escape tunnel converges.
-## A walkable stairwell rises to the shared mountain clearing on the surface.
+## A walkable stairwell rises inside the shaft, then a surface ramp leads onto
+## the shared Outside clearing (World/Outside).
 
 const WALL_T: float = 0.25
 const _TUNNEL: GDScript = preload("res://scripts/rooms/tunnel_kit.gd")
@@ -21,6 +22,7 @@ func build(room_count: int) -> void:
 
 	_build_vertical_shaft()
 	_build_stairwell()
+	_build_surface_exit()
 	_build_surface_hatch()
 	_add_escape_zone()
 	_add_shaft_lights(room_count)
@@ -37,39 +39,67 @@ func _build_vertical_shaft() -> void:
 
 	add_child(_GEOM.call("box", Vector3(WALL_T, shaft_h, inner + WALL_T * 2), Vector3(-radius - WALL_T * 0.5, center_y, 0), _wall_mat, 1))
 	add_child(_GEOM.call("box", Vector3(WALL_T, shaft_h, inner + WALL_T * 2), Vector3(radius + WALL_T * 0.5, center_y, 0), _wall_mat, 1))
-	add_child(_GEOM.call("box", Vector3(inner + WALL_T * 2, shaft_h, WALL_T), Vector3(0, center_y, -radius - WALL_T * 0.5), _wall_mat, 1))
-	add_child(_GEOM.call("box", Vector3(inner + WALL_T * 2, shaft_h, WALL_T), Vector3(0, center_y, radius + WALL_T * 0.5), _wall_mat, 1))
+	# North wall — lower half only; upper opening for surface exit ramp (+Z).
+	add_child(_GEOM.call("box", Vector3(inner + WALL_T * 2, shaft_h * 0.55, WALL_T), Vector3(0, center_y - shaft_h * 0.22, -radius - WALL_T * 0.5), _wall_mat, 1))
+	add_child(_GEOM.call("box", Vector3(WALL_T, shaft_h, WALL_T), Vector3(-radius - WALL_T * 0.5, center_y, radius + WALL_T * 0.5), _wall_mat, 1))
+	add_child(_GEOM.call("box", Vector3(WALL_T, shaft_h, WALL_T), Vector3(radius + WALL_T * 0.5, center_y, radius + WALL_T * 0.5), _wall_mat, 1))
 
 
 func _build_stairwell() -> void:
 	var radius := WorldScale.HUB_SHAFT_RADIUS
 	var steps := int(_depth / WorldScale.STAIR_RISER)
 	var riser := _depth / float(steps)
-	var tread := WorldScale.STAIR_TREAD
-	var start_x := radius - 0.55
-	var start_z := 0.35
+	var inner_radius := radius - 0.65
+	var angle_step := TAU / maxf(8.0, float(steps) / 8.0)
 
-	# Entry ramp from tunnel floor into the rising stairwell.
-	var ramp_steps := 4
-	for i in range(ramp_steps):
-		var y := riser * 0.25 * (i + 0.5)
-		var z := start_z - tread * (i + 1)
+	# Entry ramp from tunnel floor into the rising spiral.
+	for i in range(4):
+		var y := riser * 0.35 * (i + 0.5)
+		var angle := -PI * 0.5 + angle_step * float(i) * 0.35
+		var x := cos(angle) * inner_radius
+		var z := sin(angle) * inner_radius
 		add_child(_GEOM.call("box",
-			Vector3(tread * 1.1, riser * 0.5, tread * 0.9),
-			Vector3(start_x, y, z),
+			Vector3(0.55, riser * 0.55, 0.42),
+			Vector3(x, -_depth + y, z),
 			_floor_mat,
 			1
 		))
 
 	for i in range(steps):
+		var angle := -PI * 0.5 + angle_step * float(i)
 		var y := -_depth + riser * (i + 0.5)
-		var z := start_z + tread * i
+		var x := cos(angle) * inner_radius
+		var z := sin(angle) * inner_radius
 		add_child(_GEOM.call("box",
-			Vector3(tread * 0.95, riser * 0.92, tread * 0.85),
-			Vector3(start_x, y, z),
+			Vector3(0.52, riser * 0.92, 0.38),
+			Vector3(x, y, z),
 			_floor_mat,
 			1
 		))
+
+
+func _build_surface_exit() -> void:
+	# Walkable ramp from shaft lip onto the Outside clearing pad (+Z).
+	var ramp_len := 7.5
+	var segments := 8
+	var seg_len := ramp_len / float(segments)
+	var start_z := WorldScale.HUB_SHAFT_RADIUS + 0.15
+	for i in range(segments):
+		var z := start_z + seg_len * (float(i) + 0.5)
+		var y := 0.05 + 0.08 * float(i)
+		var ramp: Node = _GEOM.call("box",
+			Vector3(2.2, WorldScale.WALL_THICK, seg_len * 1.05),
+			Vector3(0, y, z),
+			_floor_mat,
+			1
+		)
+		ramp.rotation.x = -0.06
+		add_child(ramp)
+
+	# Side rails so players don't fall off the ramp.
+	var rail_mat := _wall_mat
+	add_child(_GEOM.call("box", Vector3(0.12, 0.9, ramp_len), Vector3(-1.15, 0.55, start_z + ramp_len * 0.5), rail_mat, 1))
+	add_child(_GEOM.call("box", Vector3(0.12, 0.9, ramp_len), Vector3(1.15, 0.55, start_z + ramp_len * 0.5), rail_mat, 1))
 
 
 func _build_surface_hatch() -> void:
@@ -101,18 +131,19 @@ func _build_surface_hatch() -> void:
 
 
 func _add_escape_zone() -> void:
-	var radius := WorldScale.HUB_SHAFT_RADIUS
 	var zone := Area3D.new()
 	zone.set_script(preload("res://scripts/interactables/escape_zone.gd"))
 	zone.name = "OutsideEscapeZone"
-	zone.collision_layer = 0
+	# Layer 1 (world) so CharacterBody3D collision_mask=1 detects the overlap.
+	zone.collision_layer = 1
 	zone.collision_mask = 4
 	var shape := CollisionShape3D.new()
 	var box := BoxShape3D.new()
-	box.size = Vector3(radius * 3.0, 3.0, radius * 3.0)
+	box.size = Vector3(4.0, 2.6, 4.0)
 	shape.shape = box
 	zone.add_child(shape)
-	zone.position = Vector3(0, 1.2, 0)
+	# End of surface ramp on the Outside clearing.
+	zone.position = Vector3(0, 1.0, WorldScale.HUB_SHAFT_RADIUS + 5.5)
 	add_child(zone)
 
 
