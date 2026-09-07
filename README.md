@@ -268,6 +268,10 @@ VOUCH_PLAYER_SCRIPT_TEST=1 godot4 --headless --path .
 rm -rf .godot
 godot4 --headless --path . -s res://scripts/vouch_player_spawn_probe.gd
 
+# Playable loop (phone/walkie/hub ramp) — mirrors live Match._spawn_room_pod path:
+VOUCH_PLAYABLE_LOOP_TEST=1 godot4 --headless --path .
+godot4 --headless --path . -s res://scripts/vouch_playable_loop_probe.gd
+
 VOUCH_ROOM_SPAWN_TEST=1 godot4 --headless --path .
 VOUCH_MATCH_SPAWN_TEST=1 godot4 --headless --path .
 VOUCH_ATTACHMENT_TEST=1 godot4 --headless --path .
