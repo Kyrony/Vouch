@@ -108,7 +108,11 @@ func _probe_playable_loop_bunker_only(match_node: Node) -> String:
 	if not bunker_errors.is_empty():
 		return "; ".join(bunker_errors)
 	var spawn_local: Vector3 = map.get_node("PlayerSpawn").position
-	print("  playable loop (bunker-only): spawn=%s props=0" % spawn_local)
+	print("  playable loop (bunker-only): spawn=%s phone_dist=%.2fm walkie_dist=%.2fm" % [
+		spawn_local,
+		spawn_local.distance_to(map.get_node("Phone").position),
+		Vector2(spawn_local.x - map.get_node("WalkieTalkie").position.x, spawn_local.z - map.get_node("WalkieTalkie").position.z).length(),
+	])
 	return ""
 
 

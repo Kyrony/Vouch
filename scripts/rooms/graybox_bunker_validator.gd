@@ -1,11 +1,15 @@
 extends RefCounted
 class_name GrayboxBunkerValidator
-## Headless: friends-MVP bunker-only rooms must be empty sealed boxes.
+## Headless: friends-MVP bunker-only rooms — sealed box + Phone/Walkie only.
 
+
+const _PLAYABLE: GDScript = preload("res://scripts/rooms/playable_loop_spawns.gd")
 
 const ALLOWED_ROOT: Array[String] = [
 	"Geometry", "PlayerSpawn", "EscapeDoor", "EscapeAttach", "ItemSpawns",
 ]
+
+const ALLOWED_COMMS: Array[String] = ["Phone", "WalkieTalkie"]
 
 const REQUIRED_GEOMETRY: Array[String] = [
 	"Floor", "Ceiling", "WallNegZ", "WallEast", "WallWest", "WallPosZ",
@@ -16,7 +20,7 @@ const FORBIDDEN_GEOMETRY: Array[String] = [
 ]
 
 const FORBIDDEN_PROP_NAMES: Array[String] = [
-	"Ladder", "LightSwitch", "Phone", "WalkieTalkie", "Fireplace",
+	"Ladder", "LightSwitch", "Fireplace",
 	"SecurityCamera", "RoomLight", "EscapePoint", "Drain", "ExhaustVent",
 	"WaterValve", "GasValve", "ElectricalBox", "BinaryTerminal",
 	"BinaryBookcase", "RoomPeekMonitor", "PipeBandage", "BrokenPipe", "GasLeak",
@@ -30,7 +34,7 @@ static func validate(room: Node3D) -> Array[String]:
 		return ["room is null"]
 
 	for child in room.get_children():
-		if child.name in ALLOWED_ROOT:
+		if child.name in ALLOWED_ROOT or child.name in ALLOWED_COMMS:
 			continue
 		if _is_forbidden_prop(child):
 			errors.append("bunker-only forbids spawned prop %s" % child.name)
@@ -43,7 +47,15 @@ static func validate(room: Node3D) -> Array[String]:
 	else:
 		errors.append_array(_validate_geometry(geometry))
 
+	errors.append_array(_validate_comms(room))
 	return errors
+
+
+static func _validate_comms(room: Node3D) -> Array[String]:
+	var spawn := room.get_node_or_null("PlayerSpawn") as Marker3D
+	if spawn == null:
+		return ["PlayerSpawn missing for comms check"]
+	return _PLAYABLE.call("validate", room, spawn.position)
 
 
 static func _validate_geometry(geometry: Node3D) -> Array[String]:

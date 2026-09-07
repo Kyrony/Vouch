@@ -99,6 +99,13 @@ func configure(data: Dictionary) -> void:
 
 	if EscapePathSettings.bunker_only():
 		_seal_posz_wall()
+		if _theme.is_empty():
+			_theme = _theme_for_layout(_layout)
+			theme_id = _theme["id"]
+			theme_name = _theme["name"]
+		var accent := _accent_material(_theme["accent_color"], theme_id)
+		var spawn_local: Vector3 = spawn_point.position if spawn_point else _layout.get("spawn", Vector3.ZERO)
+		_PLAYABLE.call("spawn_near_player", self, spawn_local, accent, owner_peer_id, width, depth)
 		return
 
 	if _theme.is_empty():
@@ -137,7 +144,7 @@ func configure(data: Dictionary) -> void:
 	_fireplace = spawned.get("fireplace")
 
 	var spawn_local: Vector3 = spawn_point.position if spawn_point else _layout.get("spawn", Vector3.ZERO)
-	_PLAYABLE.call("spawn_near_player", self, spawn_local, accent, owner_peer_id)
+	_PLAYABLE.call("spawn_near_player", self, spawn_local, accent, owner_peer_id, width, depth)
 
 	_ITEMS.call("spawn_room_effects", self, ctx)
 

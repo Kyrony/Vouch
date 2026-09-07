@@ -78,7 +78,11 @@ func _probe_bunker_only(match_node: Node, main: Node) -> String:
 		main.queue_free()
 		return "; ".join(bunker_errors)
 	var spawn_local: Vector3 = map0.get_node("PlayerSpawn").position
-	print("  bunker-only: spawn=%s geometry-only" % spawn_local)
+	print("  bunker-only: spawn=%s phone_dist=%.2fm walkie_dist=%.2fm" % [
+		spawn_local,
+		spawn_local.distance_to(map0.get_node("Phone").position),
+		Vector2(spawn_local.x - map0.get_node("WalkieTalkie").position.x, spawn_local.z - map0.get_node("WalkieTalkie").position.z).length(),
+	])
 	main.queue_free()
 	return ""
 
