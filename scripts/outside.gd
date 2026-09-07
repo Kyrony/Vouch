@@ -6,6 +6,11 @@ class_name Outside
 ## same space regardless of faction - MVP explicitly does not implement
 ## any post-escape sabotage/interaction (see docs/MVP_GDD.md), it's just a
 ## safe holding area until the match ends.
+##
+## Also hosts `TestRange_RemoveBeforeRelease` - a pickup gun + a few dummy
+## targets used ONLY to manually verify hit-registration during
+## development. *** REMOVE BEFORE FULL RELEASE. *** See Gun.gd/
+## DummyTarget.gd and docs/MVP_GDD.md.
 
 @onready var roam_spawn_points: Node3D = $RoamSpawnPoints
 
