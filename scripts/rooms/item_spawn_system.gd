@@ -25,10 +25,6 @@ const BARREL_SCENE: PackedScene = preload("res://scenes/Match/Props/Barrel.tscn"
 const _SLOT_SCRIPT: GDScript = preload("res://scripts/rooms/item_spawn_slot.gd")
 
 
-static func rotation_y_for_normal(n: Vector3) -> float:
-	return _SLOT_SCRIPT.call("rotation_y_from_normal", n)
-
-
 static func populate(room: Node3D, ctx: Dictionary, rng: RandomNumberGenerator) -> Dictionary:
 	var slots := _collect_slots(room)
 	if slots.size() != SLOT_COUNT:

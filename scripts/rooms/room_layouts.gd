@@ -4,7 +4,6 @@ class_name RoomLayouts
 
 const HEIGHT: float = 2.6
 const WALL: float = 0.12
-const DOOR_W: float = 0.85
 
 
 static func get_layout(room_id: int) -> Dictionary:
@@ -130,11 +129,6 @@ static func _wall_slot(hw: float, hd: float, flush: float, face: String, height:
 				"surface_type": "wall",
 				"wall_normal": Vector3(1, 0, 0),
 			}
-
-
-## Legacy helper — prefer slot_layout().
-static func slot_ring(room_id: int, w: float, d: float) -> Array:
-	return slot_layout(room_id, w, d)
 
 
 static func _studio(id: int, w: float, d: float) -> Dictionary:
