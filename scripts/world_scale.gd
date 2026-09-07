@@ -22,6 +22,12 @@ const HUB_SHAFT_HEIGHT: float = 10.0
 const HUB_HALL_W: float = 1.25
 const HUB_HALL_H: float = 2.5
 
+## All player rooms sit this far below the mountain surface (meters).
+const UNDERGROUND_DEPTH: float = 12.0
+const SURFACE_Y: float = 0.0
+
+const TUNNEL_LIGHT_SPACING: float = 8.0
+
 const GRID_SPACING: float = 52.0
 const CORRIDOR_MIN: float = 18.0
 const CORRIDOR_MAX: float = 46.0

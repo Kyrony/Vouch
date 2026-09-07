@@ -87,18 +87,22 @@ Headless validation: `VOUCH_ROOM_SPAWN_TEST=1 godot4 --headless --path .`
   (clue book sometimes spawns inside), **floor drains** and **exhaust
   vents**, **physics flammables** (books/papers/ladders via `FireSystem`).
 
-### World layout (underground escape hub)
+### World layout (underground escape hub → mountain surface)
 
-- Each room's escape door/vent opens with a **swing/slide animation** —
-  no teleport through transitions. Walk through the opening into a
-  **horizontal escape hall**, then a **vertical rise** into a shared
-  central shaft; **Outside** sits at the top (`EscapeHub` + `Outside`).
-- Rooms **rotate** so their escape faces the hub at world origin.
-- Walls are **sealed kit modules** with door lintels; escape routes are
-  **long sealed corridor kit segments** (18–46 m horiz + vertical rise)
-  with sconce lighting — walk through, no teleport.
-- Two-story plan IDs (15–20) use a **stairwell module** plus upper-floor
-  bedroom/bath pieces instead of CSG stair cutouts.
+- Every player room sits **12 m underground** (`WorldScale.UNDERGROUND_DEPTH`).
+  Escape door/vent opens with **swing/slide animation** — walk through, no teleport.
+- Each room connects via a **concrete bunker tunnel** (`TunnelKit`) toward the
+  shared hub at world origin. Tunnels are enclosed (walls/floor/ceiling) with
+  sconce lighting every ~8 m.
+- All tunnels converge at **`EscapeHub`** — a central shaft with a walkable
+  stairwell rising to the **mountain clearing** (`Outside` at surface Y=0).
+- Rooms **rotate** so their escape tunnel faces the hub; grid spacing keeps
+  tunnel runs 18–46 m before the hub connector.
+- **Outside** graybox: rocky clearing, sloped shoulders, distant peaks, outdoor
+  sky/fog — readable as “you emerged on a mountain.”
+
+Headless validation: `VOUCH_ROOM_SPAWN_TEST=1 godot4 --headless --path .`
+Headless match spawn: `VOUCH_MATCH_SPAWN_TEST=1 godot4 --headless --path .`
 
 ### In-match UI
 

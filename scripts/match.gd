@@ -47,7 +47,7 @@ var _rooms: Dictionary = {}
 static func room_grid_position(index: int) -> Vector3:
 	var col := index % GRID_COLUMNS
 	var row := index / GRID_COLUMNS
-	return Vector3(col * GRID_SPACING, 0.0, row * GRID_SPACING)
+	return Vector3(col * GRID_SPACING, -WorldScale.UNDERGROUND_DEPTH, row * GRID_SPACING)
 
 
 ## Inverse of `room_grid_position()` - which room's grid cell a world

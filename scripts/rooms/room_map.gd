@@ -6,6 +6,7 @@ const _LAYOUTS: GDScript = preload("res://scripts/rooms/room_layouts.gd")
 const _GEOMETRY: GDScript = preload("res://scripts/rooms/room_geometry.gd")
 const _ITEMS: GDScript = preload("res://scripts/rooms/item_spawn_system.gd")
 const _SLOT_SCRIPT: GDScript = preload("res://scripts/rooms/item_spawn_slot.gd")
+const _TUNNEL: GDScript = preload("res://scripts/rooms/tunnel_kit.gd")
 
 const DOOR_W: float = 0.85
 const DOOR_H: float = 2.05
@@ -275,58 +276,12 @@ func _build_pm_monitors() -> void:
 
 
 func _build_escape_corridor(corridor_out: Vector3, idx: int) -> void:
-	var wall_mat := _accent_material(_theme["wall_color"])
-	var floor_mat := _accent_material(_theme["floor_color"])
 	var grid_pos := Match.room_grid_position(idx)
 	var dist := Vector2(grid_pos.x, grid_pos.z).length()
-	var horiz := clampf(dist - HUB_SHAFT_RADIUS - depth * 0.5, 18.0, 46.0)
+	var horiz := clampf(dist - HUB_SHAFT_RADIUS - depth * 0.5, WorldScale.CORRIDOR_MIN, WorldScale.CORRIDOR_MAX)
 	var start_z := corridor_out.z + WALL
-	_tunnel_run(start_z, horiz, HUB_HALL_WIDTH, HUB_HALL_HEIGHT, wall_mat, floor_mat, true, true)
-	_tunnel_vertical(start_z + horiz, HUB_SHAFT_HEIGHT, HUB_HALL_WIDTH, HUB_HALL_HEIGHT, wall_mat, floor_mat)
-
-
-func _tunnel_run(start_z: float, length: float, inner_w: float, inner_h: float, wall_mat: Material, floor_mat: Material, open_near: bool, open_far: bool) -> void:
-	if length < 0.5:
-		return
-	var cz := start_z + length * 0.5
-	add_child(_tunnel_box(Vector3(inner_w, WALL, length), Vector3(0, -WALL * 0.5, cz), floor_mat))
-	add_child(_tunnel_box(Vector3(inner_w + WALL * 2.0, WALL, length + WALL * 2.0), Vector3(0, inner_h + WALL * 0.5, cz), wall_mat, false))
-	add_child(_tunnel_box(Vector3(WALL, inner_h, length), Vector3(-inner_w / 2.0 - WALL / 2.0, inner_h / 2.0, cz), wall_mat))
-	add_child(_tunnel_box(Vector3(WALL, inner_h, length), Vector3(inner_w / 2.0 + WALL / 2.0, inner_h / 2.0, cz), wall_mat))
-	if not open_near:
-		add_child(_tunnel_box(Vector3(inner_w, inner_h, WALL), Vector3(0, inner_h / 2.0, start_z - WALL / 2.0), wall_mat))
-	if not open_far:
-		add_child(_tunnel_box(Vector3(inner_w, inner_h, WALL), Vector3(0, inner_h / 2.0, start_z + length + WALL * 0.5), wall_mat))
-
-
-func _tunnel_vertical(base_z: float, rise_h: float, inner_w: float, inner_h: float, wall_mat: Material, floor_mat: Material) -> void:
-	var cz := base_z
-	add_child(_tunnel_box(Vector3(inner_w, WALL, inner_w), Vector3(0, -WALL * 0.5, cz), floor_mat))
-	add_child(_tunnel_box(Vector3(inner_w + WALL * 2.0, WALL, inner_w + WALL * 2.0), Vector3(0, rise_h + WALL * 0.5, cz), wall_mat, false))
-	add_child(_tunnel_box(Vector3(WALL, rise_h, inner_w), Vector3(-inner_w / 2.0 - WALL / 2.0, rise_h / 2.0, cz), wall_mat))
-	add_child(_tunnel_box(Vector3(WALL, rise_h, inner_w), Vector3(inner_w / 2.0 + WALL / 2.0, rise_h / 2.0, cz), wall_mat))
-	add_child(_tunnel_box(Vector3(inner_w, rise_h, WALL), Vector3(0, rise_h / 2.0, cz - inner_w / 2.0 - WALL / 2.0), wall_mat))
-	add_child(_tunnel_box(Vector3(inner_w, rise_h, WALL), Vector3(0, rise_h / 2.0, cz + inner_w / 2.0 + WALL / 2.0), wall_mat))
-
-
-func _tunnel_box(size: Vector3, pos: Vector3, mat: Material, collision: bool = true) -> StaticBody3D:
-	var body := StaticBody3D.new()
-	body.collision_layer = 1 if collision else 0
-	body.collision_mask = 0
-	body.position = pos
-	var mi := MeshInstance3D.new()
-	var bm := BoxMesh.new()
-	bm.size = size
-	mi.mesh = bm
-	mi.set_surface_override_material(0, mat)
-	body.add_child(mi)
-	if collision:
-		var col := CollisionShape3D.new()
-		var sh := BoxShape3D.new()
-		sh.size = size
-		col.shape = sh
-		body.add_child(col)
-	return body
+	_TUNNEL.call("build_horizontal", self, start_z, horiz, HUB_HALL_WIDTH, HUB_HALL_HEIGHT, true, true)
+	_TUNNEL.call("build_hub_connector", self, start_z + horiz, HUB_HALL_WIDTH, HUB_HALL_HEIGHT)
 
 
 static func _accent_material(color: Color) -> StandardMaterial3D:
