@@ -123,7 +123,7 @@ static func _gate_modes(home: Control) -> void:
 			btn.tooltip_text = "Classic outdoor Host Match."
 		else:
 			_KIT.apply_button(btn, "normal")
-			# Soft-gate: visible, not a second mode system. No "Coming Soon".
+			# Soft-gate: visible, not a second mode system. No placeholder overclaims.
 			btn.tooltip_text = "Uses the Classic outdoor match."
 
 

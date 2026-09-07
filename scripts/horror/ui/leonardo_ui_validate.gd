@@ -83,13 +83,14 @@ static func validate_hud() -> String:
 		return "hud_icon_pack.gd failed to load"
 	if str(pack.TEX_PHONE_LED) != "phone_led":
 		return "phone LED texture stem changed"
-	var src := FileAccess.get_file_as_string("res://scripts/horror/ui/hud_icon_pack.gd")
-	if src.contains("torch") or src.contains("flashlight"):
+	if ResourceLoader.exists("res://assets/horror/hud/torch.png") or ResourceLoader.exists("res://assets/horror/hud/flashlight.png"):
 		return "HUD pack must not ship a classic torch glyph"
+	if str(pack.TEX_PHONE_LED).contains("torch") or str(pack.TEX_PHONE_LED).contains("flashlight"):
+		return "phone LED stem must not be a torch glyph"
 	if not ResourceLoader.exists("res://assets/horror/hud/phone_led.png"):
 		return "phone_led.png missing"
 	if not ResourceLoader.exists("res://assets/horror/ui/banner_vouch.png"):
 		return "banner_vouch.png missing"
-	if not ResourceLoader.exists("res://assets/horror/ui/README.md"):
+	if not FileAccess.file_exists("res://assets/horror/ui/README.md"):
 		return "UI pack README missing"
 	return ""

@@ -3,7 +3,6 @@ extends SceneTree
 ## Run: godot4 --headless --path . -s res://scripts/vouch_horror_match_probe.gd
 
 const _HORROR_SETTINGS: GDScript = preload("res://scripts/autoload/horror_mode_settings.gd")
-const _UI_CHECK: GDScript = preload("res://scripts/horror/world/horror_soft_go_validate.gd")
 
 var _running: bool = false
 
@@ -34,7 +33,8 @@ func _probe() -> String:
 	root.add_child(main)
 	await process_frame
 	var lobby := main.get_node_or_null("Lobby") as Control
-	var menu_err: String = _UI_CHECK.call("validate_leonardo_menu", lobby)
+	var ui_check: GDScript = load("res://scripts/horror/world/horror_soft_go_validate.gd")
+	var menu_err: String = ui_check.call("validate_leonardo_menu", lobby)
 	if not menu_err.is_empty():
 		main.queue_free()
 		return menu_err
