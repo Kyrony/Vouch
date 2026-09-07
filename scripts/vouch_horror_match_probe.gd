@@ -118,9 +118,12 @@ func _probe() -> String:
 		main.queue_free()
 		return "expected 1 PuppetMasterController, got %d" % pm_count
 
-	print("  horror spawns=%d pickups=%d child_points=%d towers=%d neighborhood=OK" % [
+	var rng := root.get_node_or_null("ChildSpawnRNG")
+	var pins: Array = rng.call("spawn_id_list") if rng else []
+	print("  horror spawns=%d pickups=%d child_points=%d towers=%d neighborhood=OK pins=%s" % [
 		spawn_count, pickups.get_child_count(), child_points.size(),
 		world.get_tree().get_nodes_in_group("active_towers").size(),
+		pins,
 	])
 	main.queue_free()
 	return ""

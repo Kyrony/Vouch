@@ -85,7 +85,7 @@ field as a placeholder — session codes are post-MVP.
 | Puppet Master | Life steal aura (radius, then cooldown) | `E` |
 | All | Pause / release mouse | `Esc` |
 
-**Goal:** Each **family team** spawns in their own **1-story house bedroom** (A–D around the cul-de-sac). One missing child is hidden at a random location among **11 alive-only spawn pins** (Leonardo L2 SoT, eng short ids). Find the child marker, then reach the **soft-gated field exit** (west yard, unmarked — master sheet has no escape routes). Trust tools are **phone + live radio masts** (service / weak / dead radii, 3 active per match, one forced near the PM). The **Puppet Master** hunts from the **east PM mansion** — radius life-steal aura with neon ring + recharge. PM wins if all survivors are drained before families escape with the child.
+**Goal:** Each **family team** spawns in their own **1-story house bedroom** (A–D around the cul-de-sac). One missing child is hidden at a random location among **11 alive-only spawn pins** (Leonardo L2 SoT ids). Find the child marker, then reach the **soft-gated field exit** (west yard, unmarked — master sheet has no escape routes). Trust tools are **phone + live radio masts** (service / weak / dead radii, 3 active per match, one forced near the PM). The **Puppet Master** hunts from the **east PM mansion** — radius life-steal aura with neon ring + recharge. PM wins if all survivors are drained before families escape with the child.
 
 Legacy sealed-room / tunnel modes: `VOUCH_BUNKER_ONLY=1` or `VOUCH_ESCAPE_PATH=1`.
 
@@ -354,7 +354,7 @@ scripts/horror/            Horror neighborhood factory (default play mode)
   characters/              PuppetMasterData, possession constants
   environment/             FamilyHouse, PMMansion, UncleHouse, Outdoor graybox builders
   items/                   EffectDefinitions, PlayerEffects (meter stacks)
-  world/                   NeighborhoodV05, NeighborhoodLayout, ChildSpawnRNG (11 short-id pins), TowerRules
+  world/                   NeighborhoodV05, NeighborhoodLayout, ChildSpawnRNG (11 L2 SoT pins), TowerRules
   ui/                      Neon HUD (heart / cyan / violet / phone signal) + neon menu
   horror_world.gd          World orchestrator
   match_horror.gd          Host-authoritative horror match builder

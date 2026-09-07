@@ -18,8 +18,8 @@ static func build(parent: Node3D, mats) -> Dictionary:
 	var outdoor_markers: Array[Marker3D] = []
 	_build_family_shed(root, mats, outdoor_markers)
 	_build_storm_drain(root, mats, outdoor_markers)
-	_build_garden_well(root, mats, outdoor_markers)
-	_build_car_trunk(root, mats, outdoor_markers)
+	_build_garden_well_crawlspace(root, mats, outdoor_markers)
+	_build_car_trunk_curb(root, mats, outdoor_markers)
 
 	var zone := _build_soft_escape(_V05.SOFT_ESCAPE_POS)
 	root.add_child(zone)
@@ -85,20 +85,20 @@ static func _build_storm_drain(root: Node3D, mats, markers: Array) -> void:
 	_add_child_marker(drain, Vector3(0, -0.12, 0), "storm_drain", markers)
 
 
-static func _build_garden_well(root: Node3D, mats, markers: Array) -> void:
+static func _build_garden_well_crawlspace(root: Node3D, mats, markers: Array) -> void:
 	var well := Node3D.new()
 	well.name = "GardenWell"
-	well.position = _V05.GARDEN_WELL_POS
+	well.position = _V05.GARDEN_WELL_CRAWLSPACE_POS
 	root.add_child(well)
 	well.add_child(_GEOM.call("cylinder", 0.85, 1.05, Vector3(0, 0.52, 0), mats.wall))
 	well.add_child(_GEOM.call("box", Vector3(1.1, 0.12, 1.1), Vector3(0, 1.1, 0), mats.wood))
 	_add_child_marker(well, Vector3(0, 0.2, 0), "garden_well_crawlspace", markers)
 
 
-static func _build_car_trunk(root: Node3D, mats, markers: Array) -> void:
+static func _build_car_trunk_curb(root: Node3D, mats, markers: Array) -> void:
 	var car := Node3D.new()
 	car.name = "ParkedCar"
-	car.position = _V05.CAR_TRUNK_POS
+	car.position = _V05.CAR_TRUNK_CURB_POS
 	root.add_child(car)
 	car.add_child(_GEOM.call("box", Vector3(3.8, 1.0, 1.7), Vector3(0, 0.5, 0), _mat(Color(0.18, 0.2, 0.22))))
 	car.add_child(_GEOM.call("box", Vector3(1.5, 0.65, 1.6), Vector3(-0.35, 1.15, 0), _mat(Color(0.16, 0.17, 0.19))))

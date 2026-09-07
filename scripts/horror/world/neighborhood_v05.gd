@@ -45,8 +45,8 @@ const MANSION_SIZE := Vector3(14.0, 3.2, 12.0)
 
 const FAMILY_SHED_POS := Vector3(-14.0, 0, -6.0)
 const STORM_DRAIN_POS := Vector3(3.6, 0, 5.4)
-const GARDEN_WELL_POS := Vector3(-5.0, 0, -14.0)
-const CAR_TRUNK_POS := Vector3(3.2, 0, 16.0)
+const GARDEN_WELL_CRAWLSPACE_POS := Vector3(-5.0, 0, -14.0)
+const CAR_TRUNK_CURB_POS := Vector3(3.2, 0, 16.0)
 const SOFT_ESCAPE_POS := Vector3(-18.0, 0.5, 0.0)
 
 const PM_L4_ROOMS: Array[String] = [

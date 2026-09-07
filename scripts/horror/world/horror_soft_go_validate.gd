@@ -1,6 +1,6 @@
 extends RefCounted
 class_name HorrorSoftGoValidate
-## Shared headless checks for L2 short-id pins + v0.5 footprints + towers.
+## Shared headless checks for L2 CSV spawn_ids + v0.5 footprints + towers.
 
 const _V05: GDScript = preload("res://scripts/horror/world/neighborhood_v05.gd")
 
@@ -20,18 +20,14 @@ static func validate_world(world: Node3D) -> String:
 	if rng == null:
 		return "ChildSpawnRNG autoload missing"
 	var expected: Array[String] = rng.call("spawn_id_list")
+	var sot: Array = _V05.SPAWN_IDS
 	if expected.size() != int(rng.call("expected_count")):
 		return "SPAWN_IDS size %d != expected %d" % [expected.size(), ChildSpawnRNG.expected_count()]
-	var stale := [
-		"master_bedroom",
-		"bunker_utility",
-		"basement",
-		"garden_well",
-		"car_trunk",
-	]
-	for sid in expected:
-		if stale.has(sid):
-			return "SPAWN_IDS used stale short id %s — use L2 CSV ids" % sid
+	if expected.size() != sot.size():
+		return "ChildSpawnRNG list size %d != L2 SoT %d" % [expected.size(), sot.size()]
+	for i in expected.size():
+		if str(expected[i]) != str(sot[i]):
+			return "ChildSpawnRNG[%d]=%s != L2 SoT %s" % [i, expected[i], sot[i]]
 	var child_points: Array = world.get_tree().get_nodes_in_group("child_spawn_points")
 	if child_points.size() != expected.size():
 		return "expected %d child spawn points, got %d" % [expected.size(), child_points.size()]
@@ -40,8 +36,6 @@ static func validate_world(world: Node3D) -> String:
 		var sid := str(node.get_meta("spawn_id", ""))
 		if sid.is_empty():
 			return "child spawn marker %s missing spawn_id" % node.name
-		if stale.has(sid):
-			return "world marker used stale spawn_id=%s" % sid
 		if not expected.has(sid):
 			return "unexpected child spawn_id=%s" % sid
 		if seen.has(sid):
