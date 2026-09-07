@@ -21,6 +21,28 @@ func _ready() -> void:
 	GameState.match_started.connect(_on_match_started)
 	if OS.get_environment("VOUCH_HALLWAY_TEST") == "1":
 		call_deferred("_run_hallway_test")
+	if OS.get_environment("VOUCH_MATCH_SPAWN_TEST") == "1":
+		call_deferred("_run_match_spawn_test")
+
+
+func _run_match_spawn_test() -> void:
+	world.visible = true
+	var match_node: Match = $World/Match
+	var data := {
+		"room_index": 0,
+		"owner_peer_id": 1,
+		"rng_seed": 12345,
+		"is_puppet_master": false,
+		"module_chain": [],
+		"has_valve": false,
+	}
+	var room := match_node._spawn_room_pod(data)
+	if room == null:
+		push_error("MATCH SPAWN TEST FAILED")
+		get_tree().quit(1)
+		return
+	print("MATCH SPAWN TEST OK children=", room.get_child_count())
+	get_tree().quit(0)
 
 
 func _run_hallway_test() -> void:
