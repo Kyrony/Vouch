@@ -1,24 +1,26 @@
 extends RefCounted
 class_name CollisionDebug
 ## Trustworthy collision AABB + shape logging for LIVE_ESCAPE / probes.
+## Godot 4.3: Shape3D has no get_aabb() — always derive from BoxShape3D.size.
 
 
 static func box_shape_size(col: CollisionShape3D) -> Vector3:
+	if col == null or col.shape == null:
+		return Vector3.ZERO
 	if col.shape is BoxShape3D:
 		return (col.shape as BoxShape3D).size
 	return Vector3.ZERO
 
 
 static func global_aabb(node: Node3D) -> AABB:
+	if node == null or not is_instance_valid(node):
+		return AABB()
 	var merged := AABB()
 	var first := true
 	for ch in node.get_children():
 		if not ch is CollisionShape3D:
 			continue
-		var col := ch as CollisionShape3D
-		if col.shape == null:
-			continue
-		var piece := global_aabb_for_shape(node, col)
+		var piece := global_aabb_for_shape(node, ch as CollisionShape3D)
 		if piece.size.length_squared() < 0.000001:
 			continue
 		if first:
@@ -32,15 +34,16 @@ static func global_aabb(node: Node3D) -> AABB:
 
 
 static func global_aabb_for_shape(body: Node3D, col: CollisionShape3D) -> AABB:
+	if body == null or col == null or col.shape == null:
+		return AABB()
 	if col.shape is BoxShape3D:
 		return _box_global_aabb(body.global_transform * col.transform, (col.shape as BoxShape3D).size)
-	if col.shape != null:
-		var local: AABB = col.shape.get_aabb()
-		return _aabb_from_corners(body.global_transform * col.transform, local)
 	return AABB()
 
 
 static func _box_global_aabb(gt: Transform3D, size: Vector3) -> AABB:
+	if size.length_squared() < 0.000001:
+		return AABB()
 	var half := size * 0.5
 	var out := AABB(gt * Vector3(-half.x, -half.y, -half.z), Vector3.ZERO)
 	for sx in [-1.0, 1.0]:
@@ -50,24 +53,16 @@ static func _box_global_aabb(gt: Transform3D, size: Vector3) -> AABB:
 	return out
 
 
-static func _aabb_from_corners(_gt: Transform3D, local: AABB) -> AABB:
-	var half := local.size * 0.5
-	var center := local.position + half
-	var corners: Array[Vector3] = []
-	for sx in [-1.0, 1.0]:
-		for sy in [-1.0, 1.0]:
-			for sz in [-1.0, 1.0]:
-				corners.append(_gt * (center + Vector3(sx * half.x, sy * half.y, sz * half.z)))
-	var out := AABB(corners[0], Vector3.ZERO)
-	for i in range(1, corners.size()):
-		out = out.expand(corners[i])
-	return out
-
-
 static func log_floor_body(body: Node3D, prefix: String = "LIVE_ESCAPE") -> void:
-	var col: CollisionShape3D = _first_collision_shape(body)
+	if body == null or not is_instance_valid(body):
+		print("%s floor INVALID_BODY" % prefix)
+		return
+	var col := _first_collision_shape(body)
 	if col == null:
 		print("%s floor %s body_pos=%s NO_COLLISION_SHAPE" % [prefix, body.name, body.global_position])
+		return
+	if not col.shape is BoxShape3D:
+		print("%s floor %s body_pos=%s non_box_shape" % [prefix, body.name, body.global_position])
 		return
 	var shape_size := box_shape_size(col)
 	var world := global_aabb(body)
@@ -79,8 +74,6 @@ static func log_floor_body(body: Node3D, prefix: String = "LIVE_ESCAPE") -> void
 		world.position,
 		world.size,
 	])
-	if shape_size.length_squared() < 0.0001:
-		push_warning("%s floor %s has zero BoxShape3D.size" % [prefix, body.name])
 
 
 static func validate_floor_collision_shapes(match_root: Node3D) -> Array[String]:
@@ -118,6 +111,8 @@ static func _floor_bodies(match_root: Node3D) -> Array[StaticBody3D]:
 
 
 static func _first_collision_shape(body: Node3D) -> CollisionShape3D:
+	if body == null:
+		return null
 	for ch in body.get_children():
 		if ch is CollisionShape3D:
 			return ch as CollisionShape3D

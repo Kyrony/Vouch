@@ -209,12 +209,18 @@ func log_live_debug() -> void:
 		multiplayer.get_unique_id() if multiplayer.multiplayer_peer != null else 0,
 		str(multiplayer.is_server()) if multiplayer.multiplayer_peer != null else "offline",
 	])
+	var logged := 0
 	for n: Node in find_children("*", "StaticBody3D", false, false):
 		if not n.is_in_group("escape_hub_ramp"):
 			continue
-		_COLLISION_DEBUG.call("log_floor_body", n as StaticBody3D)
+		if not n is Node3D or not is_instance_valid(n):
+			continue
+		_COLLISION_DEBUG.call("log_floor_body", n as Node3D)
+		logged += 1
+	if logged == 0:
+		print("LIVE_ESCAPE hub has no escape_hub_ramp floor bodies")
 	var zone := get_node_or_null("OutsideEscapeZone")
-	if zone is Node3D:
+	if zone is Area3D and zone is Node3D:
 		var zone3d := zone as Node3D
 		var col: CollisionShape3D = _COLLISION_DEBUG.call("_first_collision_shape", zone3d)
 		var shape_size := Vector3.ZERO

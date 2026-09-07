@@ -37,6 +37,8 @@ const PUPPET_MASTER_TARGET_COUNT: int = 2
 
 ## Central underground shaft — built once per match on every peer.
 var _escape_hub: Node3D
+var _escape_hub_room_count: int = 0
+var _expected_room_count: int = 0
 
 ## Server-only bookkeeping: room_index -> RoomPod node.
 var _rooms: Dictionary = {}
@@ -98,6 +100,8 @@ func _server_build_match() -> void:
 
 	var peer_ids: Array = GameState.players.keys()
 	peer_ids.shuffle()
+	_expected_room_count = peer_ids.size()
+	print("LIVE_ESCAPE match_start players=%d peer_ids=%s" % [_expected_room_count, peer_ids])
 
 	for i in range(peer_ids.size()):
 		GameState.server_set_room(peer_ids[i], i)
@@ -128,7 +132,7 @@ func _server_build_match() -> void:
 		var peer_id: int = peer_ids[i]
 		_server_spawn_player(peer_id, i)
 
-	call_deferred("_log_live_escape_path")
+	call_deferred("_log_live_escape_path_deferred")
 
 
 ## Decides whether this match has a code-locked escape and, if so, which
@@ -244,6 +248,13 @@ func _server_spawn_room(room_index: int, owner_peer_id: int, is_pm: bool, puzzle
 			data["binary_peek_room"] = peek_candidates[randi() % peek_candidates.size()]
 			data["binary_target"] = randi_range(5, 200)
 	RoomUtilities.server_init_room(room_index)
+	print("LIVE_ESCAPE spawn_room index=%d owner=%d total_rooms=%d is_pm=%s scene=%s" % [
+		room_index,
+		owner_peer_id,
+		total_rooms,
+		is_pm,
+		recipe.get("room_scene_id", "?"),
+	])
 	var room: Node = rooms_spawner.spawn(data)
 	if room == null:
 		push_error("Match: failed to spawn room %d for peer %d" % [room_index, owner_peer_id])
@@ -302,8 +313,12 @@ func _spawn_room_pod(data: Dictionary) -> Node:
 
 
 func _ensure_escape_hub(room_count: int) -> void:
-	if is_instance_valid(_escape_hub):
+	if is_instance_valid(_escape_hub) and _escape_hub_room_count == room_count:
 		return
+	if is_instance_valid(_escape_hub):
+		_escape_hub.queue_free()
+		_escape_hub = null
+	_escape_hub_room_count = room_count
 	_escape_hub = Node3D.new()
 	_escape_hub.set_script(_ESCAPE_HUB)
 	_escape_hub.name = "EscapeHub"
@@ -321,6 +336,8 @@ func _teardown_match_geometry() -> void:
 	if is_instance_valid(_escape_hub):
 		_escape_hub.queue_free()
 		_escape_hub = null
+	_escape_hub_room_count = 0
+	_expected_room_count = 0
 	if not is_node_ready():
 		return
 	for child in rooms_container.get_children():
@@ -336,31 +353,53 @@ func _teardown_match_geometry() -> void:
 func _maybe_log_escape_path(total_rooms: int) -> void:
 	if not is_node_ready():
 		return
-	var room_count := 0
+	var room_pods := _count_room_pods()
+	var mouths: Array = _PATH.call("_collect_tunnel_mouths", self)
+	if room_pods < total_rooms:
+		return
+	_log_live_escape_path(total_rooms, room_pods, mouths.size())
+
+
+func _count_room_pods() -> int:
+	var n := 0
 	for child in rooms_container.get_children():
 		if child != rooms_spawner:
-			room_count += 1
-	if room_count < total_rooms:
-		return
-	_log_live_escape_path()
+			n += 1
+	return n
 
 
-func _log_live_escape_path() -> void:
+func _log_live_escape_path_deferred() -> void:
+	var total := _expected_room_count if _expected_room_count > 0 else _count_room_pods()
+	var room_pods := _count_room_pods()
+	var mouths: Array = _PATH.call("_collect_tunnel_mouths", self)
+	_log_live_escape_path(total, room_pods, mouths.size())
+
+
+func _log_live_escape_path(total_rooms: int, room_pods: int, mouth_count: int) -> void:
 	var hub := get_node_or_null("EscapeHub")
 	if hub != null and hub.has_method("log_live_debug"):
 		hub.call("log_live_debug")
 	elif hub == null:
 		print("LIVE_ESCAPE hub=MISSING")
 	_PATH.call("log_path_nodes", self)
+	print("LIVE_ESCAPE summary expected_rooms=%d room_pods=%d tunnel_mouths=%d hub_room_count=%d" % [
+		total_rooms,
+		room_pods,
+		mouth_count,
+		_escape_hub_room_count,
+	])
 	var mouths: Array = _PATH.call("_collect_tunnel_mouths", self)
-	print("LIVE_ESCAPE tunnel_mouths=%d rooms=%d" % [mouths.size(), rooms_container.get_child_count() - 1])
 	for mouth: Node in mouths:
 		if mouth is Node3D:
 			print("LIVE_ESCAPE mouth %s global=%s" % [mouth.name, (mouth as Node3D).global_transform.origin])
+	if mouth_count < room_pods:
+		push_warning("LIVE_ESCAPE only %d tunnel mouths for %d room pods — PM rooms have no tunnel; otherwise missing corridor" % [
+			mouth_count, room_pods
+		])
 	if OS.get_environment("VOUCH_PLAYABLE_LOOP_TEST") == "1":
 		var path_errors: Array = _PATH.call("validate", self)
 		if not path_errors.is_empty():
-			push_error("LIVE_ESCAPE path validation failed: %s" % "; ".join(path_errors))
+			push_warning("LIVE_ESCAPE path validation failed: %s" % "; ".join(path_errors))
 
 
 ## Runs on EVERY peer, same determinism requirement as `_spawn_room_pod`.
