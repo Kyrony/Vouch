@@ -98,6 +98,29 @@ static func build_hub_connector(
 	if floor_rise > 0.05:
 		build_ramp(parent, local_z, depth, inner_w, floor_rise * 0.65)
 	_add_sconce(parent, Vector3(-inner_w * 0.35, inner_h - 0.35 + floor_rise * 0.1, cz), inner_h)
+	var mouth_z := local_z + depth
+	var mouth_y := maxf(floor_rise * 1.05, 0.2)
+	var landing: StaticBody3D = _GEOM.call(
+		"box",
+		Vector3(inner_w, 0.22, 1.4),
+		Vector3(0, mouth_y, mouth_z - 0.55),
+		floor_mat,
+		1
+	)
+	landing.name = "EscapeTunnelLanding"
+	landing.add_to_group("escape_tunnel_floor")
+	parent.add_child(landing)
+	_add_tunnel_mouth_marker(parent, mouth_z, floor_rise)
+
+
+static func _add_tunnel_mouth_marker(parent: Node3D, mouth_z: float, floor_rise: float) -> void:
+	var marker := Marker3D.new()
+	marker.name = "EscapeTunnelMouth"
+	marker.position = Vector3(0, maxf(floor_rise * 1.05, 0.2), mouth_z)
+	marker.add_to_group("escape_tunnel_mouth")
+	marker.add_to_group("escape_path_node")
+	parent.add_child(marker)
+	print("ESCAPE_PATH tunnel mouth local_pos=%s parent=%s" % [marker.position, parent.name])
 
 
 static func _add_run_lights(parent: Node3D, start_z: float, length: float, inner_w: float, inner_h: float) -> void:

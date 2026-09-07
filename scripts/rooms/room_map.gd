@@ -278,7 +278,12 @@ func _build_pm_monitors() -> void:
 func _build_escape_corridor(corridor_out: Vector3, idx: int) -> void:
 	var grid_pos: Vector3 = WorldScale.room_grid_position(idx)
 	var dist := Vector2(grid_pos.x, grid_pos.z).length()
-	var horiz := clampf(dist - WorldScale.HUB_SHAFT_RADIUS - depth * 0.5, WorldScale.CORRIDOR_MIN, WorldScale.CORRIDOR_MAX)
+	var raw_horiz := dist - WorldScale.HUB_SHAFT_RADIUS - depth * 0.5
+	var horiz: float
+	if raw_horiz < 1.0:
+		horiz = 3.0
+	else:
+		horiz = clampf(raw_horiz, WorldScale.CORRIDOR_MIN, WorldScale.CORRIDOR_MAX)
 	var start_z := corridor_out.z + WALL
 	# Escape tunnels ramp upward toward the central shaft / mountain surface.
 	var rise := clampf(horiz * 0.045, 0.35, 2.2)

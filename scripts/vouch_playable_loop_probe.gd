@@ -4,10 +4,19 @@ extends SceneTree
 
 const _PLAYABLE: GDScript = preload("res://scripts/rooms/playable_loop_spawns.gd")
 const _ROOM_POD: GDScript = preload("res://scripts/room_pod.gd")
+const _PATH: GDScript = preload("res://scripts/rooms/escape_path_validator.gd")
 
 
 func _initialize() -> void:
-	var err := _probe()
+	call_deferred("_run_probe")
+
+
+func _run_probe() -> void:
+	await process_frame
+	await process_frame
+	await physics_frame
+	await physics_frame
+	var err: String = await _probe()
 	if err.is_empty():
 		print("PLAYABLE LOOP PROBE OK")
 		quit(0)
@@ -38,11 +47,14 @@ func _probe() -> String:
 
 	var room_pod: Node = match_root.call("_spawn_room_pod", data)
 	if room_pod == null:
-		match_root.free()
+		match_root.queue_free()
 		return "Match._spawn_room_pod returned null"
+	match_root.add_child(room_pod)
 	if room_pod.get_child_count() < 1:
-		match_root.free()
+		match_root.queue_free()
 		return "RoomPod has no map child"
+
+	await process_frame
 
 	var map: Node = room_pod.get_child(0)
 	var spawn_local: Vector3 = Vector3.ZERO
@@ -51,12 +63,12 @@ func _probe() -> String:
 
 	var comms_errors: Array = _PLAYABLE.call("validate", map, spawn_local)
 	if not comms_errors.is_empty():
-		match_root.free()
+		match_root.queue_free()
 		return "; ".join(comms_errors)
 
 	var hub := match_root.get_node_or_null("EscapeHub")
 	if hub == null:
-		match_root.free()
+		match_root.queue_free()
 		return "EscapeHub node missing after _spawn_room_pod"
 
 	var ramp_steps: Array = []
@@ -64,41 +76,20 @@ func _probe() -> String:
 		if c.is_in_group("escape_hub_ramp"):
 			ramp_steps.append(c)
 	if ramp_steps.is_empty():
-		match_root.free()
+		match_root.queue_free()
 		return "EscapeHub has no escape_hub_ramp collision segments"
 
-	var zone := hub.get_node_or_null("OutsideEscapeZone")
-	if zone == null:
-		match_root.free()
-		return "OutsideEscapeZone missing"
-	if int(zone.collision_layer) != 1:
-		match_root.free()
-		return "OutsideEscapeZone collision_layer=%d expected 1" % int(zone.collision_layer)
-	if int(zone.collision_mask) & 4 == 0:
-		match_root.free()
-		return "OutsideEscapeZone collision_mask does not include player layer 4"
+	_PATH.call("log_path_nodes", match_root)
 
-	# Player CharacterBody3D mask=1 must overlap zone layer 1.
-	var player_mask := 1
-	if (player_mask & int(zone.collision_layer)) == 0:
-		match_root.free()
-		return "Player collision_mask=%d cannot detect zone on layer %d" % [player_mask, int(zone.collision_layer)]
-
-	var has_collision := false
-	for step in ramp_steps:
-		if step is StaticBody3D:
-			for ch in step.get_children():
-				if ch is CollisionShape3D:
-					has_collision = true
-					break
-	if not has_collision:
-		match_root.free()
-		return "Hub ramp has no CollisionShape3D children"
+	var path_errors: Array = _PATH.call("validate", match_root)
+	if not path_errors.is_empty():
+		match_root.queue_free()
+		return "; ".join(path_errors)
 
 	print("  Phone dist=%.2fm Walkie dist=%.2fm ramp_segments=%d" % [
 		spawn_local.distance_to(map.get_node("Phone").position),
 		spawn_local.distance_to(map.get_node("WalkieTalkie").position),
 		ramp_steps.size(),
 	])
-	match_root.free()
+	match_root.queue_free()
 	return ""

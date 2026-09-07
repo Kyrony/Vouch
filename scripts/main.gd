@@ -4,6 +4,7 @@ extends Node
 const _ATTACHMENT: GDScript = preload("res://scripts/rooms/spawn_attachment_validator.gd")
 const _ROOM_POD: GDScript = preload("res://scripts/room_pod.gd")
 const _PLAYABLE: GDScript = preload("res://scripts/rooms/playable_loop_spawns.gd")
+const _PATH: GDScript = preload("res://scripts/rooms/escape_path_validator.gd")
 const EXPECTED_SLOT_COUNT: int = 16
 
 @onready var lobby: Control = $Lobby
@@ -32,7 +33,11 @@ func _ready() -> void:
 
 func _run_playable_loop_test() -> void:
 	world.visible = true
-	var err := _probe_playable_loop_match_path()
+	call_deferred("_run_playable_loop_test_async")
+
+
+func _run_playable_loop_test_async() -> void:
+	var err: String = await _probe_playable_loop_match_path()
 	if not err.is_empty():
 		push_error("PLAYABLE LOOP TEST FAILED: %s" % err)
 		get_tree().quit(1)
@@ -58,6 +63,7 @@ func _probe_playable_loop_match_path() -> String:
 	var room_pod: Node = match_node._spawn_room_pod(data)
 	if room_pod == null:
 		return "Match._spawn_room_pod returned null"
+	match_node.add_child(room_pod)
 	if room_pod.get_child_count() < 1:
 		return "RoomPod has no map child"
 	var map: Node = room_pod.get_child(0)
@@ -76,6 +82,13 @@ func _probe_playable_loop_match_path() -> String:
 		return "EscapeHub has no ramp collision (found %d)" % ramp_count
 	if hub.get_node_or_null("OutsideEscapeZone") == null:
 		return "OutsideEscapeZone missing"
+	await get_tree().process_frame
+	await get_tree().physics_frame
+	await get_tree().physics_frame
+	_PATH.call("log_path_nodes", match_node)
+	var path_errors: Array = _PATH.call("validate", match_node)
+	if not path_errors.is_empty():
+		return "; ".join(path_errors)
 	print("  playable loop: phone_dist=%.2f walkie_dist=%.2f hub_ramps=%d" % [
 		spawn_local.distance_to(map.get_node("Phone").position),
 		spawn_local.distance_to(map.get_node("WalkieTalkie").position),
