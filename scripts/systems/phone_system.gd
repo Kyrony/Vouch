@@ -83,6 +83,11 @@ func server_handle_send_text(sender_peer: int, message: String) -> void:
 	# Truncate hard so a griefer can't spam huge payloads across the wire.
 	var clipped_message: String = message.substr(0, 140)
 
+	var sender_room: int = GameState.players.get(sender_peer, {}).get("room_id", -1)
+	if sender_room >= 0 and not RoomUtilities.is_enabled(sender_room, RoomUtilities.UTILITY_COMMS):
+		_notify_sent(sender_peer)
+		return
+
 	if candidates.is_empty():
 		_notify_sent(sender_peer)
 		return

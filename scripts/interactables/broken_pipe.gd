@@ -40,6 +40,8 @@ func _ready() -> void:
 
 ## Called server-side by LinkGraph when a linked valve is activated.
 func server_apply_effect() -> void:
+	if not RoomUtilities.is_enabled(room_index, RoomUtilities.UTILITY_WATER):
+		return
 	water_level = minf(water_level + LEVEL_INCREMENT, MAX_LEVEL)
 	GameState.room_water_levels[room_index] = water_level
 	_apply_visual(water_level)
