@@ -4,7 +4,6 @@ class_name RoomLayouts
 
 const HEIGHT: float = 2.6
 const WALL: float = 0.12
-const DOOR_W: float = 0.85
 
 
 static func get_layout(room_id: int) -> Dictionary:
@@ -62,31 +61,74 @@ static func _base(name: String, id: int, w: float, d: float, theme: String, part
 		"spawn": Vector3(0, 0.1, hd - 1.6),
 		"escape": Vector3(0, 1.025, hd - WALL),
 		"corridor_out": Vector3(0, 1.025, hd + 0.15),
-		"slots": slot_ring(id, w, d),
+		"slots": slot_layout(id, w, d),
 	}
 
 
-static func slot_ring(room_id: int, w: float, d: float) -> Array:
+static func slot_layout(room_id: int, w: float, d: float) -> Array:
 	var rng := RandomNumberGenerator.new()
 	rng.seed = room_id * 104729
-	var hw := w * 0.5 - 0.55
-	var hd := d * 0.5 - 0.55
-	var pts: Array = []
-	var wall_heights := [0.45, 0.9, 1.15, 1.25, 1.35, 2.0, 2.35]
-	for i in range(16):
-		var edge := i % 4
-		var t := rng.randf_range(0.15, 0.85)
-		var y: float = wall_heights[i % wall_heights.size()]
-		match edge:
-			0:
-				pts.append(Vector3(lerpf(-hw, hw, t), y, hd - 0.35))
-			1:
-				pts.append(Vector3(hw - 0.35, y, lerpf(hd, -hd, t)))
-			2:
-				pts.append(Vector3(lerpf(hw, -hw, t), y, -hd + 0.35))
-			_:
-				pts.append(Vector3(-hw + 0.35, y, lerpf(-hd, hd, t)))
-	return pts
+	var hw := w * 0.5 - 0.5
+	var hd := d * 0.5 - 0.5
+	var flush := 0.08
+	var slots: Array = []
+
+	# 1× wall+floor (fireplace)
+	slots.append({
+		"position": Vector3(rng.randf_range(-hw * 0.35, hw * 0.35), 0.0, hd - flush),
+		"surface_type": "wall_floor",
+		"wall_normal": Vector3(0, 0, -1),
+	})
+
+	# 9× wall (switch, phone, camera, exhaust, valves, electrical, terminal, monitor, gas)
+	var wall_heights := [1.25, 1.15, 2.35, 1.45, 1.1, 0.95, 1.0, 1.35, 1.2]
+	var wall_faces := ["s", "s", "e", "w", "n", "e", "w", "n", "s"]
+	for i in range(9):
+		var face: String = wall_faces[i]
+		var t := rng.randf_range(0.22, 0.78)
+		slots.append(_wall_slot(hw, hd, flush, face, wall_heights[i], t))
+
+	# 6× floor (drain, ladder, props, bookcase)
+	for i in range(6):
+		slots.append({
+			"position": Vector3(
+				rng.randf_range(-hw * 0.55, hw * 0.55),
+				0.0,
+				rng.randf_range(-hd * 0.55, hd * 0.55)
+			),
+			"surface_type": "floor",
+			"wall_normal": Vector3(0, 1, 0),
+		})
+
+	return slots
+
+
+static func _wall_slot(hw: float, hd: float, flush: float, face: String, height: float, t: float) -> Dictionary:
+	match face:
+		"s":
+			return {
+				"position": Vector3(lerpf(-hw, hw, t), height, hd - flush),
+				"surface_type": "wall",
+				"wall_normal": Vector3(0, 0, -1),
+			}
+		"n":
+			return {
+				"position": Vector3(lerpf(-hw, hw, t), height, -hd + flush),
+				"surface_type": "wall",
+				"wall_normal": Vector3(0, 0, 1),
+			}
+		"e":
+			return {
+				"position": Vector3(hw - flush, height, lerpf(-hd, hd, t)),
+				"surface_type": "wall",
+				"wall_normal": Vector3(-1, 0, 0),
+			}
+		_:
+			return {
+				"position": Vector3(-hw + flush, height, lerpf(-hd, hd, t)),
+				"surface_type": "wall",
+				"wall_normal": Vector3(1, 0, 0),
+			}
 
 
 static func _studio(id: int, w: float, d: float) -> Dictionary:

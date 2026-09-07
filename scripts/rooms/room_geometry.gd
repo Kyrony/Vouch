@@ -2,6 +2,8 @@ extends RefCounted
 class_name RoomGeometry
 ## Builds sealed solid geometry for one fixed room layout.
 
+const _GEOM: GDScript = preload("res://scripts/rooms/geometry_util.gd")
+
 const WALL: float = 0.12
 const DOOR_W: float = 0.85
 const DOOR_H: float = 2.05
@@ -41,7 +43,6 @@ static func build(parent: Node3D, layout: Dictionary, theme: Dictionary) -> void
 		root.add_child(_box(prop["size"], prop["pos"], trim_mat, false))
 
 	_add_trim(root, w, d, trim_mat)
-	_add_ceiling_light(root, layout, theme)
 
 	if layout.get("loft", false):
 		var loft_y := h * 0.55
@@ -107,30 +108,6 @@ static func _add_trim(parent: Node3D, w: float, d: float, mat: Material) -> void
 	parent.add_child(_box(Vector3(td, th, d), Vector3(-hw + td * 0.5, th * 0.5, 0), mat, false))
 
 
-static func _add_ceiling_light(parent: Node3D, layout: Dictionary, theme: Dictionary) -> void:
-	var light_root := Node3D.new()
-	light_root.name = "RoomCeilingLight"
-	light_root.position = Vector3(0, layout["height"] - 0.2, 0)
-	var omni := OmniLight3D.new()
-	omni.light_color = theme["light_color"]
-	omni.light_energy = 1.5
-	omni.omni_range = maxf(layout["width"], layout["depth"]) + 2.0
-	omni.shadow_enabled = true
-	light_root.add_child(omni)
-	var bulb := MeshInstance3D.new()
-	var sp := SphereMesh.new()
-	sp.radius = 0.11
-	sp.height = 0.22
-	bulb.mesh = sp
-	var bm := StandardMaterial3D.new()
-	bm.emission_enabled = true
-	bm.emission = theme["light_color"]
-	bm.emission_energy_multiplier = 1.4
-	bulb.set_surface_override_material(0, bm)
-	light_root.add_child(bulb)
-	parent.add_child(light_root)
-
-
 static func _build_stairs(parent: Node3D, spec: Dictionary, floor_mat: Material, wall_mat: Material) -> void:
 	var pos: Vector3 = spec["pos"]
 	var size: Vector2 = spec["size"]
@@ -147,23 +124,7 @@ static func _build_stairs(parent: Node3D, spec: Dictionary, floor_mat: Material,
 
 
 static func _box(size: Vector3, pos: Vector3, mat: Material, collision: bool = true) -> StaticBody3D:
-	var body := StaticBody3D.new()
-	body.collision_layer = 1 if collision else 0
-	body.collision_mask = 0
-	body.position = pos
-	var mi := MeshInstance3D.new()
-	var bm := BoxMesh.new()
-	bm.size = size
-	mi.mesh = bm
-	mi.set_surface_override_material(0, mat)
-	body.add_child(mi)
-	if collision:
-		var col := CollisionShape3D.new()
-		var sh := BoxShape3D.new()
-		sh.size = size
-		col.shape = sh
-		body.add_child(col)
-	return body
+	return _GEOM.call("box", size, pos, mat, 1 if collision else 0)
 
 
 static func _mat(color: Color, rough: float) -> StandardMaterial3D:

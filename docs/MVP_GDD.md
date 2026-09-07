@@ -64,41 +64,32 @@ Each player spawns **alone** inside one **complete room map** (`RoomMap` script 
 from 2D plans — each scene is a single baked living space with fixed width/length/height.
 
 - **20 unique layouts** defined in `scripts/rooms/room_layouts.gd` and built by
-  `scripts/rooms/room_geometry.gd` (sealed walls, trim, furniture, ceiling light).
-- **16 item spawn slots** per room (`ItemSpawnSlot` markers under `ItemSpawns/`).
-  `ItemSpawnSystem` randomly assigns interactables to slots at `configure()` time
-  (deterministic from `rng_seed`).
+  `scripts/rooms/room_geometry.gd` (sealed walls, trim, furniture).
+- **16 item spawn slots** per room (`ItemSpawnSlot` markers under `ItemSpawns/`),
+  typed by surface (`wall`, `floor`, `wall_floor`). `ItemSpawnSystem` assigns
+  interactables to compatible slots at `configure()` time (deterministic from `rng_seed`).
 - **Theme** — Bedroom / Utility / Creepy Basement palette per layout.
-- **Escape** — south entry door or bath vent; sealed corridor to central hub.
-- **Puppet Master** — `Room_PM.tscn` (21st fixed room).
+- **Escape** — south entry door or wall vent; concrete tunnel to central hub.
+- **Puppet Master** — `Room_PM.tscn` (21st fixed room, no escape).
+- **Optional hazards**: water valve, electrical box, code-locked escape,
+  fireplace, drains, exhaust vents, physics flammables (`FireSystem`).
 
 Headless validation: `VOUCH_ROOM_SPAWN_TEST=1 godot4 --headless --path .`
-(and `VOUCH_MATCH_SPAWN_TEST=1` for full match spawn).
+Headless match spawn: `VOUCH_MATCH_SPAWN_TEST=1 godot4 --headless --path .`
 
-- **Theme** - one of three palettes: **Bedroom**, **Utility Room**,
-  **Creepy Basement** (rolled per room from seed).
-- **Layout** - living / bedroom / bath / hall / closet zones with
-  interior and exterior door openings (~3.5 ft wide).
-- **Escape varies**: most rooms escape through the **south entry door**;
-  some use a **vent** in bath/closet instead. **Exactly one room may
-  have no escape** - the Puppet Master.
-- **Optional hazards**: water valve (mystery flood control), electrical
-  box, code-locked escape (host odds), **fireplace + floor gas riser**
-  (clue book sometimes spawns inside), **floor drains** and **exhaust
-  vents**, **physics flammables** (books/papers/ladders via `FireSystem`).
+### World layout (underground escape hub → mountain surface)
 
-### World layout (underground escape hub)
-
-- Each room's escape door/vent opens with a **swing/slide animation** —
-  no teleport through transitions. Walk through the opening into a
-  **horizontal escape hall**, then a **vertical rise** into a shared
-  central shaft; **Outside** sits at the top (`EscapeHub` + `Outside`).
-- Rooms **rotate** so their escape faces the hub at world origin.
-- Walls are **sealed kit modules** with door lintels; escape routes are
-  **long sealed corridor kit segments** (18–46 m horiz + vertical rise)
-  with sconce lighting — walk through, no teleport.
-- Two-story plan IDs (15–20) use a **stairwell module** plus upper-floor
-  bedroom/bath pieces instead of CSG stair cutouts.
+- Every player room sits **12 m underground** (`WorldScale.UNDERGROUND_DEPTH`).
+  Escape door/vent opens with **swing/slide animation** — walk through, no teleport.
+- Each room connects via a **concrete bunker tunnel** (`TunnelKit`) toward the
+  shared hub at world origin. Tunnels are enclosed (walls/floor/ceiling) with
+  sconce lighting every ~8 m.
+- All tunnels converge at **`EscapeHub`** — a central shaft with a walkable
+  stairwell rising to the **mountain clearing** (`Outside` at surface Y=0).
+- Rooms **rotate** so their escape tunnel faces the hub; grid spacing keeps
+  tunnel runs 18–46 m before the hub connector.
+- **Outside** graybox: rocky clearing, sloped shoulders, distant peaks, outdoor
+  sky/fog — readable as “you emerged on a mountain.”
 
 ### In-match UI
 
@@ -109,10 +100,7 @@ Headless validation: `VOUCH_ROOM_SPAWN_TEST=1 godot4 --headless --path .`
   decimal; success slides a bookcase and activates a wall monitor with a
   live peek into another player's room.
 
-TODO(post-MVP): richer decoration, per-plan prop sets.
-
-Headless floor-plan validation: `VOUCH_FLOOR_PLAN_TEST=1 godot4 --headless --path .`
-Headless match spawn validation: `VOUCH_MATCH_SPAWN_TEST=1 godot4 --headless --path .`
+TODO(post-MVP): richer decoration, per-room prop art passes.
 
 ## Puppet Master
 
@@ -123,12 +111,11 @@ Headless match spawn validation: `VOUCH_MATCH_SPAWN_TEST=1 godot4 --headless --p
   `SPAWN_CHANCE`) - most matches below 4 players, or that lose the coin
   flip, have no Puppet Master at all and just play as a normal N-faction
   escape match.
-- Their room is always a **perfect, unadorned box** (no closet/hallway/
-  vent connector module) with a few decorative **monitor screens** on
-  the wall - see `RoomPod._build_monitors()`. The FUNCTIONAL camera feeds
-  are a PM-only HUD panel, not these world-space screens, so anyone who
-  wanders into the PM's room (nothing stops them) can't peek at the live
-  feeds just by looking at the wall.
+- Their room is **`Room_PM.tscn`** — a plain fixed map with decorative
+  **monitor screens** on the wall (`RoomMap._build_pm_monitors()`). The
+  FUNCTIONAL camera feeds are a PM-only HUD panel, not these world-space
+  screens, so anyone who wanders into the PM's room (nothing stops them)
+  can't peek at the live feeds just by looking at the wall.
 - **Goal**: eliminate every other player before any faction fully
   escapes.
 - **Any control in the Puppet Master's own room must never affect their

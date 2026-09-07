@@ -5,14 +5,10 @@ class_name RoomMap
 const _LAYOUTS: GDScript = preload("res://scripts/rooms/room_layouts.gd")
 const _GEOMETRY: GDScript = preload("res://scripts/rooms/room_geometry.gd")
 const _ITEMS: GDScript = preload("res://scripts/rooms/item_spawn_system.gd")
+const _SLOT_SCRIPT: GDScript = preload("res://scripts/rooms/item_spawn_slot.gd")
+const _TUNNEL: GDScript = preload("res://scripts/rooms/tunnel_kit.gd")
 
-const DOOR_W: float = 0.85
-const DOOR_H: float = 2.05
-const HUB_SHAFT_RADIUS: float = 1.45
-const HUB_HALL_WIDTH: float = 1.25
-const HUB_HALL_HEIGHT: float = 2.5
-const HUB_SHAFT_HEIGHT: float = 10.0
-const WALL: float = 0.12
+const WALL: float = WorldScale.WALL_THICK
 
 const THEMES: Array[Dictionary] = [
 	{
@@ -41,7 +37,7 @@ const THEMES: Array[Dictionary] = [
 	},
 ]
 
-enum EscapeKind { DOOR, VENT, NONE }
+enum EscapeKind { DOOR, VENT }
 
 @export var room_id: int = 1
 @export var is_puppet_master: bool = false
@@ -129,14 +125,11 @@ func configure(data: Dictionary) -> void:
 
 	_ITEMS.call("spawn_room_effects", self, ctx)
 
-	if escape_kind != EscapeKind.NONE:
-		var escape_pos: Vector3 = _layout["escape"]
-		if escape_kind == EscapeKind.VENT:
-			var vent_slot := get_node_or_null("ItemSpawns/Slot_16") as Marker3D
-			if vent_slot:
-				escape_pos = vent_slot.position + Vector3(0, -0.3, 0)
-		_ITEMS.call("spawn_escape", self, ctx, escape_pos, escape_kind == EscapeKind.VENT)
-		_build_escape_corridor(_layout["corridor_out"], data["room_index"])
+	var escape_pos: Vector3 = _layout["escape"]
+	if escape_kind == EscapeKind.VENT:
+		escape_pos = _vent_escape_position()
+	_ITEMS.call("spawn_escape", self, ctx, escape_pos, escape_kind == EscapeKind.VENT)
+	_build_escape_corridor(_layout["corridor_out"], data["room_index"])
 
 	if data.get("requires_code", false):
 		mark_escape_locked()
@@ -194,15 +187,29 @@ func _ensure_markers() -> void:
 		slots_root = Node3D.new()
 		slots_root.name = "ItemSpawns"
 		add_child(slots_root)
-		var slot_script := preload("res://scripts/rooms/item_spawn_slot.gd")
-		var positions: Array = _layout.get("slots", [])
-		for i in range(16):
-			var slot := Marker3D.new()
-			slot.set_script(slot_script)
-			slot.name = "Slot_%02d" % (i + 1)
-			slot.set("slot_index", i + 1)
-			slot.position = positions[i] if i < positions.size() else Vector3.ZERO
+		var slot_defs: Array = _layout.get("slots", [])
+		for i in range(mini(16, slot_defs.size())):
+			var data: Dictionary = slot_defs[i]
+			var slot: Marker3D = _SLOT_SCRIPT.call("from_dict", i + 1, data)
 			slots_root.add_child(slot)
+
+
+func _vent_escape_position() -> Vector3:
+	var best_y := 0.0
+	var best_pos: Vector3 = _layout.get("escape", Vector3.ZERO)
+	var root := get_node_or_null("ItemSpawns")
+	if not root:
+		return best_pos
+	for c in root.get_children():
+		if not c is Marker3D or not c.get("surface_kind"):
+			continue
+		if c.surface_kind != "wall":
+			continue
+		if c.position.y > best_y:
+			best_y = c.position.y
+			var n: Vector3 = c.wall_normal.normalized()
+			best_pos = c.position - n * 0.04
+	return best_pos
 
 
 func _configure_pm(data: Dictionary, _rng: RandomNumberGenerator) -> void:
@@ -220,7 +227,7 @@ func _pm_layout() -> Dictionary:
 		"spawn": Vector3(0, 0.1, 1.5),
 		"escape": Vector3.ZERO,
 		"corridor_out": Vector3.ZERO,
-		"slots": _LAYOUTS.call("slot_ring", 99, 6.0, 6.0),
+		"slots": _LAYOUTS.call("slot_layout", 99, 6.0, 6.0),
 	}
 
 
@@ -262,58 +269,12 @@ func _build_pm_monitors() -> void:
 
 
 func _build_escape_corridor(corridor_out: Vector3, idx: int) -> void:
-	var wall_mat := _accent_material(_theme["wall_color"])
-	var floor_mat := _accent_material(_theme["floor_color"])
 	var grid_pos := Match.room_grid_position(idx)
 	var dist := Vector2(grid_pos.x, grid_pos.z).length()
-	var horiz := clampf(dist - HUB_SHAFT_RADIUS - depth * 0.5, 18.0, 46.0)
+	var horiz := clampf(dist - WorldScale.HUB_SHAFT_RADIUS - depth * 0.5, WorldScale.CORRIDOR_MIN, WorldScale.CORRIDOR_MAX)
 	var start_z := corridor_out.z + WALL
-	_tunnel_run(start_z, horiz, HUB_HALL_WIDTH, HUB_HALL_HEIGHT, wall_mat, floor_mat, true, true)
-	_tunnel_vertical(start_z + horiz, HUB_SHAFT_HEIGHT, HUB_HALL_WIDTH, HUB_HALL_HEIGHT, wall_mat, floor_mat)
-
-
-func _tunnel_run(start_z: float, length: float, inner_w: float, inner_h: float, wall_mat: Material, floor_mat: Material, open_near: bool, open_far: bool) -> void:
-	if length < 0.5:
-		return
-	var cz := start_z + length * 0.5
-	add_child(_tunnel_box(Vector3(inner_w, WALL, length), Vector3(0, -WALL * 0.5, cz), floor_mat))
-	add_child(_tunnel_box(Vector3(inner_w + WALL * 2.0, WALL, length + WALL * 2.0), Vector3(0, inner_h + WALL * 0.5, cz), wall_mat, false))
-	add_child(_tunnel_box(Vector3(WALL, inner_h, length), Vector3(-inner_w / 2.0 - WALL / 2.0, inner_h / 2.0, cz), wall_mat))
-	add_child(_tunnel_box(Vector3(WALL, inner_h, length), Vector3(inner_w / 2.0 + WALL / 2.0, inner_h / 2.0, cz), wall_mat))
-	if not open_near:
-		add_child(_tunnel_box(Vector3(inner_w, inner_h, WALL), Vector3(0, inner_h / 2.0, start_z - WALL / 2.0), wall_mat))
-	if not open_far:
-		add_child(_tunnel_box(Vector3(inner_w, inner_h, WALL), Vector3(0, inner_h / 2.0, start_z + length + WALL * 0.5), wall_mat))
-
-
-func _tunnel_vertical(base_z: float, rise_h: float, inner_w: float, inner_h: float, wall_mat: Material, floor_mat: Material) -> void:
-	var cz := base_z
-	add_child(_tunnel_box(Vector3(inner_w, WALL, inner_w), Vector3(0, -WALL * 0.5, cz), floor_mat))
-	add_child(_tunnel_box(Vector3(inner_w + WALL * 2.0, WALL, inner_w + WALL * 2.0), Vector3(0, rise_h + WALL * 0.5, cz), wall_mat, false))
-	add_child(_tunnel_box(Vector3(WALL, rise_h, inner_w), Vector3(-inner_w / 2.0 - WALL / 2.0, rise_h / 2.0, cz), wall_mat))
-	add_child(_tunnel_box(Vector3(WALL, rise_h, inner_w), Vector3(inner_w / 2.0 + WALL / 2.0, rise_h / 2.0, cz), wall_mat))
-	add_child(_tunnel_box(Vector3(inner_w, rise_h, WALL), Vector3(0, rise_h / 2.0, cz - inner_w / 2.0 - WALL / 2.0), wall_mat))
-	add_child(_tunnel_box(Vector3(inner_w, rise_h, WALL), Vector3(0, rise_h / 2.0, cz + inner_w / 2.0 + WALL / 2.0), wall_mat))
-
-
-func _tunnel_box(size: Vector3, pos: Vector3, mat: Material, collision: bool = true) -> StaticBody3D:
-	var body := StaticBody3D.new()
-	body.collision_layer = 1 if collision else 0
-	body.collision_mask = 0
-	body.position = pos
-	var mi := MeshInstance3D.new()
-	var bm := BoxMesh.new()
-	bm.size = size
-	mi.mesh = bm
-	mi.set_surface_override_material(0, mat)
-	body.add_child(mi)
-	if collision:
-		var col := CollisionShape3D.new()
-		var sh := BoxShape3D.new()
-		sh.size = size
-		col.shape = sh
-		body.add_child(col)
-	return body
+	_TUNNEL.call("build_horizontal", self, start_z, horiz, WorldScale.HUB_HALL_W, WorldScale.HUB_HALL_H, true, true)
+	_TUNNEL.call("build_hub_connector", self, start_z + horiz, WorldScale.HUB_HALL_W, WorldScale.HUB_HALL_H)
 
 
 static func _accent_material(color: Color) -> StandardMaterial3D:

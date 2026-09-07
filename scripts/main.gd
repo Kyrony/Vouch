@@ -15,8 +15,6 @@ func _ready() -> void:
 	pause_menu.debug_gui_requested.connect(_on_pause_debug)
 	if OS.get_environment("VOUCH_ROOM_SPAWN_TEST") == "1":
 		call_deferred("_run_room_spawn_test")
-	elif OS.get_environment("VOUCH_FLOOR_PLAN_TEST") == "1":
-		call_deferred("_run_room_spawn_test")
 	if OS.get_environment("VOUCH_MATCH_SPAWN_TEST") == "1":
 		call_deferred("_run_match_spawn_test")
 
@@ -30,7 +28,6 @@ func _run_match_spawn_test() -> void:
 		"rng_seed": 12345,
 		"is_puppet_master": false,
 		"room_scene_id": 4,
-		"floor_plan_id": "04",
 		"has_valve": false,
 		"total_rooms": 1,
 	}
@@ -69,7 +66,6 @@ func _spawn_test_room(room_id: int) -> RoomPod:
 		"rng_seed": room_id * 1000,
 		"is_puppet_master": false,
 		"room_scene_id": room_id,
-		"floor_plan_id": "%02d" % room_id,
 		"has_valve": false,
 		"total_rooms": 1,
 	})

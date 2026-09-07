@@ -145,8 +145,9 @@ persists locally between sessions.
   by keyboard/gamepad focus + confirm.
 - **Escape + win-check** (`scripts/systems/escape_system.gd`): open your
   escape door/vent (animated swing/slide — walk through, no teleport),
-  follow the **escape hall** up to the shared **Outside** hub at the
-  shaft top, and enter the escape zone. The first faction with **all**
+  follow a **concrete bunker tunnel** to the shared hub, climb the shaft
+  stairwell, and emerge on the **mountain clearing** (`Outside` at surface).
+  Enter the escape zone to register your escape. The first faction with **all**
   members escaped wins — logged to console (`[EscapeSystem] MATCH OVER - ...`).
 - **World v2 interactables**: grabbable **ladder** (place, lean into wall,
   climb), **fireplace** with floor gas line, physics **books** that burn,
@@ -223,7 +224,7 @@ scenes/
   Match/Props/               Small graybox decoration scenes (crate/shelf/barrel)
   Match/Interactables/       Ladder.tscn (climbable + movable)
   DebugGui.tscn              Dev/host debug panel (Home key — remove before release)
-  Outside/Outside.tscn       Shared post-escape courtyard + test-only gun/dummy range
+  Outside/Outside.tscn       Shared mountain clearing (post-escape) + test-only gun/dummy range
   Player/Player.tscn         First-person player pawn + HUD (phone/keypad/camera/eliminated panels)
 scripts/
   main.gd, match.gd, outside.gd, lobby.gd, player.gd, room_pod.gd
@@ -234,7 +235,7 @@ scripts/
                               LightSwitch, WaterValve, Door (door/vent), Phone, RoomLight,
                               BrokenPipe, SecurityCamera, Ladder, CodeKeypad, ClueBook,
                               ClueFlamePaper, Flame, MovableProp, ElectricalBox,
-                              GasValve, GasLeak, SlideBlocker, Gun*, DummyTarget*,
+                              GasValve, GasLeak, Gun*, DummyTarget*,
                               TestProjectile* (* test-only)
 assets/
   materials/                  Shared graybox materials + default environment
