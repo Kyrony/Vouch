@@ -91,10 +91,14 @@ persists locally between sessions.
   list** visible to everyone before the match starts, and host-only
   **match spawn odds** sliders (`scripts/autoload/match_settings.gd`)
   for code locks / flame paper / flood valves / hidden hallways.
-- **Modular procedural rooms**: every room is 1-2 chained modules (a
-  Bedroom/Utility/Basement main room plus an optional Closet/Hallway/
-  Vent connector), seamlessly joined with no gaps or void-peeking, with
-  oversized pipes/wires so nothing shows a floating cut end
+- **Modular procedural rooms**: every room is 1–4 chained modules (a
+  Bedroom/Utility/Basement main room plus optional Closet/Hallway/Vent/
+  **Slide** connectors), with openings on north/east/west walls or the
+  ceiling (ceiling vents use a vertical shaft). Multi-room odds: **80%**
+  for a 2nd module, **20%** for a 3rd, **1%** for a 4th; 2+ modules
+  always get a connector between them. **Slide** connectors are one-way
+  (Area3D blocker prevents returning through the slide tunnel).
+  Seamless joins, widened hallway/vent collision, oversized pipes/wires
   (`scripts/room_pod.gd`).
 - **Faction assignment** on match start, round-robin across the 4 MVP
   factions (Red Vipers / Blue Ash / Green Hollow / Yellow Sparks). Each
@@ -109,11 +113,15 @@ persists locally between sessions.
   affect their own room - see `LinkGraph`. They win if everyone else is
   eliminated before any faction fully escapes - otherwise the first
   fully-escaped faction wins as normal.
-- **Mystery controls** (`scripts/systems/link_graph.gd`): light switches
-  and water valves secretly wired to a light or a broken pipe in
-  *someone else's* room, with a mathematically guaranteed derangement -
-  no control ever links back to its own room. You get ambiguous local
-  feedback (a "tick"), they get a clear local event.
+- **Mystery controls** (`scripts/systems/link_graph.gd`): light switches,
+  water valves, and gas valves secretly wired to a light, broken pipe, or
+  gas leak in *someone else's* room, with a mathematically guaranteed
+  derangement - no control ever links back to its own room. You get
+  ambiguous local feedback (a "tick"), they get a clear local event.
+- **Room utilities** (`scripts/autoload/room_utilities.gd`): each room
+  tracks **Power / Water / Gas / Communication**. Lights need power,
+  flooding needs water utility, phones need comms. An **electrical box**
+  puzzle (3 broken wires + live wire) can route power to another room.
 - **Flooding**: activate a linked water valve to raise water in a
   *different* room - slows movement for anyone standing in it and can
   physically block escape past a threshold.
@@ -126,8 +134,9 @@ persists locally between sessions.
   reveal a hidden hallway/vent; each room's phone and security camera
   can be destroyed by **holding** `F` (a HUD progress bar shows the
   hold), host-authoritative and replicated. The security camera is
-  mounted near the ceiling and needs its room's **ladder** (real
-  climbing physics) to reach.
+  mounted near the ceiling and needs its room's **ladder** (climbable,
+  **pick up and place** against the nearest wall, real climbing physics)
+  to reach.
 - **Phone**, redesigned: unknown/random line, text-first, tagged with an
   anonymous per-match "line id". **Click any contact to rename it**
   locally (`scripts/autoload/contact_book.gd`) - a personal memory aid,
@@ -140,10 +149,14 @@ persists locally between sessions.
 - **Player movement stub**: first-person `CharacterBody3D` with
   authority-gated input, ladder-climbing physics, and replicated
   transform via `MultiplayerSynchronizer`.
+- **Host spawn odds UI**: cleaner labels; **host-only** editable sliders,
+  clients see a read-only notice (`scripts/lobby.gd`).
+- **Debug GUI** (`scripts/debug_gui.gd`, toggle **Home** key): host-only
+  spawn/test buttons — **REMOVE OR GATE BEFORE RELEASE**.
 - **\*\*\* TEST-ONLY, REMOVE BEFORE FULL RELEASE \*\*\*** - a pickup gun
-  and a few dummy targets in the Outside courtyard, purely to manually
-  verify hit-registration during development. See "Test-only tools"
-  below.
+  firing **visible projectiles** (`TestProjectile`) and dummy targets in
+  the Outside courtyard for hit-registration testing. See "Test-only
+  tools" below.
 
 ## What's explicitly NOT implemented (don't assume otherwise)
 
@@ -158,8 +171,8 @@ persists locally between sessions.
   with no sabotage/mechanics in MVP.
 - **PA announcements and window/note comms.** Called out in the design
   doc as planned, not built - only the phone stub exists so far.
-- **More than one sabotage verb for the Puppet Master**, and only two
-  mystery-control channels (light, flood).
+- **More than one sabotage verb for the Puppet Master**, and four utility
+  channels (light/power, flood/water, gas, comms) — gas is a stub effect.
 - **Puzzle gating for anything besides escape.** The core is reusable for
   camera/feature gating, but only escape is wired up.
 - **Real fluid simulation for flooding.** A single rising water plane
@@ -174,13 +187,14 @@ pointing at what's missing.
 ## Test-only tools (*** REMOVE BEFORE FULL RELEASE ***)
 
 The Outside courtyard has a `TestRange_RemoveBeforeRelease` node with a
-pickup `Gun` and a few `DummyTarget` props, used solely to manually
+pickup `Gun`, **`TestProjectile`**, and a few `DummyTarget` props, used solely to manually
 verify multiplayer hit-registration during development - no ammo, no
 damage model, no gameplay purpose. Before shipping, remove:
 `scripts/interactables/gun.gd`, `scripts/interactables/dummy_target.gd`,
-the `fire` input action in `project.godot`, the `has_gun`/`_fire_gun()`
-bits in `scripts/player.gd`, and the `TestRange_RemoveBeforeRelease` node
-from `scenes/Outside/Outside.tscn`.
+`scripts/interactables/test_projectile.gd`, `scripts/debug_gui.gd`,
+`scenes/DebugGui.tscn`, the `fire` input action in `project.godot`, the
+`has_gun`/`_fire_gun()` bits in `scripts/player.gd`, and the
+`TestRange_RemoveBeforeRelease` node from `scenes/Outside/Outside.tscn`.
 
 ## Project structure
 
@@ -193,19 +207,21 @@ scenes/
   Match/Match.tscn           Match director (spawns rooms + players)
   Match/RoomPod.tscn         Empty shell - RoomPod.gd builds the whole modular room procedurally
   Match/Props/               Small graybox decoration scenes (crate/shelf/barrel)
-  Match/Interactables/       Ladder.tscn (climbable zone + visual rungs)
+  Match/Interactables/       Ladder.tscn (climbable + movable)
+  DebugGui.tscn              Dev/host debug panel (Home key — remove before release)
   Outside/Outside.tscn       Shared post-escape courtyard + test-only gun/dummy range
   Player/Player.tscn         First-person player pawn + HUD (phone/keypad/camera/eliminated panels)
 scripts/
   main.gd, match.gd, outside.gd, lobby.gd, player.gd, room_pod.gd
   autoload/                  GameState, FactionData, NetworkManager, ContactBook,
-                             SettingsManager, MatchSettings
+                             SettingsManager, MatchSettings, RoomUtilities
   systems/                   LinkGraph, PhoneSystem, EscapeSystem, PuzzleSystem, PuppetMasterSystem
   interactables/              Interactable base (+ destroy mixin) and every prop type:
                               LightSwitch, WaterValve, Door (door/vent), Phone, RoomLight,
                               BrokenPipe, SecurityCamera, Ladder, CodeKeypad, ClueBook,
-                              ClueFlamePaper, Flame, MovableProp, Gun*, DummyTarget*
-                              (* test-only, see above)
+                              ClueFlamePaper, Flame, MovableProp, ElectricalBox,
+                              GasValve, GasLeak, SlideBlocker, Gun*, DummyTarget*,
+                              TestProjectile* (* test-only)
 assets/
   materials/                  Shared graybox materials + default environment
   brand/                       Small in-engine copy of the Vouch icon
@@ -231,6 +247,8 @@ Registered in `project.godot` under `[autoload]`:
   audio volume, persisted via `ConfigFile`.
 - **MatchSettings** - host-authoritative match generation odds (code
   locks, flame paper, flood valves, hidden hallways).
+- **RoomUtilities** - per-room power/water/gas/comms state, replicated
+  for local feedback.
 - **LinkGraph** - mystery control/effect registry and guaranteed-no-
   self-link resolution.
 - **PhoneSystem** - random-recipient text routing + per-match line ids.
