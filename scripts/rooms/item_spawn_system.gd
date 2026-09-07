@@ -2,6 +2,9 @@ extends RefCounted
 class_name ItemSpawnSystem
 ## Assigns interactables to typed ItemSpawnSlot markers (wall / floor / wall_floor).
 
+## Force base class registration before subclass preloads (headless load-order).
+const _INTERACTABLE_BASE: GDScript = preload("res://scripts/interactables/interactable.gd")
+
 const SLOT_COUNT: int = 16
 const WALL_EMBED: float = 0.04
 

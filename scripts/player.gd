@@ -850,7 +850,7 @@ func _build_camera_feed(room_index: int, slot_index: int) -> Control:
 	sub_viewport.size = Vector2i(200, 130)
 	sub_viewport.render_target_update_mode = SubViewport.UPDATE_ALWAYS
 	var feed_camera := Camera3D.new()
-	feed_camera.position = Match.room_grid_position(room_index) + Vector3(0, 5.5, 0)
+	feed_camera.position = WorldScale.room_grid_position(room_index) + Vector3(0, 5.5, 0)
 	feed_camera.rotation_degrees = Vector3(-75, 0, 0)
 	feed_camera.current = true
 	sub_viewport.add_child(feed_camera)

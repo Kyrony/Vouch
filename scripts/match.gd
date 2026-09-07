@@ -278,7 +278,7 @@ func _spawn_room_pod(data: Dictionary) -> Node:
 		raw_node.free()
 		return null
 	_ensure_escape_hub(int(data.get("total_rooms", 4)))
-	var grid_pos := room_grid_position(data["room_index"])
+	var grid_pos: Vector3 = room_grid_position(data["room_index"])
 	var to_hub := Vector3(-grid_pos.x, 0.0, -grid_pos.z)
 	if to_hub.length() < 0.5:
 		to_hub = Vector3(0.0, 0.0, 1.0)

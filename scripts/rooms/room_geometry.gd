@@ -115,22 +115,22 @@ static func _add_trim(parent: Node3D, w: float, d: float, mat: Material) -> void
 static func _build_stairs(parent: Node3D, spec: Dictionary, floor_mat: Material, wall_mat: Material, landing_y: float) -> void:
 	var pos: Vector3 = spec["pos"]
 	var width: float = spec["size"].x
-	var riser := WorldScale.STAIR_RISER
-	var tread := WorldScale.STAIR_TREAD
+	var riser: float = WorldScale.STAIR_RISER
+	var tread: float = WorldScale.STAIR_TREAD
 	var steps := maxi(1, int(round(landing_y / riser)))
-	var run := tread * float(steps)
+	var run: float = tread * float(steps)
 	for i in range(steps):
-		var y := i * riser + riser * 0.5
-		var z := pos.z + tread * (i + 0.5)
+		var y: float = i * riser + riser * 0.5
+		var z: float = pos.z + tread * (float(i) + 0.5)
 		parent.add_child(_box(
 			Vector3(width, riser * 0.95, tread * 0.92),
 			Vector3(pos.x, y, z),
 			floor_mat
 		))
 	# Landing deck — stairs must end on walkable floor, not thin air.
-	var landing_z := pos.z + run + tread * 0.35
+	var landing_z: float = pos.z + run + tread * 0.35
 	var landing_w := width * 1.35
-	var landing_d := tread * 1.6
+	var landing_d: float = tread * 1.6
 	parent.add_child(_box(
 		Vector3(landing_w, WALL, landing_d),
 		Vector3(pos.x, landing_y, landing_z),

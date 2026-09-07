@@ -55,7 +55,7 @@ func configure(data: Dictionary) -> void:
 
 	_map = packed.instantiate()
 	if _map == null or not _map.has_method("configure"):
-		push_error("RoomPod: scene root is not RoomMap at %s" % path)
+		push_error("RoomPod: scene at %s did not produce a configurable map (is room_map.gd loaded?)" % path)
 		_map = null
 		return
 

@@ -2,6 +2,8 @@ extends Node
 ## Main — root scene (Lobby + World).
 
 const _ATTACHMENT: GDScript = preload("res://scripts/rooms/spawn_attachment_validator.gd")
+const _ROOM_POD: GDScript = preload("res://scripts/room_pod.gd")
+const EXPECTED_SLOT_COUNT: int = 16
 
 @onready var lobby: Control = $Lobby
 @onready var world: Node3D = $World
@@ -26,25 +28,34 @@ func _ready() -> void:
 func _run_match_spawn_test() -> void:
 	world.visible = true
 	var match_node = $World/Match
+	var recipe: Dictionary = _ROOM_POD.call("plan_recipe", false)
+	recipe["room_scene_id"] = 4
 	var data := {
 		"room_index": 0,
 		"owner_peer_id": 1,
 		"rng_seed": 12345,
 		"is_puppet_master": false,
-		"room_scene_id": 4,
+		"total_rooms": 1,
 		"has_valve": true,
 		"has_electrical_box": true,
 		"has_fireplace": true,
 		"has_drain": true,
 		"has_exhaust": true,
-		"total_rooms": 1,
 	}
+	data.merge(recipe)
 	var room = match_node._spawn_room_pod(data)
 	if room == null:
-		push_error("MATCH SPAWN TEST FAILED")
+		push_error("MATCH SPAWN TEST FAILED: _spawn_room_pod returned null")
 		get_tree().quit(1)
 		return
-	print("MATCH SPAWN TEST OK children=", room.get_child_count())
+	var err := _assert_room_map_built(room, "MATCH SPAWN")
+	if not err.is_empty():
+		push_error(err)
+		get_tree().quit(1)
+		return
+	var map = room.get_child(0)
+	var slots = map.get_node("ItemSpawns")
+	print("MATCH SPAWN TEST OK children=%d slots=%d" % [room.get_child_count(), slots.get_child_count()])
 	get_tree().quit(0)
 
 
@@ -56,9 +67,14 @@ func _run_room_spawn_test() -> void:
 			push_error("ROOM SPAWN TEST FAILED room=%02d" % room_id)
 			get_tree().quit(1)
 			return
-		var map = room.get_child(0) if room.get_child_count() > 0 else room
-		var slots = map.get_node_or_null("ItemSpawns")
-		var slot_count = slots.get_child_count() if slots else 0
+		var map = room.get_child(0) if room.get_child_count() > 0 else null
+		var err := _assert_room_map_built(room, "room %02d" % room_id)
+		if not err.is_empty():
+			push_error("ROOM SPAWN TEST FAILED %s" % err)
+			get_tree().quit(1)
+			return
+		var slots = map.get_node("ItemSpawns")
+		var slot_count = slots.get_child_count()
 		print("  room %02d OK footprint=%.0fx%.0f slots=%d" % [room_id, room.width, room.depth, slot_count])
 		var stair_err := _validate_stairs(map)
 		if not stair_err.is_empty():
@@ -79,7 +95,12 @@ func _run_attachment_test() -> void:
 			push_error("ATTACHMENT TEST FAILED room=%02d (spawn)" % room_id)
 			get_tree().quit(1)
 			return
-		var map: Node = room.get_child(0) if room.get_child_count() > 0 else room
+		var map: Node = room.get_child(0)
+		var attach_err := _assert_room_map_built(room, "room %02d" % room_id)
+		if not attach_err.is_empty():
+			push_error("ATTACHMENT TEST FAILED %s" % attach_err)
+			get_tree().quit(1)
+			return
 		var errors: Array = _ATTACHMENT.call("validate", map)
 		if not errors.is_empty():
 			for err in errors:
@@ -105,6 +126,24 @@ func _validate_stairs(map: Node) -> String:
 	var layout: Dictionary = layout_script.call("get_layout", int(map.get("room_id")))
 	if layout.has("stairs") and landing_count == 0:
 		return "stairs present but no landing geometry"
+	return ""
+
+
+func _assert_room_map_built(room_pod: Node, label: String) -> String:
+	if room_pod.get_child_count() < 1:
+		return "%s: RoomPod has no child map (configure likely failed)" % label
+	var map: Node = room_pod.get_child(0)
+	if not map.has_method("configure"):
+		return "%s: child missing configure() — room_map.gd did not attach" % label
+	if map.get_node_or_null("Geometry") == null:
+		return "%s: map has no Geometry node" % label
+	var slots = map.get_node_or_null("ItemSpawns")
+	if slots == null:
+		return "%s: map has no ItemSpawns" % label
+	if slots.get_child_count() != EXPECTED_SLOT_COUNT:
+		return "%s: expected %d item slots, got %d" % [label, EXPECTED_SLOT_COUNT, slots.get_child_count()]
+	if map.get_node_or_null("LightSwitch") == null:
+		return "%s: LightSwitch missing (ItemSpawnSystem.populate did not run)" % label
 	return ""
 
 

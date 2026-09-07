@@ -219,7 +219,7 @@ func _apply_placed_feet(feet: Vector3, yaw: float, room: Node = null) -> void:
 	is_placed = true
 	carrier_peer_id = -1
 	prompt_text = "Pick up ladder"
-	if get_parent() is Player:
+	if get_parent() != null and (get_parent() as Node).is_in_group("players"):
 		if room:
 			reparent(room)
 		else:

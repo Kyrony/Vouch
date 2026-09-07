@@ -1,4 +1,4 @@
-extends Interactable
+extends "res://scripts/interactables/interactable.gd"
 class_name WalkieTalkie
 ## Room walkie-talkie — opens paired faction text channel (see WalkieSystem).
 
