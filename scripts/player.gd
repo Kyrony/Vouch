@@ -21,7 +21,7 @@ class_name Player
 enum Modal { NONE, PHONE, KEYPAD, BINARY, PAUSE }
 
 const SPEED: float = 4.5
-const JUMP_VELOCITY: float = 4.0
+const JUMP_VELOCITY: float = 3.2
 const MOUSE_SENSITIVITY: float = 0.0025
 const TOAST_DURATION: float = 4.5
 const CLIMB_SPEED: float = 3.0

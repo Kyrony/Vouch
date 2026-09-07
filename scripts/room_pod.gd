@@ -2,24 +2,23 @@ extends Node3D
 class_name RoomPod
 ## RoomPod
 ##
-## One player's room - built from James's floor-plan templates (1 ft = 1
-## Godot unit) or a simple box for the Puppet Master. A per-room seed picks
-## theme and layout details; `floor_plan_id` and spawn odds are decided
-## server-side in `plan_recipe()` and baked into replicated spawn data.
-##
-## TODO(post-MVP): richer decoration, hand-authored props per plan.
+## One player's room - built from James's floor-plan templates (feet → meters)
+## or a simple box for the Puppet Master.
 
 const _FPT_SCRIPT: GDScript = preload("res://scripts/systems/floor_plan_templates.gd")
-const HEIGHT: float = 10.0
-const DOOR_W: float = 3.5
-const DOOR_H: float = 7.0
-const WALL_THICK: float = 0.2
-const SEAM_OVERLAP: float = 0.06
-const PM_BOX_SIZE: float = 10.0
-const HUB_SHAFT_RADIUS: float = 4.0
-const HUB_SHAFT_HEIGHT: float = 45.0
-const HUB_HALL_WIDTH: float = 2.8
-const HUB_HALL_HEIGHT: float = 3.2
+const HEIGHT: float = 2.6
+const DOOR_W: float = 0.85
+const DOOR_H: float = 2.05
+const WALL_THICK: float = 0.12
+const SEAM_OVERLAP: float = 0.02
+const PM_BOX_SIZE: float = 6.0
+const HUB_SHAFT_RADIUS: float = 1.45
+const HUB_SHAFT_HEIGHT: float = 10.0
+const HUB_HALL_WIDTH: float = 1.25
+const HUB_HALL_HEIGHT: float = 2.5
+const STAIR_RISER: float = 0.18
+const STAIR_TREAD: float = 0.28
+## Metric human scale — canonical list in scripts/world_scale.gd (autoload)
 
 const THEMES: Array[Dictionary] = [
 	{
@@ -168,6 +167,7 @@ func configure(data: Dictionary) -> void:
 		_build_floor_plan_shell(theme, escape_kind)
 		if _plan.get("stories", 1) < 2 and rng.randf() < 0.35:
 			_build_loft_stairs(theme, rng)
+		_build_shape_accents(rng, theme)
 
 	_build_decor(rng, theme, has_pipes, has_wires)
 	_build_interactables(rng, theme, escape_kind, has_valve, has_electrical_box, wire_targets, has_fireplace, has_drain, has_exhaust, has_binary_puzzle, binary_target, binary_peek_room)
@@ -282,7 +282,7 @@ func _build_pm_shell(theme: Dictionary, escape_kind: EscapeKind) -> void:
 	ceiling.position = Vector3(0, HEIGHT + WALL_THICK / 2.0, 0)
 	add_child(ceiling)
 
-	var south_gap := 0.0 if escape_kind == EscapeKind.NONE else (DOOR_W if escape_kind == EscapeKind.DOOR else 0.9)
+	var south_gap := 0.0 if escape_kind == EscapeKind.NONE else (DOOR_W if escape_kind == EscapeKind.DOOR else 0.55)
 	var south_open := DOOR_H if south_gap > 0.01 else -1.0
 	_build_wall(true, depth / 2.0, width, south_gap, 0.0, wall_mat, HEIGHT, south_open)
 	_build_wall(true, -depth / 2.0, width, 0.0, 0.0, wall_mat, HEIGHT)
@@ -610,9 +610,10 @@ func _build_stair(stair: Dictionary, wall_mat: Material, floor_mat: Material) ->
 	var x1 := _plan_x_to_world(stair["x"] + stair["w"])
 	var z0 := _plan_z_to_world(stair["z"] + stair["d"])
 	var z1 := _plan_z_to_world(stair["z"])
-	var steps := 6
-	var step_h := HEIGHT / steps
-	var step_d := (z1 - z0) / steps
+	var steps := maxi(int(ceil(HEIGHT / STAIR_RISER)), 4)
+	var step_h := HEIGHT / float(steps)
+	var step_d := STAIR_TREAD
+	var run_len := z1 - z0
 	for i in range(steps):
 		var sy := i * step_h
 		add_child(_make_box_body(
@@ -621,8 +622,8 @@ func _build_stair(stair: Dictionary, wall_mat: Material, floor_mat: Material) ->
 			floor_mat, 1
 		))
 	var rail_h := HEIGHT
-	add_child(_make_box_body(Vector3(WALL_THICK, rail_h, stair["d"]), Vector3(x0 - WALL_THICK * 0.5, rail_h * 0.5, (z0 + z1) * 0.5), wall_mat, 1))
-	add_child(_make_box_body(Vector3(WALL_THICK, rail_h, stair["d"]), Vector3(x1 + WALL_THICK * 0.5, rail_h * 0.5, (z0 + z1) * 0.5), wall_mat, 1))
+	add_child(_make_box_body(Vector3(WALL_THICK, rail_h, run_len + SEAM_OVERLAP), Vector3(x0 - WALL_THICK * 0.5, rail_h * 0.5, (z0 + z1) * 0.5), wall_mat, 1))
+	add_child(_make_box_body(Vector3(WALL_THICK, rail_h, run_len + SEAM_OVERLAP), Vector3(x1 + WALL_THICK * 0.5, rail_h * 0.5, (z0 + z1) * 0.5), wall_mat, 1))
 
 
 func _build_wall_at_y(is_x_axis: bool, wall_offset: float, span: float, gap_width: float, gap_center: float, material: Material, wall_height: float, base_y: float, gap_open_height: float = -1.0) -> void:
@@ -659,6 +660,114 @@ func _build_wall_at_y(is_x_axis: bool, wall_offset: float, span: float, gap_widt
 
 func _build_wall(is_x_axis: bool, wall_offset: float, span: float, gap_width: float, gap_center: float, material: Material, gap_height: float = HEIGHT, gap_open_height: float = -1.0) -> void:
 	_build_wall_at_y(is_x_axis, wall_offset, span, gap_width, gap_center, material, gap_height, 0.0, gap_open_height)
+
+
+func _build_shape_accents(rng: RandomNumberGenerator, theme: Dictionary) -> void:
+	if is_puppet_master_room or _plan.is_empty():
+		return
+	var wall_mat := _wall_material(theme["wall_color"])
+	var floor_mat := _wall_material(theme["floor_color"])
+	_build_exterior_chamfers(rng, wall_mat)
+	if floor_plan_id in ["08", "09", "13"]:
+		_build_l_corner_diagonal(wall_mat)
+	if rng.randf() < 0.45:
+		_build_angled_partition(rng, wall_mat)
+	if rng.randf() < 0.35:
+		_build_wide_hall_niche(rng, theme, wall_mat, floor_mat)
+
+
+func _build_exterior_chamfers(rng: RandomNumberGenerator, material: Material) -> void:
+	var cut := clampf(minf(width, depth) * 0.07, 0.35, 0.9)
+	var corners := [
+		Vector3(-width / 2.0, 0, depth / 2.0),
+		Vector3(width / 2.0, 0, depth / 2.0),
+		Vector3(-width / 2.0, 0, -depth / 2.0),
+		Vector3(width / 2.0, 0, -depth / 2.0),
+	]
+	for i in range(corners.size()):
+		if rng.randf() > 0.55:
+			continue
+		var c: Vector3 = corners[i]
+		var dx := -1.0 if c.x < 0 else 1.0
+		var dz := -1.0 if c.z < 0 else 1.0
+		var diag := Vector3(dx, 0, dz).normalized()
+		var block_center := c - diag * cut * 0.35
+		add_child(_make_box_body(Vector3(cut, HEIGHT, cut), Vector3(block_center.x, HEIGHT / 2.0, block_center.z), material, 1))
+		var slant := MeshInstance3D.new()
+		var slant_mesh := BoxMesh.new()
+		slant_mesh.size = Vector3(cut * 1.4, HEIGHT, WALL_THICK)
+		slant.mesh = slant_mesh
+		slant.position = Vector3(c.x - dx * cut * 0.5, HEIGHT / 2.0, c.z - dz * cut * 0.5)
+		slant.rotation.y = atan2(dz, dx) + PI * 0.25
+		slant.set_surface_override_material(0, material)
+		add_child(slant)
+
+
+func _build_l_corner_diagonal(material: Material) -> void:
+	var living := _zone_center("living")
+	var cut := 0.75
+	var pos := living + Vector3(cut * 0.35, HEIGHT / 2.0, -cut * 0.35)
+	var diag := MeshInstance3D.new()
+	var mesh := BoxMesh.new()
+	mesh.size = Vector3(WALL_THICK, HEIGHT, cut * 1.6)
+	diag.mesh = mesh
+	diag.position = pos
+	diag.rotation.y = PI * 0.25
+	diag.set_surface_override_material(0, material)
+	add_child(diag)
+
+
+func _build_angled_partition(rng: RandomNumberGenerator, material: Material) -> void:
+	var living := _zone_center("living")
+	var len := rng.randf_range(1.0, 1.8)
+	var ang := rng.randf_range(-0.6, 0.6)
+	var part := MeshInstance3D.new()
+	var mesh := BoxMesh.new()
+	mesh.size = Vector3(WALL_THICK, HEIGHT, len)
+	part.mesh = mesh
+	part.position = living + Vector3(rng.randf_range(-1.5, 1.5), HEIGHT / 2.0, rng.randf_range(-1.0, 1.0))
+	part.rotation.y = ang
+	part.set_surface_override_material(0, material)
+	add_child(part)
+	var col_body := StaticBody3D.new()
+	col_body.collision_layer = 1
+	col_body.position = part.position
+	col_body.rotation.y = part.rotation.y
+	var col := CollisionShape3D.new()
+	var sh := BoxShape3D.new()
+	sh.size = mesh.size
+	col.shape = sh
+	col_body.add_child(col)
+	add_child(col_body)
+
+
+func _build_wide_hall_niche(rng: RandomNumberGenerator, theme: Dictionary, wall_mat: Material, floor_mat: Material) -> void:
+	var living := _zone_center("living")
+	var w := rng.randf_range(1.4, 2.2)
+	var d := rng.randf_range(0.8, 1.4)
+	var offset := Vector3(rng.randf_range(-1.2, 1.2), 0, depth * 0.22)
+	add_child(_make_box_body(Vector3(w, WALL_THICK, d), living + offset + Vector3(0, -WALL_THICK / 2.0, 0), floor_mat, 1))
+	add_child(_make_box_body(Vector3(WALL_THICK, HEIGHT, d), living + offset + Vector3(-w / 2.0, HEIGHT / 2.0, 0), wall_mat, 1))
+	add_child(_make_box_body(Vector3(WALL_THICK, HEIGHT, d), living + offset + Vector3(w / 2.0, HEIGHT / 2.0, 0), wall_mat, 1))
+
+
+func _build_fireplace_nook(pos: Vector3, material: Material) -> void:
+	var r := 0.75
+	for i in range(8):
+		var a0 := TAU * float(i) / 8.0
+		var a1 := TAU * float(i + 1) / 8.0
+		var p0 := pos + Vector3(cos(a0) * r, 0, sin(a0) * r)
+		var p1 := pos + Vector3(cos(a1) * r, 0, sin(a1) * r)
+		var mid := (p0 + p1) * 0.5
+		var seg_len := p0.distance_to(p1)
+		var seg := MeshInstance3D.new()
+		var mesh := BoxMesh.new()
+		mesh.size = Vector3(seg_len, 0.55, WALL_THICK)
+		seg.mesh = mesh
+		seg.position = Vector3(mid.x, 0.28, mid.z)
+		seg.rotation.y = atan2(p1.z - p0.z, p1.x - p0.x)
+		seg.set_surface_override_material(0, material)
+		add_child(seg)
 
 
 func _build_perimeter_shell(material: Material, pw: float, pd: float, escape_kind: EscapeKind) -> void:
@@ -706,27 +815,24 @@ func _build_loft_stairs(theme: Dictionary, rng: RandomNumberGenerator) -> void:
 	var wall_mat := _wall_material(theme["wall_color"])
 	var floor_mat := _wall_material(theme["floor_color"])
 	var living := _zone_center("living")
-	var sx := living.x - 1.5
-	var sz := living.z + depth * 0.15
-	var sw := 2.5
-	var sd := 3.5
-	var stair := {"x": sx + width * 0.5, "z": depth * 0.5 - sz, "w": sw, "d": sd}
+	var sx := living.x - 0.45
+	var sz := living.z + depth * 0.12
+	var sw := 0.9
+	var sd := 1.1
+	var loft_h := HEIGHT * 0.42
+	var steps := maxi(int(ceil(loft_h / STAIR_RISER)), 3)
+	var step_h := loft_h / float(steps)
 	var x0 := sx
 	var x1 := sx + sw
 	var z0 := sz
-	var z1 := sz + sd
-	var steps := 5
-	var step_h := HEIGHT * 0.45 / steps
-	var step_d := (z1 - z0) / steps
 	for i in range(steps):
 		add_child(_make_box_body(
-			Vector3(x1 - x0, step_h, step_d + SEAM_OVERLAP),
-			Vector3((x0 + x1) * 0.5, i * step_h + step_h * 0.5, z0 + step_d * (i + 0.5)),
+			Vector3(x1 - x0, step_h, STAIR_TREAD + SEAM_OVERLAP),
+			Vector3((x0 + x1) * 0.5, i * step_h + step_h * 0.5, z0 + STAIR_TREAD * (i + 0.5)),
 			floor_mat, 1
 		))
-	var loft_y := steps * step_h
-	add_child(_make_box_body(Vector3(sw + 0.4, WALL_THICK, sd + 0.4), Vector3((x0 + x1) * 0.5, loft_y, (z0 + z1) * 0.5), floor_mat, 1))
-	add_child(_make_box_body(Vector3(WALL_THICK, loft_y + 0.5, sd), Vector3(x0 - WALL_THICK * 0.5, loft_y * 0.5, (z0 + z1) * 0.5), wall_mat, 1))
+	add_child(_make_box_body(Vector3(sw + 0.25, WALL_THICK, sd + 0.25), Vector3((x0 + x1) * 0.5, loft_h, z0 + sd * 0.5), floor_mat, 1))
+	add_child(_make_box_body(Vector3(WALL_THICK, loft_h, sd), Vector3(x0 - WALL_THICK * 0.5, loft_h * 0.5, z0 + sd * 0.5), wall_mat, 1))
 
 
 # ---------------------------------------------------------------------
@@ -743,8 +849,8 @@ func _build_interactables(rng: RandomNumberGenerator, theme: Dictionary, escape_
 	var effect_id := "room_%d_room_light" % room_index
 
 	var switch_wall := _nearest_wall_normal(living + Vector3(-width * 0.4, 0, 0))
-	var switch_pos := _wall_mount(living + Vector3(-width * 0.4, 0, 0), switch_wall, 1.2)
-	var switch := _make_interactable(LIGHT_SWITCH_SCRIPT, Vector3(0.15, 0.2, 0.06), switch_pos, accent, "Flip switch")
+	var switch_pos := _wall_mount(living + Vector3(-width * 0.4, 0, 0), switch_wall, 1.25)
+	var switch := _make_interactable(LIGHT_SWITCH_SCRIPT, Vector3(0.08, 0.12, 0.04), switch_pos, accent, "Flip switch")
 	var switch_script: LightSwitch = switch
 	switch_script.control_id = control_id
 	switch_script.room_index = room_index
@@ -760,23 +866,25 @@ func _build_interactables(rng: RandomNumberGenerator, theme: Dictionary, escape_
 		if escape_kind == EscapeKind.DOOR and not entry.is_empty():
 			var mid_x := _plan_x_to_world(entry.get("gap_start", 0) + entry.get("gap_w", 4) * 0.5)
 			escape_pos = Vector3(mid_x, DOOR_H * 0.5, _plan_z_to_world(0) - 0.06)
-			escape_size = Vector3(entry.get("gap_w", 4) * 0.95, DOOR_H, 0.12)
+			escape_size = Vector3(DOOR_W, DOOR_H, 0.08)
 			escape_prompt = "Open the door"
 		elif escape_kind == EscapeKind.DOOR:
 			escape_pos = Vector3(0, DOOR_H * 0.5, depth / 2.0 - 0.06)
-			escape_size = Vector3(DOOR_W, DOOR_H, 0.12)
+			escape_size = Vector3(DOOR_W, DOOR_H, 0.08)
 			escape_prompt = "Open the door"
 		else:
 			var vent_zone := bath if _zone_centers.has("bath") else living
-			escape_pos = vent_zone + Vector3(0, 0.45, -depth * 0.35)
-			escape_size = Vector3(0.7, 0.55, 0.1)
+			escape_pos = vent_zone + Vector3(0, 1.0, -depth * 0.35)
+			escape_size = Vector3(0.55, 0.45, 0.08)
 			escape_prompt = "Squeeze through the vent"
 		var escape_point := _make_door(escape_size, escape_pos, accent, escape_prompt, escape_kind == EscapeKind.VENT)
 		escape_point.name = "EscapePoint"
 		add_child(escape_point)
 
 	if has_fireplace:
-		_fireplace = _FIREPLACE_SCRIPT.build(self, living + Vector3(-width * 0.25, 0, -depth * 0.15), accent, room_index)
+		var fp_pos := living + Vector3(-width * 0.25, 0, -depth * 0.15)
+		_build_fireplace_nook(fp_pos, accent)
+		_fireplace = _FIREPLACE_SCRIPT.build(self, fp_pos, accent, room_index)
 
 	if has_drain:
 		var drain_zone := bath if _zone_centers.has("bath") else living
@@ -797,18 +905,18 @@ func _build_interactables(rng: RandomNumberGenerator, theme: Dictionary, escape_
 		add_child(exhaust)
 
 	var phone_wall := _nearest_wall_normal(living + Vector3(width * 0.35, 0, 0))
-	var phone_pos := _wall_mount(living + Vector3(width * 0.35, 0, 0), phone_wall, 1.2)
-	var phone := _make_interactable(PHONE_SCRIPT, Vector3(0.16, 0.26, 0.1), phone_pos, accent, "Pick up phone")
+	var phone_pos := _wall_mount(living + Vector3(width * 0.35, 0, 0), phone_wall, 1.15)
+	var phone := _make_interactable(PHONE_SCRIPT, Vector3(0.12, 0.18, 0.06), phone_pos, accent, "Pick up phone")
 	var phone_script: Phone = phone
 	phone_script.owner_peer_id = owner_peer_id
 	phone.name = "Phone"
 	add_child(phone)
 
-	var camera_mount_y := HEIGHT - 0.3
+	var camera_mount_y := 2.35
 	var cam_hint := living + Vector3(width * 0.3, 0, -depth * 0.35)
 	var cam_wall := _nearest_wall_normal(cam_hint)
-	var camera_pos := _wall_mount(cam_hint, cam_wall, camera_mount_y, 0.14)
-	var camera := _make_interactable(SECURITY_CAMERA_SCRIPT, Vector3(0.18, 0.18, 0.28), camera_pos, accent, "Camera")
+	var camera_pos := _wall_mount(cam_hint, cam_wall, camera_mount_y, 0.08)
+	var camera := _make_interactable(SECURITY_CAMERA_SCRIPT, Vector3(0.14, 0.1, 0.12), camera_pos, accent, "Camera")
 	var camera_script: SecurityCamera = camera
 	camera_script.min_elevation_y = camera_mount_y - 1.2
 	camera.name = "SecurityCamera"
@@ -825,7 +933,7 @@ func _build_interactables(rng: RandomNumberGenerator, theme: Dictionary, escape_
 	if has_valve:
 		var valve_zone := bath if _zone_centers.has("bath") else living
 		var valve_control_id := "room_%d_water_valve" % room_index
-		var valve := _make_interactable(WATER_VALVE_SCRIPT, Vector3(0.16, 0.16, 0.12), valve_zone + Vector3(-1.0, 0.9, 0), accent, "Turn valve")
+		var valve := _make_interactable(WATER_VALVE_SCRIPT, Vector3(0.1, 0.1, 0.08), valve_zone + Vector3(-0.5, 1.0, 0), accent, "Turn valve")
 		var valve_script: WaterValve = valve
 		valve_script.control_id = valve_control_id
 		valve_script.room_index = room_index
@@ -834,7 +942,7 @@ func _build_interactables(rng: RandomNumberGenerator, theme: Dictionary, escape_
 
 	if theme_id == "utility" and rng.randf() < 0.5:
 		var gas_control_id := "room_%d_gas_valve" % room_index
-		var gas_valve := _make_interactable(GAS_VALVE_SCRIPT, Vector3(0.14, 0.14, 0.1), living + Vector3(-width * 0.4, 1.4, -1), accent, "Turn gas valve")
+		var gas_valve := _make_interactable(GAS_VALVE_SCRIPT, Vector3(0.09, 0.09, 0.06), living + Vector3(-width * 0.4, 1.15, -0.5), accent, "Turn gas valve")
 		var gas_valve_script: GasValve = gas_valve
 		gas_valve_script.control_id = gas_control_id
 		gas_valve_script.room_index = room_index
@@ -921,7 +1029,7 @@ func _build_binary_puzzle(theme: Dictionary, accent: Material, living: Vector3, 
 	var bookcase := _make_interactable(MOVABLE_PROP_SCRIPT, Vector3(0.55, 1.1, 0.35), living + Vector3(-0.5, 0.55, -depth * 0.18), accent, "Move bookcase")
 	bookcase.name = "BinaryBookcase"
 	var bc_script: MovableProp = bookcase
-	bc_script.move_offset = Vector3(1.6, 0, 0)
+	bc_script.move_offset = Vector3(0.95, 0, 0)
 	bc_script.unmoved_prompt = "Blocked by bookcase"
 	bc_script.moved_prompt = "Bookcase moved"
 	add_child(bookcase)
@@ -1019,10 +1127,10 @@ func _build_decor(rng: RandomNumberGenerator, theme: Dictionary, has_pipes: bool
 func _build_prop_scatter(rng: RandomNumberGenerator) -> void:
 	var prop_scenes: Array[PackedScene] = [CRATE_SCENE, SHELF_SCENE, BARREL_SCENE]
 	var living := _zone_center("living")
-	var scatter_w := minf(width * 0.6, 14.0)
-	var scatter_d := minf(depth * 0.5, 10.0)
-	var marker_count: int = clampi(int(width * depth / 22.0), 4, 14)
-	var margin := 1.2
+	var scatter_w := minf(width * 0.6, 4.2)
+	var scatter_d := minf(depth * 0.5, 3.0)
+	var marker_count: int = clampi(int(width * depth / 4.5), 4, 14)
+	var margin := 0.45
 
 	for i in range(marker_count):
 		if rng.randf() < 0.15:
@@ -1030,7 +1138,7 @@ func _build_prop_scatter(rng: RandomNumberGenerator) -> void:
 		var x := living.x + rng.randf_range(-scatter_w * 0.5 + margin, scatter_w * 0.5 - margin)
 		var z := living.z + rng.randf_range(-scatter_d * 0.5 + margin, scatter_d * 0.5 - margin)
 		if rng.randf() < 0.25:
-			var loose_book := _make_physics_book(Vector3(x, 0.4, z), "")
+			var loose_book := _make_physics_book(Vector3(x, 0.45, z), "")
 			add_child(loose_book)
 			continue
 		var scene: PackedScene = prop_scenes[rng.randi() % prop_scenes.size()]
@@ -1122,30 +1230,45 @@ func _build_plan_doors(theme: Dictionary, escape_kind: EscapeKind, floor_y: floa
 		add_child(door_node)
 
 
-func _build_escape_hall(escape_kind: EscapeKind, theme: Dictionary) -> void:
+func _build_escape_hall(_escape_kind: EscapeKind, theme: Dictionary) -> void:
 	var grid_pos := Match.room_grid_position(room_index)
 	var dist := Vector2(grid_pos.x, grid_pos.z).length()
-	var horiz := clampf(dist - HUB_SHAFT_RADIUS - depth * 0.5, 8.0, 32.0)
+	var horiz := clampf(dist - HUB_SHAFT_RADIUS - depth * 0.5, 18.0, 46.0)
 	var hall_w := HUB_HALL_WIDTH
 	var hall_h := HUB_HALL_HEIGHT
 	var wall_mat := _wall_material(theme["wall_color"])
 	var floor_mat := _wall_material(theme["floor_color"])
 	var start_z := depth / 2.0
-	var hz_center_z := start_z + horiz * 0.5
 
-	add_child(_make_box_body(Vector3(hall_w, WALL_THICK, horiz), Vector3(0, -WALL_THICK / 2.0, hz_center_z), floor_mat, 1))
-	add_child(_make_box_body(Vector3(WALL_THICK, hall_h, horiz), Vector3(-hall_w / 2.0, hall_h / 2.0, hz_center_z), wall_mat, 1))
-	add_child(_make_box_body(Vector3(WALL_THICK, hall_h, horiz), Vector3(hall_w / 2.0, hall_h / 2.0, hz_center_z), wall_mat, 1))
-	add_child(_make_box_body(Vector3(hall_w, WALL_THICK, horiz), Vector3(0, hall_h + WALL_THICK / 2.0, hz_center_z), wall_mat, 0))
+	_build_sealed_tunnel(start_z, horiz, hall_w, hall_h, wall_mat, floor_mat, true, true)
 
 	var vert_base_z := start_z + horiz
-	var up_h := HUB_SHAFT_HEIGHT - 1.5
-	add_child(_make_box_body(Vector3(hall_w, WALL_THICK, hall_w), Vector3(0, -WALL_THICK / 2.0, vert_base_z), floor_mat, 1))
-	add_child(_make_box_body(Vector3(WALL_THICK, up_h, hall_w), Vector3(-hall_w / 2.0, up_h / 2.0, vert_base_z), wall_mat, 1))
-	add_child(_make_box_body(Vector3(WALL_THICK, up_h, hall_w), Vector3(hall_w / 2.0, up_h / 2.0, vert_base_z), wall_mat, 1))
+	var up_h := HUB_SHAFT_HEIGHT
+	_build_sealed_tunnel_vertical(vert_base_z, up_h, hall_w, hall_h, wall_mat, floor_mat)
 
-	add_child(_make_box_body(Vector3(hall_w, WALL_THICK, horiz + hall_w), Vector3(0, hall_h + WALL_THICK / 2.0, hz_center_z + hall_w * 0.25), wall_mat, 0))
-	add_child(_make_box_body(Vector3(hall_w, WALL_THICK, hall_w), Vector3(0, up_h + WALL_THICK / 2.0, vert_base_z + hall_w * 0.5), wall_mat, 0))
+
+func _build_sealed_tunnel(start_z: float, length: float, inner_w: float, inner_h: float, wall_mat: Material, floor_mat: Material, open_near: bool, open_far: bool) -> void:
+	if length < 0.5:
+		return
+	var cz := start_z + length * 0.5
+	add_child(_make_box_body(Vector3(inner_w, WALL_THICK, length), Vector3(0, -WALL_THICK / 2.0, cz), floor_mat, 1))
+	add_child(_make_box_body(Vector3(inner_w + WALL_THICK * 2.0, WALL_THICK, length + WALL_THICK * 2.0), Vector3(0, inner_h + WALL_THICK / 2.0, cz), wall_mat, 1))
+	add_child(_make_box_body(Vector3(WALL_THICK, inner_h, length), Vector3(-inner_w / 2.0 - WALL_THICK / 2.0, inner_h / 2.0, cz), wall_mat, 1))
+	add_child(_make_box_body(Vector3(WALL_THICK, inner_h, length), Vector3(inner_w / 2.0 + WALL_THICK / 2.0, inner_h / 2.0, cz), wall_mat, 1))
+	if not open_near:
+		add_child(_make_box_body(Vector3(inner_w, inner_h, WALL_THICK), Vector3(0, inner_h / 2.0, start_z - WALL_THICK / 2.0), wall_mat, 1))
+	if not open_far:
+		add_child(_make_box_body(Vector3(inner_w, inner_h, WALL_THICK), Vector3(0, inner_h / 2.0, start_z + length + WALL_THICK / 2.0), wall_mat, 1))
+
+
+func _build_sealed_tunnel_vertical(base_z: float, rise_h: float, inner_w: float, inner_h: float, wall_mat: Material, floor_mat: Material) -> void:
+	var cz := base_z
+	add_child(_make_box_body(Vector3(inner_w, WALL_THICK, inner_w), Vector3(0, -WALL_THICK / 2.0, cz), floor_mat, 1))
+	add_child(_make_box_body(Vector3(inner_w + WALL_THICK * 2.0, WALL_THICK, inner_w + WALL_THICK * 2.0), Vector3(0, rise_h + WALL_THICK / 2.0, cz), wall_mat, 1))
+	add_child(_make_box_body(Vector3(WALL_THICK, rise_h, inner_w), Vector3(-inner_w / 2.0 - WALL_THICK / 2.0, rise_h / 2.0, cz), wall_mat, 1))
+	add_child(_make_box_body(Vector3(WALL_THICK, rise_h, inner_w), Vector3(inner_w / 2.0 + WALL_THICK / 2.0, rise_h / 2.0, cz), wall_mat, 1))
+	add_child(_make_box_body(Vector3(inner_w, rise_h, WALL_THICK), Vector3(0, rise_h / 2.0, cz - inner_w / 2.0 - WALL_THICK / 2.0), wall_mat, 1))
+	add_child(_make_box_body(Vector3(inner_w, rise_h, WALL_THICK), Vector3(0, rise_h / 2.0, cz + inner_w / 2.0 + WALL_THICK / 2.0), wall_mat, 1))
 
 
 func _make_door(size: Vector3, local_pos: Vector3, material: Material, prompt: String, is_vent: bool) -> Door:
@@ -1191,14 +1314,14 @@ func _make_physics_book(local_pos: Vector3, _code: String) -> RigidBody3D:
 	book.mass = 0.8
 	var mesh_instance := MeshInstance3D.new()
 	var box := BoxMesh.new()
-	box.size = Vector3(0.3, 0.25, 0.35)
+	box.size = Vector3(0.22, 0.03, 0.16)
 	mesh_instance.mesh = box
 	var mat := _accent_material(Color(0.5, 0.35, 0.22))
 	mesh_instance.set_surface_override_material(0, mat)
 	book.add_child(mesh_instance)
 	var collision := CollisionShape3D.new()
 	var shape := BoxShape3D.new()
-	shape.size = Vector3(0.3, 0.25, 0.35)
+	shape.size = Vector3(0.22, 0.03, 0.16)
 	collision.shape = shape
 	book.add_child(collision)
 	return book

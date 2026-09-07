@@ -66,17 +66,17 @@ static func build(parent: Node3D, local_pos: Vector3, accent: Material, room_idx
 
 	var hearth := MeshInstance3D.new()
 	var hearth_mesh := BoxMesh.new()
-	hearth_mesh.size = Vector3(1.6, 0.5, 0.6)
+	hearth_mesh.size = Vector3(1.0, 0.35, 0.42)
 	hearth.mesh = hearth_mesh
-	hearth.position = Vector3(0, 0.25, 0)
+	hearth.position = Vector3(0, 0.18, 0)
 	hearth.set_surface_override_material(0, accent)
 	fp.add_child(hearth)
 
 	var stack := MeshInstance3D.new()
 	var stack_mesh := BoxMesh.new()
-	stack_mesh.size = Vector3(0.9, 1.2, 0.35)
+	stack_mesh.size = Vector3(0.65, 0.95, 0.28)
 	stack.mesh = stack_mesh
-	stack.position = Vector3(0, 0.95, -0.05)
+	stack.position = Vector3(0, 0.72, -0.04)
 	stack.set_surface_override_material(0, accent)
 	fp.add_child(stack)
 
@@ -84,15 +84,15 @@ static func build(parent: Node3D, local_pos: Vector3, accent: Material, room_idx
 	var pipe_mesh := CylinderMesh.new()
 	pipe_mesh.top_radius = 0.05
 	pipe_mesh.bottom_radius = 0.05
-	pipe_mesh.height = 0.8
+	pipe_mesh.height = 0.55
 	pipe.mesh = pipe_mesh
-	pipe.position = Vector3(0.55, 0.4, 0.15)
+	pipe.position = Vector3(0.38, 0.28, 0.12)
 	pipe.set_surface_override_material(0, accent)
 	fp.add_child(pipe)
 
 	fp._flame = Node3D.new()
 	fp._flame.set_script(load("res://scripts/interactables/flame.gd"))
-	fp._flame.position = Vector3(0, 0.55, 0.05)
+	fp._flame.position = Vector3(0, 0.42, 0.04)
 	fp._flame.add_to_group("flames")
 	var cone := MeshInstance3D.new()
 	var cm := CylinderMesh.new()

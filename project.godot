@@ -31,6 +31,7 @@ PuzzleSystem="*res://scripts/systems/puzzle_system.gd"
 PuppetMasterSystem="*res://scripts/systems/puppet_master_system.gd"
 RoomUtilities="*res://scripts/autoload/room_utilities.gd"
 FireSystem="*res://scripts/systems/fire_system.gd"
+WorldScale="*res://scripts/world_scale.gd"
 
 [display]
 

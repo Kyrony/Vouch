@@ -23,7 +23,7 @@ var _player_scene: PackedScene
 ## room (plus its optional hallway extension) doesn't visually bleed into
 ## the next. Good enough for a graybox; a real level would hand-place these.
 ## Floor-plan pods are up to ~34×18 ft; keep cells far enough apart.
-const GRID_SPACING: float = 40.0
+const GRID_SPACING: float = 52.0  ## Keep in sync with WorldScale.GRID_SPACING
 const GRID_COLUMNS: int = 4
 
 ## How many camera/sabotage targets the Puppet Master is granted.

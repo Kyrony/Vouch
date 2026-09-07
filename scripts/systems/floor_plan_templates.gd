@@ -2,9 +2,8 @@ extends RefCounted
 class_name FloorPlanTemplates
 ## FloorPlanTemplates
 ##
-## James's 20 house-style floor plans on a 1 ft = 1 Godot unit grid.
-## Coordinates: origin at SW corner (x east, z north). RoomPod centers
-## the footprint on the world origin when building.
+## James's 20 house-style floor plans authored in **feet**; `get_plan()` returns
+## metric dimensions (1 ft = 0.3048 m) for human-scale rooms.
 
 const FT: float = 1.0
 const DOOR_W: float = 3.5
@@ -32,7 +31,48 @@ static func get_two_story_ids() -> Array[String]:
 
 
 static func get_plan(plan_id: String) -> Dictionary:
-	return plans().get(plan_id, plans()["01"])
+	var raw: Dictionary = plans().get(plan_id, plans()["01"])
+	return _to_meters(raw.duplicate(true))
+
+
+static func _to_meters(plan: Dictionary) -> Dictionary:
+	var m := 0.3048
+	plan["w"] = float(plan["w"]) * m
+	plan["d"] = float(plan["d"]) * m
+	for zone in plan.get("zones", []):
+		zone["x"] = float(zone["x"]) * m
+		zone["z"] = float(zone["z"]) * m
+		zone["w"] = float(zone["w"]) * m
+		zone["d"] = float(zone["d"]) * m
+	for door in plan.get("doors", []):
+		door["gap_start"] = float(door.get("gap_start", 0.0)) * m
+		door["gap_w"] = float(door.get("gap_w", DOOR_W)) * m
+		if door.has("pos"):
+			door["pos"] = float(door["pos"]) * m
+	var f2: Variant = plan.get("floor2")
+	if f2 is Dictionary and not f2.is_empty():
+		f2 = f2.duplicate(true)
+		f2["w"] = float(f2.get("w", plan["w"])) * m
+		f2["d"] = float(f2.get("d", plan["d"])) * m
+		for zone in f2.get("zones", []):
+			zone["x"] = float(zone["x"]) * m
+			zone["z"] = float(zone["z"]) * m
+			zone["w"] = float(zone["w"]) * m
+			zone["d"] = float(zone["d"]) * m
+		for door in f2.get("doors", []):
+			door["gap_start"] = float(door.get("gap_start", 0.0)) * m
+			door["gap_w"] = float(door.get("gap_w", DOOR_W)) * m
+			if door.has("pos"):
+				door["pos"] = float(door["pos"]) * m
+		plan["floor2"] = f2
+	var stair: Variant = plan.get("stair")
+	if stair is Dictionary and not stair.is_empty():
+		stair = stair.duplicate(true)
+		for key in ["x", "z", "w", "d"]:
+			if stair.has(key):
+				stair[key] = float(stair[key]) * m
+		plan["stair"] = stair
+	return plan
 
 
 static func footprint(plan: Dictionary) -> Vector2:

@@ -55,7 +55,7 @@ func _setup_feed() -> void:
 	add_child(_viewport)
 
 	var target_pos := Match.room_grid_position(peek_room_index)
-	_feed_camera.global_position = target_pos + Vector3(0, 10.0, 0)
+	_feed_camera.global_position = target_pos + Vector3(0, 1.3, 0)
 	_feed_camera.look_at(target_pos + Vector3(0, 1.0, 0), Vector3.UP)
 
 	var mat := StandardMaterial3D.new()
