@@ -197,6 +197,9 @@ func _server_spawn_room(room_index: int, owner_peer_id: int, is_pm: bool, puzzle
 		data["wire_targets"] = targets
 	RoomUtilities.server_init_room(room_index)
 	var room: Node = rooms_spawner.spawn(data)
+	if room == null:
+		push_error("Match: failed to spawn room %d for peer %d" % [room_index, owner_peer_id])
+		return
 	_rooms[room_index] = room
 
 
