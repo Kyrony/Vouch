@@ -34,6 +34,9 @@ const PUPPET_MASTER_TARGET_COUNT: int = 2
 @onready var players_container: Node3D = $PlayersContainer
 @onready var players_spawner: MultiplayerSpawner = $PlayersContainer/PlayersSpawner
 
+## Central underground shaft — built once per match on every peer.
+var _escape_hub: Node3D
+
 ## Server-only bookkeeping: room_index -> RoomPod node.
 var _rooms: Dictionary = {}
 
@@ -102,7 +105,7 @@ func _server_build_match() -> void:
 	for i in range(peer_ids.size()):
 		var peer_id: int = peer_ids[i]
 		var is_pm: bool = GameState.players[peer_id]["is_puppet_master"]
-		_server_spawn_room(i, peer_id, is_pm, puzzle_plan)
+		_server_spawn_room(i, peer_id, is_pm, puzzle_plan, peer_ids.size())
 
 	# Links must be built AFTER every room has registered its control/effect
 	# nodes with LinkGraph.
@@ -175,12 +178,13 @@ func _grant_puppet_master_targets(peer_ids: Array) -> void:
 	PuppetMasterSystem.server_grant_targets(pm_peer_id, camera_targets, all_other_rooms)
 
 
-func _server_spawn_room(room_index: int, owner_peer_id: int, is_pm: bool, puzzle_plan: Dictionary) -> void:
+func _server_spawn_room(room_index: int, owner_peer_id: int, is_pm: bool, puzzle_plan: Dictionary, total_rooms: int) -> void:
 	var data := {
 		"room_index": room_index,
 		"owner_peer_id": owner_peer_id,
 		"rng_seed": randi(),
 		"is_puppet_master": is_pm,
+		"total_rooms": total_rooms,
 		"requires_code": puzzle_plan.get("locked_index", -1) == room_index,
 		"clue_kind": puzzle_plan.get("clue_kind", "") if puzzle_plan.get("clue_index", -1) == room_index else "",
 		"clue_code": puzzle_plan.get("code", "") if puzzle_plan.get("clue_index", -1) == room_index else "",
@@ -196,6 +200,18 @@ func _server_spawn_room(room_index: int, owner_peer_id: int, is_pm: bool, puzzle
 		for j in range(mini(3, candidates.size())):
 			targets.append(candidates[j])
 		data["wire_targets"] = targets
+	if data.get("has_binary_puzzle", false):
+		var peek_candidates: Array = []
+		for idx in _rooms.keys():
+			if idx != room_index:
+				peek_candidates.append(idx)
+		if peek_candidates.is_empty() and total_rooms > 1:
+			for j in range(total_rooms):
+				if j != room_index:
+					peek_candidates.append(j)
+		if not peek_candidates.is_empty():
+			data["binary_peek_room"] = peek_candidates[randi() % peek_candidates.size()]
+			data["binary_target"] = randi_range(5, 200)
 	RoomUtilities.server_init_room(room_index)
 	var room: Node = rooms_spawner.spawn(data)
 	if room == null:
@@ -236,9 +252,27 @@ func _spawn_room_pod(data: Dictionary) -> Node:
 		push_error("Match: RoomPod scene root is not a RoomPod (script=%s)" % str(raw_node.get_script()))
 		raw_node.free()
 		return null
+	_ensure_escape_hub(int(data.get("total_rooms", 4)))
+	var grid_pos := room_grid_position(data["room_index"])
+	var to_hub := Vector3(-grid_pos.x, 0.0, -grid_pos.z)
+	if to_hub.length() < 0.5:
+		to_hub = Vector3(0.0, 0.0, 1.0)
+	else:
+		to_hub = to_hub.normalized()
+	room.rotation.y = atan2(to_hub.x, to_hub.z)
 	room.configure(data)
-	room.position = room_grid_position(data["room_index"])
+	room.position = grid_pos
 	return room
+
+
+func _ensure_escape_hub(room_count: int) -> void:
+	if is_instance_valid(_escape_hub):
+		return
+	_escape_hub = Node3D.new()
+	_escape_hub.set_script(preload("res://scripts/systems/escape_hub.gd"))
+	_escape_hub.name = "EscapeHub"
+	add_child(_escape_hub)
+	_escape_hub.call("build", room_count)
 
 
 ## Runs on EVERY peer, same determinism requirement as `_spawn_room_pod`.

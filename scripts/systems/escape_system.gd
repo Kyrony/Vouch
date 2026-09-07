@@ -75,11 +75,8 @@ func server_handle_escape_request(peer_id: int) -> void:
 
 	GameState.server_mark_escaped(peer_id)
 
-	var spawn_transform := Transform3D.IDENTITY
-	if is_instance_valid(_outside_director):
-		spawn_transform = _outside_director.get_roam_spawn_transform()
-
-	_teleport_player(peer_id, spawn_transform.origin, spawn_transform.basis.get_euler().y)
+	# Player walks through doors/halls physically — no teleport.
+	_notify_escaped(peer_id)
 
 	var faction_id: String = GameState.server_get_faction(peer_id)
 	GameState.player_escaped.emit(peer_id, faction_id)
@@ -104,11 +101,11 @@ func _client_escape_locked(message: String) -> void:
 	escape_locked.emit(message)
 
 
-func _teleport_player(peer_id: int, spawn_position: Vector3, spawn_rotation_y: float) -> void:
+func _notify_escaped(peer_id: int) -> void:
 	if peer_id == multiplayer.get_unique_id():
-		_client_apply_escape(spawn_position, spawn_rotation_y)
+		_client_escaped()
 	else:
-		_client_apply_escape.rpc_id(peer_id, spawn_position, spawn_rotation_y)
+		_client_escaped.rpc_id(peer_id)
 
 
 func _check_for_win() -> void:
@@ -123,11 +120,7 @@ func _check_for_win() -> void:
 
 
 @rpc("authority", "call_remote", "reliable")
-func _client_apply_escape(spawn_position: Vector3, spawn_rotation_y: float) -> void:
-	var player: Node3D = GameState.local_player_node
-	if is_instance_valid(player):
-		player.global_position = spawn_position
-		player.rotation.y = spawn_rotation_y
+func _client_escaped() -> void:
 	print("[EscapeSystem] you escaped! Welcome Outside.")
 	escaped_locally.emit()
 

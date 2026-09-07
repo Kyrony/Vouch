@@ -45,6 +45,14 @@ func server_toggle_moved() -> void:
 	_apply_moved(moved)
 
 
+func server_force_move(to_moved: bool) -> void:
+	if not multiplayer.is_server() or moved == to_moved:
+		return
+	moved = to_moved
+	_client_apply_moved.rpc(moved)
+	_apply_moved(moved)
+
+
 @rpc("authority", "call_remote", "reliable")
 func _client_apply_moved(is_moved: bool) -> void:
 	_apply_moved(is_moved)

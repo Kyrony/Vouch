@@ -139,10 +139,21 @@ persists locally between sessions.
   locally (`scripts/autoload/contact_book.gd`) - a personal memory aid,
   never synced to anyone else; the rename flow works by mouse click or
   by keyboard/gamepad focus + confirm.
-- **Escape + win-check** (`scripts/systems/escape_system.gd`): reach your
-  room's escape point, interact, and you're moved to the shared Outside
-  courtyard. The first faction with **all** members escaped wins - logged
-  to console (`[EscapeSystem] MATCH OVER - ...`).
+- **Escape + win-check** (`scripts/systems/escape_system.gd`): open your
+  escape door/vent (animated swing/slide — walk through, no teleport),
+  follow the **escape hall** up to the shared **Outside** hub at the
+  shaft top, and enter the escape zone. The first faction with **all**
+  members escaped wins — logged to console (`[EscapeSystem] MATCH OVER - ...`).
+- **World v2 interactables**: grabbable **ladder** (place, lean into wall,
+  climb), **fireplace** with floor gas line, physics **books** that burn,
+  **drains** / **exhaust vents**, optional **loft stairs** and denser prop
+  scatter. Wall-mounted **phone**, **light switch**, and **camera** snap
+  flush to the nearest wall.
+- **Binary terminal** puzzle: flip bits to match a target number; unlock
+  moves a bookcase and powers a peek monitor into another room.
+- **Esc pause menu** (`scenes/PauseMenu.tscn`): Resume, Settings hint,
+  Exit to Home, Debug GUI — **REMOVE DEBUG GUI FROM PAUSE MENU BEFORE
+  FINAL LAUNCH**.
 - **Player movement stub**: first-person `CharacterBody3D` with
   authority-gated input, ladder-climbing physics, and replicated
   transform via `MultiplayerSynchronizer`.

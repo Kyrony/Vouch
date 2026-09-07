@@ -75,7 +75,28 @@ layout.
   some use a **vent** in bath/closet instead. **Exactly one room may
   have no escape** - the Puppet Master.
 - **Optional hazards**: water valve (mystery flood control), electrical
-  box, code-locked escape (host odds).
+  box, code-locked escape (host odds), **fireplace + floor gas riser**
+  (clue book sometimes spawns inside), **floor drains** and **exhaust
+  vents**, **physics flammables** (books/papers/ladders via `FireSystem`).
+
+### World layout (underground escape hub)
+
+- Each room's escape door/vent opens with a **swing/slide animation** —
+  no teleport through transitions. Walk through the opening into a
+  **horizontal escape hall**, then a **vertical rise** into a shared
+  central shaft; **Outside** sits at the top (`EscapeHub` + `Outside`).
+- Rooms **rotate** so their escape faces the hub at world origin.
+- Walls use **lintels** above door gaps so rooms stay enclosed to the
+  ceiling; escape tunnels are capped with ceilings too.
+
+### In-match UI
+
+- **Esc** opens a pause menu: Resume, Settings (hint), Exit to Home,
+  and **Debug GUI** (dev — **REMOVE DEBUG GUI FROM PAUSE MENU BEFORE
+  FINAL LAUNCH**).
+- **Binary terminal puzzle** (~40% spawn): flip bits to match a target
+  decimal; success slides a bookcase and activates a wall monitor with a
+  live peek into another player's room.
 
 TODO(post-MVP): richer decoration, per-plan prop sets.
 
@@ -178,9 +199,10 @@ at spawn time and bakes them into replicated room data.
   `RoomLight`), but most sit inert unless some OTHER room's `WaterValve`
   happens to be linked to them (per-room valve odds are host-configurable
   - see "Host spawn odds").
-- Each valve activation raises the target room's water level a notch (a
-  simple rising semi-transparent water plane, capped so it never clips
-  the ceiling) and caches that level into
+- Each valve activation **slowly trickles** water into the target room
+  over time (`BrokenPipe.TRICKLE_RATE`, host-authoritative) rather than
+  jumping instantly — a rising semi-transparent water plane, capped so it
+  never clips the ceiling. Level is cached into
   `GameState.room_water_levels[room_index]` on every peer.
 - **Gameplay effect**: a player physically standing in a flooded room
   moves proportionally slower (`Player.gd`, up to 60% slower at max
