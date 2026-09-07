@@ -19,8 +19,8 @@ extends Node
 func _ready() -> void:
 	world.visible = false
 	GameState.match_started.connect(_on_match_started)
-	if OS.get_environment("VOUCH_HALLWAY_TEST") == "1":
-		call_deferred("_run_hallway_test")
+	if OS.get_environment("VOUCH_FLOOR_PLAN_TEST") == "1":
+		call_deferred("_run_floor_plan_test")
 	if OS.get_environment("VOUCH_MATCH_SPAWN_TEST") == "1":
 		call_deferred("_run_match_spawn_test")
 
@@ -33,7 +33,7 @@ func _run_match_spawn_test() -> void:
 		"owner_peer_id": 1,
 		"rng_seed": 12345,
 		"is_puppet_master": false,
-		"module_chain": [],
+		"floor_plan_id": "04",
 		"has_valve": false,
 	}
 	var room := match_node._spawn_room_pod(data)
@@ -45,92 +45,35 @@ func _run_match_spawn_test() -> void:
 	get_tree().quit(0)
 
 
-func _run_hallway_test() -> void:
-	print("=== CONNECTOR COLLISION TEST START ===")
-	await _test_connector(RoomPod.ConnectorKind.HALLWAY, false, "HALLWAY (centered)")
-	await _test_connector(RoomPod.ConnectorKind.HALLWAY, false, "HALLWAY (off-center start, x=+0.6)", 0.6)
-	await _test_connector(RoomPod.ConnectorKind.HALLWAY, true, "HALLWAY (hidden/bookcase)")
-	await _test_connector(RoomPod.ConnectorKind.VENT, false, "VENT (centered)")
-	await _test_connector(RoomPod.ConnectorKind.CLOSET, false, "CLOSET (centered)")
-	await _test_connector(RoomPod.ConnectorKind.SLIDE, false, "SLIDE (one-way, centered)")
-	print("=== CONNECTOR COLLISION TEST: ALL DONE ===")
+func _run_floor_plan_test() -> void:
+	print("=== FLOOR PLAN SPAWN TEST START ===")
+	var plans := ["01", "04", "12", "15"]
+	for plan_id in plans:
+		var room := _spawn_test_room(plan_id)
+		if room == null:
+			push_error("FLOOR PLAN TEST FAILED plan=%s" % plan_id)
+			get_tree().quit(1)
+			return
+		print("  plan %s OK children=%d footprint=%.0fx%.0f" % [plan_id, room.get_child_count(), room.width, room.depth])
+		room.queue_free()
+		await get_tree().process_frame
+	print("=== FLOOR PLAN SPAWN TEST: ALL OK ===")
 	get_tree().quit(0)
 
 
-func _test_connector(kind: RoomPod.ConnectorKind, hidden: bool, label: String, x_offset: float = 0.0) -> void:
-	print("--- %s ---" % label)
+func _spawn_test_room(plan_id: String) -> RoomPod:
 	var RoomPodScene: PackedScene = preload("res://scenes/Match/RoomPod.tscn")
 	var room: RoomPod = RoomPodScene.instantiate()
 	room.configure({
-		"room_index": 0, "owner_peer_id": 1, "rng_seed": 777,
+		"room_index": 0,
+		"owner_peer_id": 1,
+		"rng_seed": int(plan_id) * 1000,
 		"is_puppet_master": false,
-		"module_chain": [{
-			"connector": kind,
-			"opening_wall": RoomPod.OpeningWall.NORTH,
-			"hidden": hidden,
-		}],
+		"floor_plan_id": plan_id,
 		"has_valve": false,
 	})
 	add_child(room)
-	await get_tree().physics_frame
-
-	var body := CharacterBody3D.new()
-	body.collision_layer = 4
-	body.collision_mask = 1
-	var shape := CollisionShape3D.new()
-	var capsule := CapsuleShape3D.new()
-	capsule.radius = 0.35
-	capsule.height = 1.7
-	shape.shape = capsule
-	shape.position = Vector3(0, 0.85, 0)
-	body.add_child(shape)
-	add_child(body)
-	var start_pos: Vector3 = room.get_spawn_transform().origin + Vector3(x_offset, 0, 0)
-	body.global_position = start_pos
-	await get_tree().physics_frame
-
-	if hidden and room.has_node("SecretBookcase"):
-		var bookcase: MovableProp = room.get_node("SecretBookcase")
-		bookcase.server_toggle_moved()
-		await get_tree().create_timer(bookcase.move_duration + 0.1).timeout
-
-	var reach := 8.0
-	if kind == RoomPod.ConnectorKind.VENT or kind == RoomPod.ConnectorKind.CLOSET:
-		reach = 5.5
-	elif kind == RoomPod.ConnectorKind.SLIDE:
-		reach = 9.0
-	var target_z: float = start_pos.z - reach
-	var stuck_count := 0
-	var last_pos := body.global_position
-	var result := "FAILED (timeout)"
-	for i in range(500):
-		var gravity: float = ProjectSettings.get_setting("physics/3d/default_gravity")
-		if not body.is_on_floor():
-			body.velocity.y -= gravity * get_physics_process_delta_time()
-		else:
-			body.velocity.y = 0.0
-		# Steer back toward x=0 (center of the doorway) while moving
-		# forward - simulates a realistic (not perfectly straight) approach.
-		var steer := clampf(-body.global_position.x, -1.5, 1.5)
-		body.velocity.x = steer
-		body.velocity.z = -2.5
-		body.move_and_slide()
-		await get_tree().physics_frame
-		if body.global_position.distance_to(last_pos) < 0.001:
-			stuck_count += 1
-		else:
-			stuck_count = 0
-		last_pos = body.global_position
-		if stuck_count > 40:
-			result = "STUCK at frame %d, pos=%s" % [i, body.global_position]
-			break
-		if body.global_position.z <= target_z:
-			result = "PASSED, reached pos=%s" % body.global_position
-			break
-	print("    %s" % result)
-	room.queue_free()
-	body.queue_free()
-	await get_tree().process_frame
+	return room
 
 
 func _on_match_started() -> void:

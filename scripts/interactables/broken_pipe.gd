@@ -15,6 +15,8 @@ class_name BrokenPipe
 
 const MAX_LEVEL: float = 1.0
 const LEVEL_INCREMENT: float = 0.25
+## Host-authoritative rise speed (water level units per second). Tunable.
+const TRICKLE_RATE: float = 0.08
 ## Water never visually rises above this fraction of room height, so it
 ## never clips through the ceiling even at MAX_LEVEL.
 const MAX_HEIGHT_FRACTION: float = 0.85
@@ -24,8 +26,12 @@ const MAX_HEIGHT_FRACTION: float = 0.85
 var effect_id: String = ""
 var owner_peer_id: int = -1
 var room_index: int = -1
-var room_height: float = 3.0
+var room_height: float = 10.0
 var water_level: float = 0.0
+
+var _trickling: bool = false
+var _trickle_target: float = 0.0
+var _sync_timer: float = 0.0
 
 
 func _ready() -> void:
@@ -38,19 +44,41 @@ func _ready() -> void:
 	_apply_visual(water_level)
 
 
+func _process(delta: float) -> void:
+	if not multiplayer.is_server() or not _trickling:
+		return
+	if water_level >= _trickle_target - 0.0001:
+		_trickling = false
+		_client_sync_state.rpc(water_level)
+		return
+
+	water_level = minf(water_level + TRICKLE_RATE * delta, _trickle_target)
+	GameState.room_water_levels[room_index] = water_level
+	_apply_visual(water_level)
+
+	_sync_timer -= delta
+	if _sync_timer <= 0.0:
+		_sync_timer = 0.1
+		_client_sync_state.rpc(water_level)
+
+
 ## Called server-side by LinkGraph when a linked valve is activated.
 func server_apply_effect() -> void:
 	if not RoomUtilities.is_enabled(room_index, RoomUtilities.UTILITY_WATER):
 		return
-	water_level = minf(water_level + LEVEL_INCREMENT, MAX_LEVEL)
-	GameState.room_water_levels[room_index] = water_level
-	_apply_visual(water_level)
-	_client_sync_state.rpc(water_level)
+	_trickle_target = minf(_trickle_target + LEVEL_INCREMENT, MAX_LEVEL)
+	if water_level >= _trickle_target - 0.0001:
+		_trickle_target = water_level
+		return
+	if not _trickling:
+		_trickling = true
+		_sync_timer = 0.0
 
 
 @rpc("authority", "call_remote", "reliable")
 func _client_sync_state(level: float) -> void:
 	water_level = level
+	_trickle_target = maxf(_trickle_target, level)
 	GameState.room_water_levels[room_index] = level
 	_apply_visual(level)
 

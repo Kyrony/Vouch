@@ -57,48 +57,30 @@ room, a phone, an escape point, a security camera, a ladder.
   (see `NetworkManager._client_receive_faction`, sent as a targeted
   unicast RPC, never broadcast).
 
-## Rooms - a modular system
+## Rooms - floor-plan templates
 
 Each player spawns **alone** in their own procedurally-built room
-("RoomPod" - see `scripts/room_pod.gd`), assembled from **1–4 chained
-modules**, entirely in code from a small "recipe" chosen
-deterministically from a per-room seed, so it replicates identically to
-every client without sending mesh data over the network:
+("RoomPod" - see `scripts/room_pod.gd`), assembled from one of **20
+James floor-plan templates** on a 1 ft = 1 Godot unit grid
+(`scripts/systems/floor_plan_templates.gd`). Plans 01–14 are single-story;
+15–20 are two-story with a shared stair shaft. A server-side
+`floor_plan_id` is baked into spawn data so every peer builds the same
+layout.
 
-- **Main module** - always one of three room categories, each with a
-  distinct color palette obvious at a glance: **Bedroom**, **Utility
-  Room**, **Creepy Basement**.
-- **Optional connector modules** (80% chance of a 2nd room, 20% of a 3rd,
-  1% of a 4th; a connector is **always** placed between chained modules):
-  **Closet** (small dead-end alcove), **Hallway** (corridor into a second
-  chamber), **Vent** (narrower crawlspace + end chamber), or **Slide**
-  (one-way tunnel — an Area3D blocker prevents returning through the
-  slide path). Connectors can open on the **north, east, or west** wall,
-  or as a **ceiling vent** (vertical shaft + upper chamber). A hidden
-  hallway connector may be blocked by a **movable bookcase**.
-- **Size varies** independently: 4 size tiers from Compact to Spacious.
-- **Seamless, fully-enclosed construction**: every module boundary uses
-  a standardized opening size for its category, adjoining pieces
-  (floor/ceiling/walls) **overlap by a small margin at every seam**
-  (`RoomPod.SEAM_OVERLAP`) so there's never a hairline gap or a view into
-  the void, and a shorter connector (like a vent) gets a "header" wall
-  segment sealing the space above its opening up to full room height.
-  Decorative pipes and wires are deliberately **built oversized** -
-  longer than their span and embedded past the wall face - so you never
-  see a floating, flat-cut end.
-- **Escape varies**: most rooms escape through a **door**; some use a
-  **vent/shaft** instead (same `Door.gd` script, different prompt/
-  visual - purely a flavor read). **Exactly one room may have no escape
-  at all** - that player is the Puppet Master (see below).
-- **Optional hazards**, each independently rolled per room subject to
-  host-configurable odds (see "Host spawn odds"): a **water valve**
-  (mystery control, see "Flooding" below) and a code-locked escape
-  (see "Puzzles").
+- **Theme** - one of three palettes: **Bedroom**, **Utility Room**,
+  **Creepy Basement** (rolled per room from seed).
+- **Layout** - living / bedroom / bath / hall / closet zones with
+  interior and exterior door openings (~3.5 ft wide).
+- **Escape varies**: most rooms escape through the **south entry door**;
+  some use a **vent** in bath/closet instead. **Exactly one room may
+  have no escape** - the Puppet Master.
+- **Optional hazards**: water valve (mystery flood control), electrical
+  box, code-locked escape (host odds).
 
-TODO(post-MVP): hand-authored room shapes instead of box-and-gap
-construction, more themes, richer decoration variety.
+TODO(post-MVP): richer decoration, per-plan prop sets.
 
-Headless connector collision validation: `VOUCH_HALLWAY_TEST=1 godot4 --headless --path .`
+Headless floor-plan validation: `VOUCH_FLOOR_PLAN_TEST=1 godot4 --headless --path .`
+Headless match spawn validation: `VOUCH_MATCH_SPAWN_TEST=1 godot4 --headless --path .`
 
 ## Puppet Master
 
