@@ -120,6 +120,11 @@ var _local_health: float = 100.0
 var _local_max_health: float = 100.0
 var _inventory_slots: Array = []
 var _inventory_selected: int = 0
+var _phone_rig: Node3D = null
+var _held_phone: Node3D = null
+var _phone_led_spot: SpotLight3D = null
+var _phone_led_omni: OmniLight3D = null
+var _local_fear: float = 0.0
 
 
 func _ready() -> void:
@@ -163,6 +168,7 @@ func _ready() -> void:
 			PlayerHealth.local_health_changed.connect(_on_local_health_changed)
 			PlayerInventory.local_inventory_changed.connect(_on_local_inventory_changed)
 			PlayerEffects.local_meters_changed.connect(_on_local_meters_changed)
+			PhoneDevice.local_phone_state.connect(_on_local_phone_state)
 		_pause_menu = get_node_or_null("/root/Main/PauseMenu")
 	else:
 		camera.current = false
@@ -249,8 +255,9 @@ func _physics_process(delta: float) -> void:
 		_update_interact_prompt()
 		_process_destroy_hold(delta)
 		_process_held_paper(delta)
-		if horror_mode and _neon_hud:
-			_neon_hud.set_tower_strength(TowerRules.nearest_tower_strength(global_position))
+		if horror_mode:
+			_sync_horror_hud_signal()
+			_update_phone_led_visuals()
 
 
 func _apply_ground_velocity(delta: float, locked: bool) -> void:
@@ -1073,6 +1080,7 @@ func _build_horror_hud() -> void:
 	_neon_hud = hud_script.new()
 	hud.add_child(_neon_hud)
 	_neon_hud.set_meters(100.0, 100.0, 100.0, 0.0)
+	_attach_phone_rig()
 	if is_horror_puppet_master:
 		_neon_hud.call("set_steal", false, 0.0, 1.0)
 	faction_label.add_theme_color_override("font_color", Color(1.0, 0.22, 0.48) if is_horror_puppet_master else Color(0.2, 0.92, 1.0))
@@ -1106,9 +1114,78 @@ func _on_local_health_changed(hp: float, cap: float) -> void:
 
 func _on_local_meters_changed(hp: float, stamina: float, fear: float) -> void:
 	_local_health = hp
+	_local_fear = fear
 	if _neon_hud:
 		_neon_hud.set_meters(hp, _local_max_health, stamina, fear)
-		_neon_hud.set_tower_strength(TowerRules.nearest_tower_strength(global_position))
+		_sync_horror_hud_signal()
+
+
+func _on_local_phone_state(_battery: float, _led_on: bool, _has_phone: bool) -> void:
+	_sync_horror_hud_signal()
+	_update_phone_led_visuals()
+
+
+func _sync_horror_hud_signal() -> void:
+	if _neon_hud == null:
+		return
+	var band := TowerRules.signal_band(global_position)
+	_neon_hud.set_tower_strength(TowerRules.nearest_tower_strength(global_position))
+	_neon_hud.set_signal_band(band)
+	_neon_hud.set_phone_device(_holding_phone(), PhoneDevice.local_battery, PhoneDevice.local_led_on)
+	_neon_hud.set_utility_flags(_crouching, _local_fear >= 70.0)
+
+
+func _attach_phone_rig() -> void:
+	if camera == null or camera.get_node_or_null("PhoneRig") != null:
+		return
+	var vis_script: GDScript = load("res://scripts/horror/items/smartphone_visual.gd")
+	_phone_rig = Node3D.new()
+	_phone_rig.name = "PhoneRig"
+	camera.add_child(_phone_rig)
+	_phone_rig.position = Vector3(0.16, -0.14, -0.28)
+	_phone_rig.rotation_degrees = Vector3(12, -22, 8)
+	_held_phone = vis_script.attach(_phone_rig, true)
+	_phone_rig.visible = false
+
+	_phone_led_spot = SpotLight3D.new()
+	_phone_led_spot.name = "PhoneLED"
+	_phone_led_spot.light_color = Color(1.0, 0.96, 0.88)
+	_phone_led_spot.light_energy = 0.0
+	_phone_led_spot.spot_range = 14.0
+	_phone_led_spot.spot_angle = 26.0
+	_phone_led_spot.shadow_enabled = false
+	camera.add_child(_phone_led_spot)
+
+	_phone_led_omni = OmniLight3D.new()
+	_phone_led_omni.name = "PhoneLEDGlow"
+	_phone_led_omni.light_color = Color(1.0, 0.94, 0.8)
+	_phone_led_omni.light_energy = 0.0
+	_phone_led_omni.omni_range = 1.4
+	camera.add_child(_phone_led_omni)
+	_phone_led_omni.position = Vector3(0.06, -0.05, -0.1)
+
+
+func _update_phone_led_visuals() -> void:
+	var holding := _holding_phone()
+	var selected := _selected_item_id() == "phone"
+	var led := holding and PhoneDevice.local_led_on and PhoneDevice.local_battery >= 1.0
+	if _phone_rig:
+		_phone_rig.visible = selected
+	if _held_phone:
+		var vis_script: GDScript = load("res://scripts/horror/items/smartphone_visual.gd")
+		vis_script.update_screen(_held_phone, PhoneDevice.local_battery, TowerRules.signal_band(global_position), led)
+	if _phone_led_spot:
+		_phone_led_spot.light_energy = 3.2 if led else 0.0
+		_phone_led_spot.visible = led
+	if _phone_led_omni:
+		_phone_led_omni.light_energy = 0.85 if led else 0.0
+		_phone_led_omni.visible = led
+
+
+func _selected_item_id() -> String:
+	if _inventory_selected < 0 or _inventory_selected >= _inventory_slots.size():
+		return ""
+	return str(_inventory_slots[_inventory_selected])
 
 
 @rpc("any_peer", "call_remote", "reliable")
@@ -1124,6 +1201,8 @@ func _on_local_inventory_changed(slots: Array, selected: int) -> void:
 	_inventory_slots = slots
 	_inventory_selected = selected
 	_refresh_hotbar()
+	_sync_horror_hud_signal()
+	_update_phone_led_visuals()
 
 
 func _refresh_hotbar() -> void:

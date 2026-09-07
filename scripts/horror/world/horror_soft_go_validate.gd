@@ -151,6 +151,54 @@ static func validate_tower_roll(world: Node3D) -> String:
 	return ""
 
 
+static func validate_phone_hud(world: Node3D) -> String:
+	var pd := Engine.get_main_loop().root.get_node_or_null("PhoneDevice")
+	if pd == null:
+		return "PhoneDevice autoload missing"
+	if str(pd.ITEM_ID) != "phone":
+		return "inventory id must stay phone (got %s)" % pd.ITEM_ID
+	if str(pd.ITEM_PRODUCTION_ID) != "ITEM_DEVICE_SMARTPHONE_01":
+		return "smartphone production id mismatch"
+	var led_min: float = float(pd.LED_DRAIN_PER_SEC) * 60.0
+	var passive_min: float = float(pd.PASSIVE_DRAIN_PER_SEC) * 60.0
+	# Sheet listed ~15%/min LED and ~2%/min passive as concept — eng owns the live numbers.
+	if is_equal_approx(led_min, 15.0) or is_equal_approx(passive_min, 2.0):
+		return "phone drain locked to Leonardo sheet marketing numbers — use eng tunables"
+	if led_min <= 0.0 or passive_min < 0.0:
+		return "phone drain rates invalid (LED=%.2f%%/min passive=%.2f%%/min)" % [led_min, passive_min]
+	if float(pd.LED_MIN_BATTERY) <= 0.0:
+		return "dead battery must disable the phone LED"
+	var saw_phone := false
+	for node in world.get_tree().get_nodes_in_group("world_pickups"):
+		var item_id := str(node.get("item_id"))
+		if item_id == "flashlight" or item_id.contains("flashlight") or item_id.contains("torch"):
+			return "classic flashlight item is forbidden — phone LED only"
+		if item_id == "phone":
+			saw_phone = true
+			if node.get_node_or_null("Smartphone") == null:
+				return "phone pickup missing graphite/gold Smartphone visual"
+			if node.find_child("CameraLED", true, false) == null:
+				return "phone pickup missing CameraLED"
+	if not saw_phone:
+		return "smartphone world pickup missing"
+	var hud_script: GDScript = load("res://scripts/horror/ui/neon_hud.gd")
+	if hud_script == null:
+		return "neon_hud.gd failed to load"
+	var hud: Object = hud_script.new()
+	if not hud.has_method("set_signal_band") or not hud.has_method("set_phone_device"):
+		hud.free()
+		return "NeonHud missing signal/phone LED API"
+	hud.call("set_signal_band", "service")
+	if str(hud.get("signal_band")) != "full":
+		hud.free()
+		return "NeonHud did not map service -> full"
+	hud.free()
+	var rules := _towers()
+	if rules and not rules.has_method("signal_band"):
+		return "TowerRules.signal_band missing"
+	return ""
+
+
 static func validate_life_steal() -> String:
 	var fx: GDScript = load("res://scripts/horror/items/player_effects.gd")
 	if fx == null:

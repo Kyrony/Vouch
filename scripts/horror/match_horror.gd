@@ -17,6 +17,7 @@ static func server_build(match_node: Node) -> void:
 	PlayerHealth.reset()
 	PlayerInventory.reset()
 	PlayerEffects.reset()
+	PhoneDevice.reset()
 	ChildSpawnRNG.reset()
 	TowerRules.reset()
 	PhoneSystem.reset()

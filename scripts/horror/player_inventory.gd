@@ -25,6 +25,7 @@ func server_init_peer(peer_id: int) -> void:
 		slots[i] = EMPTY
 	_inventories[peer_id] = slots
 	_selected[peer_id] = 0
+	PhoneDevice.server_init_peer(peer_id)
 	_broadcast(peer_id)
 
 
@@ -80,6 +81,21 @@ func server_get_slots(peer_id: int) -> Array:
 	return empty
 
 
+func server_has_item(peer_id: int, item_id: String) -> bool:
+	for slot in server_get_slots(peer_id):
+		if str(slot) == item_id:
+			return true
+	return false
+
+
+func server_selected_item(peer_id: int) -> String:
+	var slots := server_get_slots(peer_id)
+	var sel := server_get_selected(peer_id)
+	if sel < 0 or sel >= slots.size():
+		return EMPTY
+	return str(slots[sel])
+
+
 func _broadcast(peer_id: int) -> void:
 	var slots: Array = server_get_slots(peer_id)
 	var sel: int = server_get_selected(peer_id)
@@ -124,11 +140,16 @@ func request_drop_selected() -> void:
 
 func _server_use_selected(sender: int) -> void:
 	var sel := server_get_selected(sender)
-	var slots := server_get_slots(sender)
-	if sel < 0 or sel >= slots.size():
-		return
-	var item := str(slots[sel])
+	var item := server_selected_item(sender)
 	if item.is_empty():
+		return
+	# Smartphone is a tool: R toggles the camera LED. Do not consume it.
+	if item == "phone":
+		PhoneDevice.server_toggle_led(sender)
+		return
+	if item == "battery":
+		if PhoneDevice.server_recharge(sender):
+			server_remove_slot(sender, sel)
 		return
 	_apply_use_item(sender, item)
 	server_remove_slot(sender, sel)
@@ -168,6 +189,7 @@ func _apply_use_item(peer_id: int, item_id: String) -> void:
 		"medkit", "bandage":
 			PlayerHealth.server_heal(peer_id, 40.0)
 		"phone":
+			# LED toggle is handled before consume — keep as a no-op tool.
 			pass
 		"keycard":
 			pass
