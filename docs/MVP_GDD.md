@@ -7,32 +7,41 @@ TODO and fix the code.
 ## One-line pitch
 
 8 players wake up alone in an industrial bunker, split into 4 rival
-factions - plus one secret **Puppet Master** who isn't on anyone's side.
-Nobody knows who's on their team. Escape together, or don't. One of you
-might be trying to make sure nobody does.
+factions - plus, some games, one secret **Puppet Master** who isn't on
+anyone's side. Nobody knows who's on their team. Escape together, or
+don't. One of you might be trying to make sure nobody does.
 
 ## Setting
 
 Industrial bunker / underground facility. Cold, functional, no frills -
 graybox rooms, exposed fixtures, pipes and wires, one working light per
-room, a phone, an escape point, a security camera.
+room, a phone, an escape point, a security camera, a ladder.
 
-## Home screen
+## Home screen & Settings
 
 - Landing screen ("Home") offers **Play / Settings / Character / Exit**.
-  Settings and Character are stub panels for now (see `Lobby.gd`) -
-  no functionality behind them yet beyond a placeholder message.
-- **Play** opens the existing host/join flow. A live **joined-player
-  list** (name + peer id) is shown below the host/join controls and
-  updates as peers connect/disconnect (`NetworkManager.lobby_roster_updated`,
+  Character is still a stub panel; **Settings is fully functional**:
+  - **Key remapping** for move (WASD)/jump/interact/destroy - click a
+    binding, press any key/mouse button/gamepad button to rebind it.
+    "Reset" restores that action's project default.
+  - **Mouse/look sensitivity** slider (0.1x-4x multiplier).
+  - **Audio**: master volume (wired to the engine's real "Master" bus)
+    and an SFX volume slider (stored, but there are no SFX in the
+    project yet, so it's currently inert - see `SettingsManager.gd`).
+  - Everything persists locally via `ConfigFile` (`SettingsManager.gd`)
+    and is never networked - every peer keeps their own settings.
+- **Play** opens the host/join flow. A live **joined-player list**
+  (name + peer id) is shown below the host/join controls and updates as
+  peers connect/disconnect (`NetworkManager.lobby_roster_updated`,
   broadcast to everyone). This is pre-match "who's here" information
   only - no faction/role data, consistent with the privacy rule below.
+  Once hosting, a **"Match spawn odds"** panel also appears - see "Host
+  spawn odds" below.
 
 ## Factions
 
-- MVP: **4 factions, 2 players each** (4v4 flavor) plus **1 Puppet
-  Master**, for 9 players total when the Puppet Master is in play (8
-  without). See "Puppet Master" below.
+- MVP: **4 factions, 2 players each** (4v4 flavor) plus, some games, **1
+  Puppet Master** - see "Puppet Master" below for exactly when one spawns.
 - Factions ship with a color + codename: **Red Vipers**, **Blue Ash**,
   **Green Hollow**, **Yellow Sparks**.
 - Architecture supports **N factions** - `FactionData.active_faction_count`
@@ -48,36 +57,68 @@ room, a phone, an escape point, a security camera.
   (see `NetworkManager._client_receive_faction`, sent as a targeted
   unicast RPC, never broadcast).
 
-## Rooms
+## Rooms - a modular system
 
 Each player spawns **alone** in their own procedurally-built room
-("RoomPod" - see `scripts/room_pod.gd`). Every room is built entirely in
-code from a small "recipe" chosen deterministically from a per-room seed,
-so it replicates identically to every client without sending mesh data
-over the network:
+("RoomPod" - see `scripts/room_pod.gd`), assembled from 1-2 chained
+**modules**, entirely in code from a small "recipe" chosen
+deterministically from a per-room seed, so it replicates identically to
+every client without sending mesh data over the network:
 
-- **Size varies**: 3 size tiers (Compact/Standard/Spacious).
-- **Theme varies**: 3 themes with distinct color palettes - **Bedroom**,
-  **Utility Room**, **Creepy Basement** - obvious at a glance.
-- **Layout varies**: each room may roll a **closet** alcove, a
-  **hallway leading to a second chamber**, decorative **pipes**, and/or
-  decorative **electrical wires**. A hidden hallway may be blocked by a
-  **movable bookcase** (see "Movable & destroyable props").
+- **Main module** - always one of three room categories, each with a
+  distinct color palette obvious at a glance: **Bedroom**, **Utility
+  Room**, **Creepy Basement**.
+- **Optional connector module**, extending off the main module's north
+  wall: **Closet** (small dead-end alcove), **Hallway** (corridor into a
+  second chamber), or **Vent** (a narrower, lower-ceilinged crawlspace +
+  small end chamber - same shape as a hallway, distinct scale/material so
+  it reads as a cramped vent; note this is a *structural* module distinct
+  from the "escape via vent" flavor below). A hidden hallway connector
+  may be blocked by a **movable bookcase** (see "Movable & destroyable
+  props").
+- **Size varies** independently: 4 size tiers from Compact to Spacious.
+- **Seamless, fully-enclosed construction**: every module boundary uses
+  a standardized opening size for its category, adjoining pieces
+  (floor/ceiling/walls) **overlap by a small margin at every seam**
+  (`RoomPod.SEAM_OVERLAP`) so there's never a hairline gap or a view into
+  the void, and a shorter connector (like a vent) gets a "header" wall
+  segment sealing the space above its opening up to full room height.
+  Decorative pipes and wires are deliberately **built oversized** -
+  longer than their span and embedded past the wall face - so you never
+  see a floating, flat-cut end.
 - **Escape varies**: most rooms escape through a **door**; some use a
-  **vent/shaft** instead. Functionally identical (same `Door.gd` script,
-  different prompt/visual), so it's purely a flavor read for players.
-- **Exactly one room has no escape at all** - that player is the
-  **Puppet Master** (see below).
+  **vent/shaft** instead (same `Door.gd` script, different prompt/
+  visual - purely a flavor read). **Exactly one room may have no escape
+  at all** - that player is the Puppet Master (see below).
+- **Optional hazards**, each independently rolled per room subject to
+  host-configurable odds (see "Host spawn odds"): a **water valve**
+  (mystery control, see "Flooding" below) and a code-locked escape
+  (see "Puzzles").
 
 TODO(post-MVP): hand-authored room shapes instead of box-and-gap
-construction, more themes, richer decoration variety.
+construction, more themes, richer decoration variety, 3+ module chains.
 
 ## Puppet Master
 
-- A **fifth, independent role**, not part of any rival faction. Their
-  room has **no escape**.
+- A **fifth, independent role**, not part of any rival faction.
+- **Spawn rules**: only possible with **4 or more players**, and even
+  then only a **50% chance** per eligible match
+  (`PuppetMasterSystem.MIN_PLAYERS_FOR_PUPPET_MASTER` /
+  `SPAWN_CHANCE`) - most matches below 4 players, or that lose the coin
+  flip, have no Puppet Master at all and just play as a normal N-faction
+  escape match.
+- Their room is always a **perfect, unadorned box** (no closet/hallway/
+  vent connector module) with a few decorative **monitor screens** on
+  the wall - see `RoomPod._build_monitors()`. The FUNCTIONAL camera feeds
+  are a PM-only HUD panel, not these world-space screens, so anyone who
+  wanders into the PM's room (nothing stops them) can't peek at the live
+  feeds just by looking at the wall.
 - **Goal**: eliminate every other player before any faction fully
   escapes.
+- **Any control in the Puppet Master's own room must never affect their
+  own room** - guaranteed, not just likely, by `LinkGraph`'s pairing
+  algorithm (see "Mystery controls" below): the same guarantee actually
+  applies to every room's controls, not just the PM's.
 - At match start they're granted:
   - **Camera feeds** into a small number of other rooms (a real
     `SubViewport` + `Camera3D` looking into that room's world position -
@@ -108,18 +149,44 @@ the target room's security camera has been destroyed.
 
 ## Mystery controls (the core social mechanic)
 
-- A **control** (light switch, eventually valves/breakers/etc.) in one
-  player's room is secretly wired to an **effect** (a light, eventually
-  doors/alarms/etc.) in a *different* player's room.
+- A **control** (light switch, water valve) in one player's room is
+  secretly wired to an **effect** (a light, a broken pipe) in a
+  *different* player's room, via `LinkGraph`.
+- Controls/effects are grouped into **channels** ("light", "flood") - a
+  control only ever links within its own channel, so a light switch
+  never accidentally controls a broken pipe.
+- **Guaranteed no self-links**: within each channel, `LinkGraph` orders
+  rooms randomly and then rotates the pairing by one position - a real
+  derangement, not just "usually shuffled away from itself" - so **no
+  control ever links to an effect in its own room**, full stop. This is
+  what makes the Puppet Master's "never affects his own room" rule an
+  actual guarantee rather than a probability.
 - The **activator** gets only ambiguous **local feedback** (a tick/buzz) -
   they know *something* happened, never what or to whom.
 - The **affected player** gets a clear **local event** at their own prop -
   they feel it directly, but never learn who caused it.
 - The server is the only place that ever holds the full control->effect
-  graph (`LinkGraph`); it is never sent to any client.
-- MVP ships exactly one control type (light switch) and one effect type
-  (room light), linked 1:1 for the whole match. TODO(post-MVP): more
-  control/effect types, multi-hop chains, per-round reshuffles.
+  graph; it is never sent to any client.
+
+TODO(post-MVP): more control/effect types beyond light+flood, multi-hop
+chains, per-round reshuffles.
+
+## Flooding
+
+- Every room gets a `BrokenPipe` effect prop (like every room gets a
+  `RoomLight`), but most sit inert unless some OTHER room's `WaterValve`
+  happens to be linked to them (per-room valve odds are host-configurable
+  - see "Host spawn odds").
+- Each valve activation raises the target room's water level a notch (a
+  simple rising semi-transparent water plane, capped so it never clips
+  the ceiling) and caches that level into
+  `GameState.room_water_levels[room_index]` on every peer.
+- **Gameplay effect**: a player physically standing in a flooded room
+  moves proportionally slower (`Player.gd`, up to 60% slower at max
+  flood), and a room flooded past `EscapeSystem.FLOOD_BLOCK_LEVEL` has
+  its escape physically blocked ("the water's too high").
+- This is a stub - water level only ever rises (no drainage) and there's
+  a single flood tier scale, not a real fluid simulation.
 
 ## Comms
 
@@ -133,52 +200,118 @@ the target room's security camera has been destroyed.
   `ContactBook` - a client-only, unsynced nickname map, persisted to a
   small local config file. Two players can give the same line completely
   different (or wrong!) nicknames; nobody else ever sees your renames.
+  The redesigned phone panel lists every known line as a clickable
+  button (mouse click, OR keyboard/gamepad focus + confirm both work) -
+  pressing one opens an inline rename field.
 - **PA, windows, writing/notes**: not implemented yet. They're expected
   to reuse `PhoneSystem`'s routing core (random recipient, no
   caller-side targeting) once built.
-- Opening the phone (or any modal panel) **locks player input** - no
+- Opening the phone (or the code keypad) **locks player input** - no
   movement, no look, no jump - until it's closed.
 
 ## Puzzles
 
-- Some interactables are **code-locked** (`PuzzleSystem`): a room's
-  escape point can require a 4-digit code before it'll let you through.
-  Interacting with it while locked gives clear local feedback ("It's
-  locked, find the code") rather than silently failing.
+- Some room escapes are **code-locked** (`PuzzleSystem`), gated by
+  host-configurable odds (see "Host spawn odds"). Interacting with a
+  locked escape gives clear local feedback ("It's locked, find the
+  code") rather than silently failing.
+- Entering a code uses a **physical keypad**: individual digit buttons
+  (0-9, clear, backspace) the player presses one at a time, building up
+  a display, then Submit - so a teammate on the phone can dictate a code
+  digit by digit, same as a real keypad. No typing on a text field.
 - The code is **never sent to the locked room's keypad** - only the
   server knows it. It's discoverable as a readable clue placed in a
   DIFFERENT player's room (mirroring LinkGraph's "the answer lives
-  somewhere else" theming):
-  - A **book** (`ClueBook`), always readable, or
-  - A **flame-lit paper** (`ClueFlamePaper`), only readable while
-    standing near a paired `Flame` prop (a client-side distance check -
-    the text itself isn't secret at the netcode level, it's just
-    narratively "too dark to read" otherwise).
+  somewhere else" theming), with clue-type odds also host-configurable:
+  - A **book** (`ClueBook`), always readable on interact.
+  - A **grabbable flame-lit paper** (`ClueFlamePaper`): interacting picks
+    it up (host-authoritative); the player then has to physically carry
+    it near a `Flame` prop. Close enough for a moment and the code
+    **appears on the paper** (a client-side proximity/timer check - the
+    text isn't secret at the netcode level, same as the book). Get **too
+    close** for too long, though, and the paper **catches fire and is
+    destroyed** - reusing the shared `Interactable` destroy mixin - and
+    the clue is lost for good.
 - MVP wires this up to gate **escape** only. The same
   `server_register_lock` / `request_attempt_unlock` core could gate a
   camera or other feature too - not built yet.
 - At most one room is locked per match (skipped entirely if there
-  aren't enough rooms to make it interesting, e.g. solo testing).
+  aren't enough rooms to make it interesting, e.g. solo testing, or if
+  the host's "code lock" odds roll doesn't hit).
 
 ## Movable & destroyable props
 
 - **Movable** (`MovableProp`): some props (currently a bookcase blocking
-  a hidden hallway opening) can be pushed aside - a host-authoritative
-  position tween replicated to everyone, with collision disabled once
-  moved so the newly-revealed path is actually walkable.
+  a hidden hallway/vent opening) can be pushed aside - a
+  host-authoritative position tween replicated to everyone, with
+  collision disabled once moved so the newly-revealed path is actually
+  walkable.
 - **Destroyable** (shared mixin on the `Interactable` base class): some
-  props (each room's phone and security camera) can be destroyed with a
-  separate `destroy` input (default `F`), host-authoritative. Destroying
-  a prop just hides it and disables its collision/behavior - a phone that's
-  been destroyed can no longer receive calls; a destroyed camera is
-  visibly gone to anyone who walks by.
+  props (each room's phone, security camera, and the grabbable flame
+  paper's "burn" case) can be destroyed. Destroying requires **holding**
+  the `destroy` input (default `F`) for about a second - a HUD progress
+  bar shows the hold - rather than a single tap, so it can't happen by
+  accident. Destroying just hides the prop and disables its collision/
+  behavior - a destroyed phone can no longer receive calls; a destroyed
+  camera is visibly gone to anyone who walks by.
+- **The security camera specifically requires elevation** to destroy: it's
+  mounted near the ceiling, and `SecurityCamera.min_elevation_y` (checked
+  before the destroy-hold is even allowed to start) means a player has
+  to actually climb the room's `Ladder` first - see below - rather than
+  destroying it from the floor.
+
+## Ladders & climbing
+
+- `Ladder.gd` is an `Area3D` "climb zone" placed next to each room's
+  security camera. While a player's body is inside it, `Player.gd`
+  switches to climbing physics: forward/back input moves vertically
+  (`CLIMB_SPEED`), gravity is suspended, and normal ground movement
+  resumes immediately on leaving the zone. This is what actually lets a
+  player reach the elevated security camera to destroy it.
+
+## Test-only tools (*** REMOVE BEFORE FULL RELEASE ***)
+
+- A pickup **Gun** (`Gun.gd`) and a few **DummyTarget** props live in the
+  Outside courtyard, under a node explicitly named
+  `TestRange_RemoveBeforeRelease`. Picking up the gun and left-clicking
+  fires a simple hit-scan raycast; hitting a dummy flashes it red and
+  wobbles it (host-authoritative, purely cosmetic feedback). This exists
+  **solely** to manually verify hit-registration during development -
+  there's no ammo, no damage model, and no gameplay purpose. **Remove
+  `Gun.gd`, `DummyTarget.gd`, the `fire` input action, `Player.has_gun`/
+  `_fire_gun()`, and the `TestRange_RemoveBeforeRelease` node from
+  `Outside.tscn` before shipping.**
+
+## Host spawn odds
+
+- The host's Play screen exposes sliders (applied at match generation,
+  host-authoritative, never synced to clients - see `MatchSettings.gd`)
+  for:
+  - **Hidden hallway** chance (a rolled hallway connector being blocked
+    by a secret bookcase).
+  - **Code lock** chance (this match having a code-locked escape at
+    all).
+  - **Flame paper** chance (a placed clue being the grabbable flame
+    paper instead of a book).
+  - **Flood valve** chance (each individual room getting a water valve).
+- These are read ONLY by `Match._server_build_match()`/`RoomPod.plan_recipe()`
+  during generation. **Important implementation note**: `RoomPod.configure()`
+  itself (which runs identically on every peer to build the replicated
+  room) must NEVER read `MatchSettings` directly, since that's a
+  per-peer local autoload - a client's own (default) odds could silently
+  differ from the host's and desync the visual room layout. Every
+  odds-gated decision is resolved ONCE, server-side, by
+  `RoomPod.plan_recipe()` and baked into the replicated spawn data
+  instead - this was a real bug caught during testing, not just a
+  theoretical concern.
 
 ## Escape & win condition
 
 - A room's **escape point** (door or vent) is a direct, unambiguous
   action (not a mystery prop) - reach it, interact, you're marked
   escaped and moved to the shared **Outside** courtyard. May be
-  code-locked (see "Puzzles").
+  code-locked (see "Puzzles") or physically blocked by flooding (see
+  "Flooding").
 - **Outside** is shared by every escaped player regardless of faction.
   No post-escape sabotage or interaction in MVP - it's just a holding
   area until the match ends.
@@ -205,9 +338,10 @@ the target room's security camera has been destroyed.
 - Rooms and players are spawned via `MultiplayerSpawner.spawn(data)`
   with a custom `spawn_function`, the standard Godot 4 pattern for
   deterministic host-authoritative spawning that replicates consistently
-  to every client. Every room's full recipe (size/theme/escape/puzzle/
-  Puppet-Master-or-not) travels inside that one `data` dictionary so the
-  same room is built identically everywhere.
+  to every client. Every room's full recipe (size/theme/escape/connector/
+  puzzle/valve/Puppet-Master-or-not) travels inside that one `data`
+  dictionary so the same room is built identically everywhere - see the
+  "Host spawn odds" note above for why that matters more than it sounds.
 
 ## Explicitly OUT of scope for this scaffold (do not claim these work)
 
@@ -216,13 +350,20 @@ the target room's security camera has been destroyed.
 - Fully hand-authored/varied room shapes (today: box-and-gap procedural
   construction from a recipe, not literal mesh-based level generation).
 - Post-escape interactions/sabotage from Outside.
-- More than one control/effect type in LinkGraph; more than one
-  sabotage verb for the Puppet Master.
+- More than one sabotage verb for the Puppet Master; more control/effect
+  channels beyond light+flood.
 - PA, windows, and note comms (stubs only, not built).
 - Puzzle gating for anything other than escape (camera/feature gating is
   architecturally possible, not wired up).
 - Camera feed "destroyed camera" offline overlay (destruction itself
   works and is visible in-world; the PM's feed UI doesn't yet reflect it).
+- Real fluid simulation for flooding (a single rising water plane + a
+  flat speed/escape penalty, no drainage).
+- Crouching (the vent connector module is walkable at normal height for
+  scope reasons, not a true crawlspace - see `RoomPod` class doc).
 - Anti-cheat / server-side movement validation.
-- Settings/Character screens (stub panels only).
+- Settings/Character screens beyond what's listed above (Character is
+  still a stub panel).
+- The test-only Gun/DummyTarget tools (explicitly marked for removal
+  before release - see "Test-only tools" above).
 - Any real art pass - everything is graybox on purpose.
