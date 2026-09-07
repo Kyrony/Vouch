@@ -43,6 +43,8 @@ const REMAP_ACTION_LABELS: Dictionary = {
 @onready var player_list_box: VBoxContainer = $PlayPanel/PlayerListPanel/VBoxContainer/PlayerListScroll/PlayerListBox
 
 @onready var match_settings_panel: Panel = $PlayPanel/MatchSettingsPanel
+@onready var match_settings_client_label: Label = $PlayPanel/MatchSettingsClientLabel
+@onready var match_settings_host_box: VBoxContainer = $PlayPanel/MatchSettingsPanel/VBoxContainer
 @onready var hallway_slider: HSlider = $PlayPanel/MatchSettingsPanel/VBoxContainer/HiddenHallwayRow/Slider
 @onready var hallway_value_label: Label = $PlayPanel/MatchSettingsPanel/VBoxContainer/HiddenHallwayRow/ValueLabel
 @onready var code_lock_slider: HSlider = $PlayPanel/MatchSettingsPanel/VBoxContainer/CodeLockRow/Slider
@@ -103,7 +105,29 @@ func _show_panel(panel: Control) -> void:
 	character_panel.visible = false
 	panel.visible = true
 	if panel == play_panel:
-		match_settings_panel.visible = NetworkManager.is_server()
+		_refresh_match_settings_access()
+
+
+func _refresh_match_settings_access() -> void:
+	var is_host := NetworkManager.is_server()
+	match_settings_panel.visible = is_host
+	match_settings_client_label.visible = not is_host and NetworkManager.multiplayer.multiplayer_peer != null
+	if is_host:
+		_set_odds_sliders_enabled(true)
+	else:
+		_set_odds_sliders_enabled(false)
+
+
+func _set_odds_sliders_enabled(enabled: bool) -> void:
+	hallway_slider.editable = enabled
+	code_lock_slider.editable = enabled
+	flame_paper_slider.editable = enabled
+	flood_valve_slider.editable = enabled
+	for row in match_settings_host_box.get_children():
+		if row is HBoxContainer:
+			for child in row.get_children():
+				if child is HSlider:
+					child.editable = enabled
 
 
 func _on_exit_pressed() -> void:
@@ -115,7 +139,7 @@ func _on_host_pressed() -> void:
 	if err == OK:
 		status_label.text = "Hosting on port %d. Share your IP with friends." % NetworkManager.DEFAULT_PORT
 		start_match_button.visible = true
-		match_settings_panel.visible = true
+		_refresh_match_settings_access()
 	else:
 		status_label.text = "Failed to host (error %s)." % err
 
@@ -137,6 +161,7 @@ func _on_start_match_pressed() -> void:
 
 func _on_joined_server() -> void:
 	status_label.text = "Connected. Waiting for the host to start the match."
+	_refresh_match_settings_access()
 
 
 func _on_join_failed(reason: String) -> void:
@@ -147,6 +172,7 @@ func _on_disconnected() -> void:
 	status_label.text = "Disconnected from host."
 	start_match_button.visible = false
 	match_settings_panel.visible = false
+	match_settings_client_label.visible = false
 
 
 func _on_roster_updated(roster: Array) -> void:
@@ -185,10 +211,10 @@ func _setup_match_settings_controls() -> void:
 
 
 func _refresh_odds_labels() -> void:
-	hallway_value_label.text = "%d%%" % roundi(hallway_slider.value * 100)
-	code_lock_value_label.text = "%d%%" % roundi(code_lock_slider.value * 100)
-	flame_paper_value_label.text = "%d%%" % roundi(flame_paper_slider.value * 100)
-	flood_valve_value_label.text = "%d%%" % roundi(flood_valve_slider.value * 100)
+	hallway_value_label.text = "%d%%" % roundi(MatchSettings.hidden_hallway_chance * 100)
+	code_lock_value_label.text = "%d%%" % roundi(MatchSettings.code_lock_chance * 100)
+	flame_paper_value_label.text = "%d%%" % roundi(MatchSettings.flame_paper_chance * 100)
+	flood_valve_value_label.text = "%d%%" % roundi(MatchSettings.flood_valve_chance * 100)
 
 
 # --- Settings: key remapping ---------------------------------------------

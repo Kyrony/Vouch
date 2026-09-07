@@ -29,6 +29,7 @@ PhoneSystem="*res://scripts/systems/phone_system.gd"
 EscapeSystem="*res://scripts/systems/escape_system.gd"
 PuzzleSystem="*res://scripts/systems/puzzle_system.gd"
 PuppetMasterSystem="*res://scripts/systems/puppet_master_system.gd"
+RoomUtilities="*res://scripts/autoload/room_utilities.gd"
 
 [display]
 

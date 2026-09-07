@@ -60,22 +60,22 @@ room, a phone, an escape point, a security camera, a ladder.
 ## Rooms - a modular system
 
 Each player spawns **alone** in their own procedurally-built room
-("RoomPod" - see `scripts/room_pod.gd`), assembled from 1-2 chained
-**modules**, entirely in code from a small "recipe" chosen
+("RoomPod" - see `scripts/room_pod.gd`), assembled from **1–4 chained
+modules**, entirely in code from a small "recipe" chosen
 deterministically from a per-room seed, so it replicates identically to
 every client without sending mesh data over the network:
 
 - **Main module** - always one of three room categories, each with a
   distinct color palette obvious at a glance: **Bedroom**, **Utility
   Room**, **Creepy Basement**.
-- **Optional connector module**, extending off the main module's north
-  wall: **Closet** (small dead-end alcove), **Hallway** (corridor into a
-  second chamber), or **Vent** (a narrower, lower-ceilinged crawlspace +
-  small end chamber - same shape as a hallway, distinct scale/material so
-  it reads as a cramped vent; note this is a *structural* module distinct
-  from the "escape via vent" flavor below). A hidden hallway connector
-  may be blocked by a **movable bookcase** (see "Movable & destroyable
-  props").
+- **Optional connector modules** (80% chance of a 2nd room, 20% of a 3rd,
+  1% of a 4th; a connector is **always** placed between chained modules):
+  **Closet** (small dead-end alcove), **Hallway** (corridor into a second
+  chamber), **Vent** (narrower crawlspace + end chamber), or **Slide**
+  (one-way tunnel — an Area3D blocker prevents returning through the
+  slide path). Connectors can open on the **north, east, or west** wall,
+  or as a **ceiling vent** (vertical shaft + upper chamber). A hidden
+  hallway connector may be blocked by a **movable bookcase**.
 - **Size varies** independently: 4 size tiers from Compact to Spacious.
 - **Seamless, fully-enclosed construction**: every module boundary uses
   a standardized opening size for its category, adjoining pieces
@@ -96,7 +96,9 @@ every client without sending mesh data over the network:
   (see "Puzzles").
 
 TODO(post-MVP): hand-authored room shapes instead of box-and-gap
-construction, more themes, richer decoration variety, 3+ module chains.
+construction, more themes, richer decoration variety.
+
+Headless connector collision validation: `VOUCH_HALLWAY_TEST=1 godot4 --headless --path .`
 
 ## Puppet Master
 
@@ -168,8 +170,25 @@ the target room's security camera has been destroyed.
 - The server is the only place that ever holds the full control->effect
   graph; it is never sent to any client.
 
-TODO(post-MVP): more control/effect types beyond light+flood, multi-hop
+TODO(post-MVP): more control/effect types beyond light+flood+gas, multi-hop
 chains, per-round reshuffles.
+
+## Room utilities
+
+Each room exposes four manipulable utility states via `RoomUtilities.gd`
+(replicated to every peer for local feedback):
+
+- **Power** — room lights only turn on when power is enabled.
+- **Water** — flood effects (`BrokenPipe`) only apply when water utility
+  is on.
+- **Gas** — stub channel; gas-valve controls can disable gas in a linked
+  room (local toast only for now).
+- **Communication** — phones refuse to send when comms are off in the
+  sender's room.
+
+An optional **electrical box** puzzle (3 broken wires + live wire) lets a
+player route power to one of three other rooms. Host resolves wire targets
+at spawn time and bakes them into replicated room data.
 
 ## Flooding
 
@@ -266,21 +285,28 @@ chains, per-round reshuffles.
   security camera. While a player's body is inside it, `Player.gd`
   switches to climbing physics: forward/back input moves vertically
   (`CLIMB_SPEED`), gravity is suspended, and normal ground movement
-  resumes immediately on leaving the zone. This is what actually lets a
-  player reach the elevated security camera to destroy it.
+  resumes immediately on leaving the zone. Ladders are also **grabbable**:
+  pick up with `E`, carry, and place against the nearest wall (raycast-
+  snapped, stays vertical). This is what actually lets a player reach the
+  elevated security camera to destroy it.
+
+## Debug GUI (*** REMOVE OR GATE BEFORE RELEASE ***)
+
+Toggle with the **Home** key. Host gets buttons to spawn a test gun,
+toggle utilities in the current room, and reset spawn odds. Clients see
+a read-only panel. See `scripts/debug_gui.gd`.
 
 ## Test-only tools (*** REMOVE BEFORE FULL RELEASE ***)
 
 - A pickup **Gun** (`Gun.gd`) and a few **DummyTarget** props live in the
   Outside courtyard, under a node explicitly named
   `TestRange_RemoveBeforeRelease`. Picking up the gun and left-clicking
-  fires a simple hit-scan raycast; hitting a dummy flashes it red and
-  wobbles it (host-authoritative, purely cosmetic feedback). This exists
-  **solely** to manually verify hit-registration during development -
-  there's no ammo, no damage model, and no gameplay purpose. **Remove
-  `Gun.gd`, `DummyTarget.gd`, the `fire` input action, `Player.has_gun`/
-  `_fire_gun()`, and the `TestRange_RemoveBeforeRelease` node from
-  `Outside.tscn` before shipping.**
+  fires a **visible projectile** (`TestProjectile.gd`, host-authoritative
+  collision); hitting a dummy flashes it red and wobbles it (purely
+  cosmetic feedback). This exists **solely** to manually verify
+  hit-registration during development. **Remove `Gun.gd`, `DummyTarget.gd`,
+  `TestProjectile.gd`, `debug_gui.gd`, the `fire` input action,
+  `Player.has_gun`/`_fire_gun()`, and the test nodes before shipping.**
 
 ## Host spawn odds
 
@@ -294,6 +320,7 @@ chains, per-round reshuffles.
   - **Flame paper** chance (a placed clue being the grabbable flame
     paper instead of a book).
   - **Flood valve** chance (each individual room getting a water valve).
+- **Clients** see a read-only notice; sliders are disabled on join.
 - These are read ONLY by `Match._server_build_match()`/`RoomPod.plan_recipe()`
   during generation. **Important implementation note**: `RoomPod.configure()`
   itself (which runs identically on every peer to build the replicated

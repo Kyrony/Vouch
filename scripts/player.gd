@@ -232,7 +232,16 @@ func _update_interact_prompt() -> void:
 		prompt_label.visible = false
 		return
 	if interact_ray.is_colliding():
-		var target := interact_ray.get_collider() as Interactable
+		var collider := interact_ray.get_collider()
+		if collider is Ladder and not collider.is_carried:
+			prompt_label.text = "[E] %s" % collider.prompt_text
+			prompt_label.visible = true
+			return
+		if collider is Ladder and collider.is_carried and collider.carrier_peer_id == multiplayer.get_unique_id():
+			prompt_label.text = "[E] Place ladder"
+			prompt_label.visible = true
+			return
+		var target := collider as Interactable
 		if target:
 			var hint := target.prompt_text
 			if target.destroyable and not target.is_destroyed:
@@ -263,6 +272,11 @@ func _try_interact() -> void:
 		target.interact(multiplayer.get_unique_id())
 		has_gun = true
 		_show_toast("Picked up a gun. (TEST ONLY)")
+		return
+
+	var ladder_target := interact_ray.get_collider()
+	if ladder_target is Ladder:
+		ladder_target.interact(multiplayer.get_unique_id())
 		return
 
 	target.interact(multiplayer.get_unique_id())
@@ -358,18 +372,28 @@ func _process_held_paper(delta: float) -> void:
 # --- Test-only gun (REMOVE BEFORE FULL RELEASE) ---------------------------
 
 func _fire_gun() -> void:
-	var space_state := get_world_3d().direct_space_state
-	var from := camera.global_position
-	var to := from + (-camera.global_transform.basis.z) * FIRE_RANGE
-	var query := PhysicsRayQueryParameters3D.create(from, to, 3)
-	query.exclude = [get_rid()]
-	var result := space_state.intersect_ray(query)
-	if result and result.get("collider") is DummyTarget:
-		var target: DummyTarget = result["collider"]
-		if multiplayer.is_server():
-			target.server_register_hit()
-		else:
-			target.request_hit.rpc_id(1)
+	if multiplayer.is_server():
+		_spawn_test_projectile()
+	else:
+		_rpc_fire_projectile.rpc_id(1)
+
+
+@rpc("any_peer", "call_remote", "reliable")
+func _rpc_fire_projectile() -> void:
+	if not multiplayer.is_server():
+		return
+	_spawn_test_projectile()
+
+
+func _spawn_test_projectile() -> void:
+	var proj := TestProjectile.new()
+	var world := get_node_or_null("/root/Main/World")
+	if world:
+		world.add_child(proj)
+	else:
+		get_tree().root.add_child(proj)
+	var dir := -camera.global_transform.basis.z.normalized()
+	proj.launch(camera.global_position + dir * 0.3, dir)
 
 
 func _on_faction_assigned(faction_id_in: String) -> void:
