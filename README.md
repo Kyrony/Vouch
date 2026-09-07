@@ -91,15 +91,11 @@ persists locally between sessions.
   list** visible to everyone before the match starts, and host-only
   **match spawn odds** sliders (`scripts/autoload/match_settings.gd`)
   for code locks / flame paper / flood valves / hidden hallways.
-- **Modular procedural rooms**: every room is 1–4 chained modules (a
-  Bedroom/Utility/Basement main room plus optional Closet/Hallway/Vent/
-  **Slide** connectors), with openings on north/east/west walls or the
-  ceiling (ceiling vents use a vertical shaft). Multi-room odds: **80%**
-  for a 2nd module, **20%** for a 3rd, **1%** for a 4th; 2+ modules
-  always get a connector between them. **Slide** connectors are one-way
-  (Area3D blocker prevents returning through the slide tunnel).
-  Seamless joins, widened hallway/vent collision, oversized pipes/wires
-  (`scripts/room_pod.gd`).
+- **Floor-plan rooms**: each player pod picks one of **20 James floor-plan
+  templates** (1 ft = 1 Godot unit, ~10 ft ceilings, ~3.5 ft doors) —
+  one-story layouts 01–14 and two-story 15–20 with stairs. Data lives in
+  `scripts/systems/floor_plan_templates.gd`; `RoomPod` builds walls/doors
+  from zone rectangles. Puppet Master keeps a simple box room.
 - **Faction assignment** on match start, round-robin across the 4 MVP
   factions (Red Vipers / Blue Ash / Green Hollow / Yellow Sparks). Each
   client is told **only its own faction** via a targeted RPC - there is
@@ -122,9 +118,10 @@ persists locally between sessions.
   tracks **Power / Water / Gas / Communication**. Lights need power,
   flooding needs water utility, phones need comms. An **electrical box**
   puzzle (3 broken wires + live wire) can route power to another room.
-- **Flooding**: activate a linked water valve to raise water in a
-  *different* room - slows movement for anyone standing in it and can
-  physically block escape past a threshold.
+- **Flooding**: activate a linked water valve to **slowly trickle** water
+  into a *different* room over time (host-authoritative, tunable rate) —
+  slows movement for anyone standing in it and can physically block
+  escape past a threshold.
 - **Code-lock puzzles** with a **physical digit keypad** (press digits
   one at a time - a teammate can dictate a code over the phone). Codes
   are discoverable as a book or a **grabbable flame-lit paper**: carry it
@@ -163,10 +160,9 @@ persists locally between sessions.
 - **Voice comms.** Only text-first phone stub exists.
 - **Lobby codes / matchmaking / relay.** Direct IP only - no NAT
   traversal, no session codes.
-- **Fully hand-authored/varied room shapes.** Rooms are procedurally
-  built from a recipe (size/theme/layout/escape/connector), not a
-  literal mesh-based level generator. The "vent" connector module is
-  walkable at normal height, not a true crawlspace (no crouching).
+- **Fully hand-authored/varied room shapes.** Rooms are built from 20
+  data-driven floor-plan templates (not random connector soup), but still
+  assembled from graybox primitives in code.
 - **Post-escape interactions from Outside.** It's a neutral holding area
   with no sabotage/mechanics in MVP.
 - **PA announcements and window/note comms.** Called out in the design
