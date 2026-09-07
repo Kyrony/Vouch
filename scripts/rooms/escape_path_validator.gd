@@ -6,8 +6,13 @@ const SAMPLE_SPACING: float = 1.0
 const MAX_FLOOR_STEP: float = 1.25
 
 
+const _COLLISION_DEBUG: GDScript = preload("res://scripts/rooms/collision_debug.gd")
+
+
 static func validate(match_root: Node3D) -> Array[String]:
 	var errors: Array[String] = []
+
+	errors.append_array(_COLLISION_DEBUG.call("validate_floor_collision_shapes", match_root))
 
 	var hub: Node3D = match_root.get_node_or_null("EscapeHub") as Node3D
 	if hub == null:
@@ -126,21 +131,18 @@ static func _floor_top_y_at_xz(floors: Array[StaticBody3D], xz: Vector2) -> floa
 
 
 static func _shape_top_y_at_xz(body: StaticBody3D, col: CollisionShape3D, xz: Vector2) -> float:
-	var gt := body.global_transform
-	var local := gt.affine_inverse() * Vector3(xz.x, 0.0, xz.y)
-	var shape := col.shape
-	if shape is BoxShape3D:
-		var box: BoxShape3D = shape as BoxShape3D
-		var half := box.size * 0.5
-		var shape_origin: Vector3 = col.transform.origin
-		var min_x := shape_origin.x - half.x
-		var max_x := shape_origin.x + half.x
-		var min_z := shape_origin.z - half.z
-		var max_z := shape_origin.z + half.z
-		if local.x < min_x or local.x > max_x or local.z < min_z or local.z > max_z:
+	if col.shape is BoxShape3D:
+		var box: BoxShape3D = col.shape as BoxShape3D
+		if box.size.length_squared() < 0.0001:
 			return NAN
-		var top_local: float = shape_origin.y + half.y
-		return (gt * Vector3(0.0, top_local, 0.0)).y
+		var world_aabb: AABB = _COLLISION_DEBUG.call("global_aabb_for_shape", body, col)
+		if world_aabb.size.length_squared() < 0.0001:
+			return NAN
+		if xz.x < world_aabb.position.x or xz.x > world_aabb.position.x + world_aabb.size.x:
+			return NAN
+		if xz.y < world_aabb.position.z or xz.y > world_aabb.position.z + world_aabb.size.z:
+			return NAN
+		return world_aabb.position.y + world_aabb.size.y
 	return NAN
 
 

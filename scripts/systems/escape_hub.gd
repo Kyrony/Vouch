@@ -16,6 +16,7 @@ const CLEARING_FLOOR_Y: float = 0.0
 
 const _TUNNEL: GDScript = preload("res://scripts/rooms/tunnel_kit.gd")
 const _GEOM: GDScript = preload("res://scripts/rooms/geometry_util.gd")
+const _COLLISION_DEBUG: GDScript = preload("res://scripts/rooms/collision_debug.gd")
 
 var _wall_mat: StandardMaterial3D
 var _floor_mat: StandardMaterial3D
@@ -211,39 +212,23 @@ func log_live_debug() -> void:
 	for n: Node in find_children("*", "StaticBody3D", false, false):
 		if not n.is_in_group("escape_hub_ramp"):
 			continue
-		var body := n as StaticBody3D
-		var aabb := _global_collision_aabb(body)
-		print("LIVE_ESCAPE floor %s aabb=%s" % [body.name, aabb])
+		_COLLISION_DEBUG.call("log_floor_body", n as StaticBody3D)
 	var zone := get_node_or_null("OutsideEscapeZone")
 	if zone is Node3D:
-		var zaabb := _global_collision_aabb(zone as Node3D)
-		print("LIVE_ESCAPE zone path=%s pos=%s layer=%d mask=%d aabb=%s" % [
+		var zone3d := zone as Node3D
+		var col: CollisionShape3D = _COLLISION_DEBUG.call("_first_collision_shape", zone3d)
+		var shape_size := Vector3.ZERO
+		if col != null:
+			shape_size = _COLLISION_DEBUG.call("box_shape_size", col)
+		var zaabb: AABB = _COLLISION_DEBUG.call("global_aabb", zone3d)
+		print("LIVE_ESCAPE zone path=%s body_pos=%s shape_size=%s world_aabb_pos=%s world_aabb_size=%s layer=%d mask=%d" % [
 			zone.get_path(),
-			(zone as Node3D).global_transform.origin,
+			zone3d.global_transform.origin,
+			shape_size,
+			zaabb.position,
+			zaabb.size,
 			int(zone.collision_layer),
 			int(zone.collision_mask),
-			zaabb,
 		])
 	else:
 		print("LIVE_ESCAPE zone=MISSING")
-
-
-static func _global_collision_aabb(node: Node3D) -> AABB:
-	var merged := AABB()
-	var first := true
-	for ch in node.get_children():
-		if ch is CollisionShape3D:
-			var col := ch as CollisionShape3D
-			if col.shape == null:
-				continue
-			var gt: Transform3D = node.global_transform * col.transform
-			var local_aabb: AABB = col.shape.get_aabb()
-			var world_aabb: AABB = gt * local_aabb
-			if first:
-				merged = world_aabb
-				first = false
-			else:
-				merged = merged.merge(world_aabb)
-	if first:
-		return AABB(node.global_position, Vector3(0.01, 0.01, 0.01))
-	return merged
