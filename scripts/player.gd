@@ -369,7 +369,7 @@ func _try_interact() -> void:
 				_rpc_try_child_pickup.rpc_id(1, global_position)
 			return
 		if interact_ray.is_colliding():
-			var hit := interact_ray.get_collider()
+			var hit: Object = interact_ray.get_collider()
 			if hit and (_PATHS.is_radio_tower(hit) or _PATHS.is_signal_phone(hit)):
 				_try_open_signal_slate(hit)
 				return
@@ -572,7 +572,7 @@ func _open_phone_panel() -> void:
 
 
 func _try_open_signal_slate(target: Node) -> void:
-	var at_tower := _PATHS.is_radio_tower(target)
+	var at_tower: bool = _PATHS.is_radio_tower(target)
 	if at_tower and not bool(target.get("is_tower_active")):
 		_show_toast("The mast is silent.")
 		return

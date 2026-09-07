@@ -45,7 +45,8 @@ func server_roll(world: Node3D, rng_seed: int = -1) -> Array[String]:
 			break
 		_active_ids.append(str(c.get_meta("tower_id", c.name)))
 	_apply_active(world, _active_ids)
-	_client_set_active.rpc(_active_ids, _forced_id)
+	var replicated: Array[String] = _active_ids.duplicate()
+	_client_set_active.rpc(replicated, _forced_id)
 	print("[TowerRules] active=%s forced_near_pm=%s" % [_active_ids, _forced_id])
 	return _active_ids.duplicate()
 
@@ -98,9 +99,11 @@ func nearest_tower_strength(world_pos: Vector3) -> float:
 
 @rpc("authority", "call_local", "reliable")
 func _client_set_active(ids: Array, forced_id: String) -> void:
-	_active_ids.clear()
-	for id in ids:
-		_active_ids.append(str(id))
+	var incoming: Array = ids.duplicate()
+	var next_ids: Array[String] = []
+	for id in incoming:
+		next_ids.append(str(id))
+	_active_ids = next_ids
 	_forced_id = forced_id
 	var world := get_tree().get_first_node_in_group("horror_world")
 	if world is Node3D:
@@ -157,3 +160,7 @@ func _nearest(nodes: Array[Node3D], origin: Vector3) -> Node3D:
 
 static func active_count() -> int:
 	return ACTIVE_COUNT
+
+
+static func near_pm_max() -> float:
+	return NEAR_PM_MAX

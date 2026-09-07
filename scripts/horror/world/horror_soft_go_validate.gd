@@ -3,11 +3,22 @@ class_name HorrorSoftGoValidate
 ## Shared headless checks for Lauren-cleared spawn pins + tower stub.
 
 
+static func _child_rng() -> Node:
+	return Engine.get_main_loop().root.get_node_or_null("ChildSpawnRNG")
+
+
+static func _towers() -> Node:
+	return Engine.get_main_loop().root.get_node_or_null("TowerRules")
+
+
 static func validate_world(world: Node3D) -> String:
 	if world == null:
 		return "HorrorWorld missing"
-	var expected: Array[String] = ChildSpawnRNG.spawn_id_list()
-	if expected.size() != ChildSpawnRNG.expected_count():
+	var rng := _child_rng()
+	if rng == null:
+		return "ChildSpawnRNG autoload missing"
+	var expected: Array[String] = rng.call("spawn_id_list")
+	if expected.size() != int(rng.call("expected_count")):
 		return "SPAWN_IDS size %d != expected %d" % [expected.size(), ChildSpawnRNG.expected_count()]
 	var child_points: Array = world.get_tree().get_nodes_in_group("child_spawn_points")
 	if child_points.size() != expected.size():
@@ -40,13 +51,17 @@ static func validate_world(world: Node3D) -> String:
 
 
 static func validate_tower_roll(world: Node3D) -> String:
-	var active: Array[String] = TowerRules.server_roll(world, 42)
-	if active.size() != TowerRules.active_count():
-		return "expected %d active towers, got %d (%s)" % [TowerRules.active_count(), active.size(), active]
+	var rules := _towers()
+	if rules == null:
+		return "TowerRules autoload missing"
+	var active: Array = rules.call("server_roll", world, 42)
+	var want: int = int(rules.call("active_count"))
+	if active.size() != want:
+		return "expected %d active towers, got %d (%s)" % [want, active.size(), active]
 	var live: Array = world.get_tree().get_nodes_in_group("active_towers")
-	if live.size() != TowerRules.active_count():
-		return "active_towers group size %d != %d" % [live.size(), TowerRules.active_count()]
-	var forced := TowerRules.get_forced_id()
+	if live.size() != want:
+		return "active_towers group size %d != %d" % [live.size(), want]
+	var forced: String = str(rules.call("get_forced_id"))
 	if forced.is_empty():
 		return "forced near-PM tower id empty"
 	var pm: Vector3 = world.call("get_pm_spawn_transform").origin
@@ -57,6 +72,7 @@ static func validate_tower_roll(world: Node3D) -> String:
 			break
 	if forced_node == null:
 		return "forced tower %s not in active_towers" % forced
-	if forced_node.global_position.distance_to(pm) > TowerRules.NEAR_PM_MAX:
+	var max_d: float = float(rules.call("near_pm_max"))
+	if forced_node.global_position.distance_to(pm) > max_d:
 		return "forced tower %s too far from PM (%.1f)" % [forced, forced_node.global_position.distance_to(pm)]
 	return ""

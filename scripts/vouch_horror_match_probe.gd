@@ -94,7 +94,8 @@ func _probe() -> String:
 	await physics_frame
 
 	print("  horror spawns=%d pickups=%d child_points=%d towers=%d neighborhood=OK" % [
-		spawn_count, pickups.get_child_count(), child_points.size(), TowerRules.get_active_ids().size(),
+		spawn_count, pickups.get_child_count(), child_points.size(),
+		world.get_tree().get_nodes_in_group("active_towers").size(),
 	])
 	main.queue_free()
 	return ""
