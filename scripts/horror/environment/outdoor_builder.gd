@@ -92,7 +92,7 @@ static func _build_garden_well(root: Node3D, mats, markers: Array) -> void:
 	root.add_child(well)
 	well.add_child(_GEOM.call("cylinder", 0.85, 1.05, Vector3(0, 0.52, 0), mats.wall))
 	well.add_child(_GEOM.call("box", Vector3(1.1, 0.12, 1.1), Vector3(0, 1.1, 0), mats.wood))
-	_add_child_marker(well, Vector3(0, 0.2, 0), "garden_well", markers)
+	_add_child_marker(well, Vector3(0, 0.2, 0), "garden_well_crawlspace", markers)
 
 
 static func _build_car_trunk(root: Node3D, mats, markers: Array) -> void:
@@ -103,7 +103,7 @@ static func _build_car_trunk(root: Node3D, mats, markers: Array) -> void:
 	car.add_child(_GEOM.call("box", Vector3(3.8, 1.0, 1.7), Vector3(0, 0.5, 0), _mat(Color(0.18, 0.2, 0.22))))
 	car.add_child(_GEOM.call("box", Vector3(1.5, 0.65, 1.6), Vector3(-0.35, 1.15, 0), _mat(Color(0.16, 0.17, 0.19))))
 	car.add_child(_GEOM.call("box", Vector3(0.85, 0.32, 1.5), Vector3(1.55, 0.62, 0), _mat(Color(0.14, 0.14, 0.15))))
-	_add_child_marker(car, Vector3(1.55, 0.42, 0), "car_trunk", markers)
+	_add_child_marker(car, Vector3(1.55, 0.42, 0), "car_trunk_curb", markers)
 
 
 static func _add_child_marker(parent: Node3D, local_pos: Vector3, spawn_id: String, out: Array) -> void:

@@ -22,16 +22,16 @@ static func validate_world(world: Node3D) -> String:
 	var expected: Array[String] = rng.call("spawn_id_list")
 	if expected.size() != int(rng.call("expected_count")):
 		return "SPAWN_IDS size %d != expected %d" % [expected.size(), ChildSpawnRNG.expected_count()]
-	var forbidden := [
-		"pm_master_bedroom",
-		"pm_bunker_utility_closet",
-		"pm_basement",
-		"garden_well_crawlspace",
-		"car_trunk_curb",
+	var stale := [
+		"master_bedroom",
+		"bunker_utility",
+		"basement",
+		"garden_well",
+		"car_trunk",
 	]
 	for sid in expected:
-		if forbidden.has(sid):
-			return "SPAWN_IDS used long-form id %s — keep PR #23 short ids" % sid
+		if stale.has(sid):
+			return "SPAWN_IDS used stale short id %s — use L2 CSV ids" % sid
 	var child_points: Array = world.get_tree().get_nodes_in_group("child_spawn_points")
 	if child_points.size() != expected.size():
 		return "expected %d child spawn points, got %d" % [expected.size(), child_points.size()]
@@ -40,8 +40,8 @@ static func validate_world(world: Node3D) -> String:
 		var sid := str(node.get_meta("spawn_id", ""))
 		if sid.is_empty():
 			return "child spawn marker %s missing spawn_id" % node.name
-		if forbidden.has(sid):
-			return "world marker used long-form spawn_id=%s" % sid
+		if stale.has(sid):
+			return "world marker used stale spawn_id=%s" % sid
 		if not expected.has(sid):
 			return "unexpected child spawn_id=%s" % sid
 		if seen.has(sid):

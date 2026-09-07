@@ -3,19 +3,19 @@ class_name NeighborhoodV05
 ## Leonardo Neighborhood Layout v0.5 — production footprints.
 ## World: +X east (PM mansion), +Z south (uncle / stem), origin = cul-de-sac.
 
-## Eng short ids from PR #23. Do not rename to long form.
+## Leonardo L2 CSV spawn_ids (docs/blueprints/v0.5/L2_child_rng_spawns.csv).
 const SPAWN_IDS: Array[String] = [
 	"pm_attic",
-	"master_bedroom",
-	"bunker_utility",
-	"basement",
+	"pm_master_bedroom",
+	"pm_bunker_utility_closet",
+	"pm_basement",
 	"uncle_bedroom",
 	"uncle_garage",
 	"family_shed",
 	"storm_drain",
 	"under_porch_crawl",
-	"garden_well",
-	"car_trunk",
+	"garden_well_crawlspace",
+	"car_trunk_curb",
 ]
 
 const EXPECTED_PIN_COUNT: int = 11

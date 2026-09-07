@@ -1,19 +1,19 @@
 extends Node
-## ChildSpawnRNG — host picks 1 of 11 Leonardo L2 SoT pins (eng short ids).
+## ChildSpawnRNG — host picks 1 of 11 Leonardo L2 SoT pins (CSV spawn_ids).
 
-## Alive-only hide sites. No grave pins. IDs stay on PR #23 short names.
+## Alive-only hide sites. No grave pins. IDs match L2_child_rng_spawns.csv.
 const SPAWN_IDS: Array[String] = [
 	"pm_attic",
-	"master_bedroom",
-	"bunker_utility",
-	"basement",
+	"pm_master_bedroom",
+	"pm_bunker_utility_closet",
+	"pm_basement",
 	"uncle_bedroom",
 	"uncle_garage",
 	"family_shed",
 	"storm_drain",
 	"under_porch_crawl",
-	"garden_well",
-	"car_trunk",
+	"garden_well_crawlspace",
+	"car_trunk_curb",
 ]
 
 const EXPECTED_COUNT: int = 11

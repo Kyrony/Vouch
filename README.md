@@ -232,21 +232,21 @@ pointing at what's missing.
 
 ## Horror child spawn points (11, alive-only)
 
-Host RNG picks **one** per match (`ChildSpawnRNG`). Teams map to **families** A–D (cul-de-sac bedroom spawns). All pins are living hides — no grave sites. IDs are Leonardo L2 SoT **eng short names** (PR #23). Dirty L2 map callouts are not source of truth.
+Host RNG picks **one** per match (`ChildSpawnRNG`). Teams map to **families** A–D (cul-de-sac bedroom spawns). All pins are living hides — no grave sites. IDs match Leonardo L2 CSV SoT. Art map labels are deferred.
 
 | # | `spawn_id` | Callout | Location |
 | --- | --- | --- | --- |
 | 1 | `pm_attic` | PM ATTIC | PM mansion attic |
-| 2 | `master_bedroom` | PM MASTER BEDROOM | PM mansion master bedroom |
-| 3 | `bunker_utility` | PM BUNKER UTILITY CLOSET | PM bunker utility closet |
-| 4 | `basement` | PM BASEMENT | PM basement |
+| 2 | `pm_master_bedroom` | PM MASTER BEDROOM | PM mansion master bedroom |
+| 3 | `pm_bunker_utility_closet` | PM BUNKER UTILITY CLOSET | PM bunker utility closet |
+| 4 | `pm_basement` | PM BASEMENT | PM basement |
 | 5 | `uncle_bedroom` | UNCLE BEDROOM | Uncle house bedroom |
 | 6 | `uncle_garage` | UNCLE GARAGE | Uncle garage |
 | 7 | `family_shed` | FAMILY SHED | Shed by family houses |
 | 8 | `storm_drain` | STORM DRAIN | Street storm drain |
 | 9 | `under_porch_crawl` | UNDER-PORCH CRAWL / DIRT HIDE | House A porch crawl (no grave) |
-| 10 | `garden_well` | GARDEN WELL / CRAWLSPACE | Garden well / crawlspace |
-| 11 | `car_trunk` | CAR TRUNK (CURB) | Parked car trunk at curb |
+| 10 | `garden_well_crawlspace` | GARDEN WELL / CRAWLSPACE | Garden well / crawlspace |
+| 11 | `car_trunk_curb` | CAR TRUNK (CURB) | Parked car trunk at curb |
 
 See [`docs/blueprints/v0.5/`](docs/blueprints/v0.5/) for Leonardo v0.5 sheets.
 

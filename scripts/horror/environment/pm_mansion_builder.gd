@@ -69,7 +69,7 @@ static func _build_main_floor(root: Node3D, mats, child_markers: Array) -> void:
 	_name_room(floor_root, "Study", Vector3(0, 0, -3.8))
 	_name_room(floor_root, "Bathroom", Vector3(4.4, 0, -3.8))
 	var master := _name_room(floor_root, "MasterBedroom", Vector3(4.4, 0, 2.2))
-	_add_child_marker(master, Vector3(0.6, 0.5, 0.4), "master_bedroom", child_markers)
+	_add_child_marker(master, Vector3(0.6, 0.5, 0.4), "pm_master_bedroom", child_markers)
 
 	floor_root.add_child(_GEOM.call("box", Vector3(1.6, 0.7, 0.7), Vector3(-4.4, 0.35, 3.2), mats.wood))
 	floor_root.add_child(_GEOM.call("box", Vector3(1.8, 0.85, 0.5), Vector3(-4.6, 0.42, -3.4), mats.wall))
@@ -84,7 +84,7 @@ static func _build_basement(root: Node3D, mats, child_markers: Array) -> void:
 	_GB.call("add_room_box", bs, Vector3(12, 3.4, 10), Vector3.ZERO, mats, true, true)
 	_GB.call("add_wall_panel", bs, Vector3(0, 1.7, 0), Vector3(0.22, 3.4, 10), mats.wall, true, 1.5)
 	bs.add_child(_GEOM.call("box", Vector3(1.8, 0.9, 1.1), Vector3(-3.6, 0.45, -3.2), mats.wall))
-	_add_child_marker(bs, Vector3(3.4, 0.5, 2.2), "basement", child_markers)
+	_add_child_marker(bs, Vector3(3.4, 0.5, 2.2), "pm_basement", child_markers)
 	root.add_child(_GEOM.call("box", Vector3(2.2, 4.1, 2.2), Vector3(3.6, -2.05, 3.2), mats.wall))
 
 
@@ -103,7 +103,7 @@ static func _build_bunker(root: Node3D, mats, child_markers: Array) -> void:
 	util.position = Vector3(-4.2, 0, -3.2)
 	bk.add_child(util)
 	_GB.call("add_room_box", util, Vector3(3.4, 2.6, 3.2), Vector3.ZERO, mats, true, true)
-	_add_child_marker(util, Vector3(0, 0.45, 0), "bunker_utility", child_markers)
+	_add_child_marker(util, Vector3(0, 0.45, 0), "pm_bunker_utility_closet", child_markers)
 
 	var dim := OmniLight3D.new()
 	dim.position = Vector3(0, 3.0, 0)
