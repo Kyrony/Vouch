@@ -235,7 +235,7 @@ scripts/
                               LightSwitch, WaterValve, Door (door/vent), Phone, RoomLight,
                               BrokenPipe, SecurityCamera, Ladder, CodeKeypad, ClueBook,
                               ClueFlamePaper, Flame, MovableProp, ElectricalBox,
-                              GasValve, GasLeak, SlideBlocker, Gun*, DummyTarget*,
+                              GasValve, GasLeak, Gun*, DummyTarget*,
                               TestProjectile* (* test-only)
 assets/
   materials/                  Shared graybox materials + default environment

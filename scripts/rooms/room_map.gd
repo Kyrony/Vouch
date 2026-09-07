@@ -8,13 +8,7 @@ const _ITEMS: GDScript = preload("res://scripts/rooms/item_spawn_system.gd")
 const _SLOT_SCRIPT: GDScript = preload("res://scripts/rooms/item_spawn_slot.gd")
 const _TUNNEL: GDScript = preload("res://scripts/rooms/tunnel_kit.gd")
 
-const DOOR_W: float = 0.85
-const DOOR_H: float = 2.05
-const HUB_SHAFT_RADIUS: float = 1.45
-const HUB_HALL_WIDTH: float = 1.25
-const HUB_HALL_HEIGHT: float = 2.5
-const HUB_SHAFT_HEIGHT: float = 10.0
-const WALL: float = 0.12
+const WALL: float = WorldScale.WALL_THICK
 
 const THEMES: Array[Dictionary] = [
 	{
@@ -43,7 +37,7 @@ const THEMES: Array[Dictionary] = [
 	},
 ]
 
-enum EscapeKind { DOOR, VENT, NONE }
+enum EscapeKind { DOOR, VENT }
 
 @export var room_id: int = 1
 @export var is_puppet_master: bool = false
@@ -131,12 +125,11 @@ func configure(data: Dictionary) -> void:
 
 	_ITEMS.call("spawn_room_effects", self, ctx)
 
-	if escape_kind != EscapeKind.NONE:
-		var escape_pos: Vector3 = _layout["escape"]
-		if escape_kind == EscapeKind.VENT:
-			escape_pos = _vent_escape_position()
-		_ITEMS.call("spawn_escape", self, ctx, escape_pos, escape_kind == EscapeKind.VENT)
-		_build_escape_corridor(_layout["corridor_out"], data["room_index"])
+	var escape_pos: Vector3 = _layout["escape"]
+	if escape_kind == EscapeKind.VENT:
+		escape_pos = _vent_escape_position()
+	_ITEMS.call("spawn_escape", self, ctx, escape_pos, escape_kind == EscapeKind.VENT)
+	_build_escape_corridor(_layout["corridor_out"], data["room_index"])
 
 	if data.get("requires_code", false):
 		mark_escape_locked()
@@ -278,10 +271,10 @@ func _build_pm_monitors() -> void:
 func _build_escape_corridor(corridor_out: Vector3, idx: int) -> void:
 	var grid_pos := Match.room_grid_position(idx)
 	var dist := Vector2(grid_pos.x, grid_pos.z).length()
-	var horiz := clampf(dist - HUB_SHAFT_RADIUS - depth * 0.5, WorldScale.CORRIDOR_MIN, WorldScale.CORRIDOR_MAX)
+	var horiz := clampf(dist - WorldScale.HUB_SHAFT_RADIUS - depth * 0.5, WorldScale.CORRIDOR_MIN, WorldScale.CORRIDOR_MAX)
 	var start_z := corridor_out.z + WALL
-	_TUNNEL.call("build_horizontal", self, start_z, horiz, HUB_HALL_WIDTH, HUB_HALL_HEIGHT, true, true)
-	_TUNNEL.call("build_hub_connector", self, start_z + horiz, HUB_HALL_WIDTH, HUB_HALL_HEIGHT)
+	_TUNNEL.call("build_horizontal", self, start_z, horiz, WorldScale.HUB_HALL_W, WorldScale.HUB_HALL_H, true, true)
+	_TUNNEL.call("build_hub_connector", self, start_z + horiz, WorldScale.HUB_HALL_W, WorldScale.HUB_HALL_H)
 
 
 static func _accent_material(color: Color) -> StandardMaterial3D:

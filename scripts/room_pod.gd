@@ -3,16 +3,12 @@ class_name RoomPod
 ## Multiplayer wrapper — instances one complete RoomMap scene per player.
 
 const _LAYOUTS: GDScript = preload("res://scripts/rooms/room_layouts.gd")
-const _ROOM_MAP: GDScript = preload("res://scripts/rooms/room_map.gd")
 
 var room_index: int = 0
 var owner_peer_id: int = -1
 var rng_seed: int = 0
 var is_puppet_master_room: bool = false
-var floor_plan_id: String = "01"
 var room_scene_id: int = 1
-var theme_id: String = ""
-var theme_name: String = ""
 var width: float = 6.0
 var depth: float = 6.0
 
@@ -22,18 +18,16 @@ var light_switch: Node
 var _map: Node3D
 
 
-static func plan_recipe(is_pm: bool, _room_count: int = 8) -> Dictionary:
+static func plan_recipe(is_pm: bool) -> Dictionary:
 	var rng := RandomNumberGenerator.new()
 	rng.randomize()
 	var room_scene_id: int = 0 if is_pm else int(_LAYOUTS.call("pick_id", rng))
-	var floor_plan_id := "%02d" % room_scene_id if room_scene_id > 0 else "pm"
 
 	var has_valve := not is_pm and randf() < MatchSettings.flood_valve_chance
 	var has_electrical_box := not is_pm and randf() < 0.35
 
 	return {
 		"room_scene_id": room_scene_id,
-		"floor_plan_id": floor_plan_id,
 		"has_valve": has_valve,
 		"has_electrical_box": has_electrical_box,
 		"wire_targets": [],
@@ -51,7 +45,6 @@ func configure(data: Dictionary) -> void:
 	rng_seed = data["rng_seed"]
 	is_puppet_master_room = data.get("is_puppet_master", false)
 	room_scene_id = int(data.get("room_scene_id", 1))
-	floor_plan_id = data.get("floor_plan_id", "%02d" % room_scene_id)
 	name = "RoomPod_%d" % room_index
 
 	var path: String = _LAYOUTS.call("scene_path", 0 if is_puppet_master_room else room_scene_id)
@@ -63,6 +56,7 @@ func configure(data: Dictionary) -> void:
 	_map = packed.instantiate()
 	if _map == null or not _map.has_method("configure"):
 		push_error("RoomPod: scene root is not RoomMap at %s" % path)
+		_map = null
 		return
 
 	_map.set("room_id", room_scene_id if not is_puppet_master_room else 0)
@@ -74,8 +68,6 @@ func configure(data: Dictionary) -> void:
 
 	width = _map.get("width")
 	depth = _map.get("depth")
-	theme_id = _map.get("theme_id")
-	theme_name = _map.get("theme_name")
 	spawn_point = _map.get("spawn_point")
 	light_switch = _map.get("light_switch")
 

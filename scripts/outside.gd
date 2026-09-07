@@ -9,6 +9,8 @@ class_name Outside
 
 @onready var roam_spawn_points: Node3D = $RoamSpawnPoints
 
+const _GEOM: GDScript = preload("res://scripts/rooms/geometry_util.gd")
+
 
 func _ready() -> void:
 	_build_mountain_graybox()
@@ -121,19 +123,4 @@ func _rock_material(color: Color) -> StandardMaterial3D:
 
 
 func _terrain_box(size: Vector3, pos: Vector3, mat: Material) -> StaticBody3D:
-	var body := StaticBody3D.new()
-	body.collision_layer = 1
-	body.collision_mask = 0
-	body.position = pos
-	var mi := MeshInstance3D.new()
-	var bm := BoxMesh.new()
-	bm.size = size
-	mi.mesh = bm
-	mi.set_surface_override_material(0, mat)
-	body.add_child(mi)
-	var col := CollisionShape3D.new()
-	var sh := BoxShape3D.new()
-	sh.size = size
-	col.shape = sh
-	body.add_child(col)
-	return body
+	return _GEOM.call("box", size, pos, mat, 1)

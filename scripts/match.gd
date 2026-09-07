@@ -20,10 +20,7 @@ var _room_pod_scene: PackedScene
 var _player_scene: PackedScene
 
 ## Rooms are laid out on a simple grid, far enough apart that one player's
-## room (plus its optional hallway extension) doesn't visually bleed into
-## the next. Good enough for a graybox; a real level would hand-place these.
-## Floor-plan pods are up to ~34×18 ft; keep cells far enough apart.
-const GRID_SPACING: float = 52.0  ## Keep in sync with WorldScale.GRID_SPACING
+## room (plus its escape tunnel) doesn't visually bleed into the next.
 const GRID_COLUMNS: int = 4
 
 ## How many camera/sabotage targets the Puppet Master is granted.
@@ -47,7 +44,7 @@ var _rooms: Dictionary = {}
 static func room_grid_position(index: int) -> Vector3:
 	var col := index % GRID_COLUMNS
 	var row := index / GRID_COLUMNS
-	return Vector3(col * GRID_SPACING, -WorldScale.UNDERGROUND_DEPTH, row * GRID_SPACING)
+	return Vector3(col * WorldScale.GRID_SPACING, -WorldScale.UNDERGROUND_DEPTH, row * WorldScale.GRID_SPACING)
 
 
 ## Inverse of `room_grid_position()` - which room's grid cell a world
@@ -55,8 +52,8 @@ static func room_grid_position(index: int) -> Vector3:
 ## check "is MY current room flooded") so it deliberately doesn't need any
 ## server round-trip; it's just grid math.
 static func world_position_to_room_index(world_pos: Vector3) -> int:
-	var col := int(roundi(world_pos.x / GRID_SPACING))
-	var row := int(roundi(world_pos.z / GRID_SPACING))
+	var col := int(roundi(world_pos.x / WorldScale.GRID_SPACING))
+	var row := int(roundi(world_pos.z / WorldScale.GRID_SPACING))
 	return row * GRID_COLUMNS + col
 
 
@@ -189,7 +186,7 @@ func _server_spawn_room(room_index: int, owner_peer_id: int, is_pm: bool, puzzle
 		"clue_kind": puzzle_plan.get("clue_kind", "") if puzzle_plan.get("clue_index", -1) == room_index else "",
 		"clue_code": puzzle_plan.get("code", "") if puzzle_plan.get("clue_index", -1) == room_index else "",
 	}
-	data.merge(RoomPod.plan_recipe(is_pm, _rooms.size() + 1))
+	data.merge(RoomPod.plan_recipe(is_pm))
 	if data.get("has_electrical_box", false):
 		var targets: Array = []
 		var candidates: Array = []
