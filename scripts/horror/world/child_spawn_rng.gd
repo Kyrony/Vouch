@@ -1,7 +1,7 @@
 extends Node
-## ChildSpawnRNG — host picks 1 of 11 Lauren-cleared alive-only child pins.
+## ChildSpawnRNG — host picks 1 of 11 Leonardo L2 SoT pins (eng short ids).
 
-## Alive-only hide sites. No grave pins.
+## Alive-only hide sites. No grave pins. IDs stay on PR #23 short names.
 const SPAWN_IDS: Array[String] = [
 	"pm_attic",
 	"master_bedroom",

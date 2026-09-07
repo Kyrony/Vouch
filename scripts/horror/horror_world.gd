@@ -40,20 +40,20 @@ func server_init_match(player_count: int) -> void:
 
 func get_family_spawn_transform(family_index: int) -> Transform3D:
 	if _family_spawns.is_empty():
-		return Transform3D(Basis.IDENTITY, Vector3(0, 1.2, 8))
+		return Transform3D(Basis.IDENTITY, Vector3(0, 1.2, -8))
 	var idx := clampi(family_index, 0, _family_spawns.size() - 1)
 	return _family_spawns[idx].global_transform
 
 
 func get_pm_spawn_transform() -> Transform3D:
 	if _pm_spawn == null:
-		return Transform3D(Basis.IDENTITY, Vector3(0, 1.2, -48))
+		return Transform3D(Basis.IDENTITY, Vector3(17.3, 1.2, 0))
 	return _pm_spawn.global_transform
 
 
 func get_random_spawn_transform() -> Transform3D:
 	if _family_spawns.is_empty():
-		return Transform3D(Basis.IDENTITY, Vector3(0, 1.2, 8))
+		return Transform3D(Basis.IDENTITY, Vector3(0, 1.2, -8))
 	var m: Marker3D = _family_spawns[randi() % _family_spawns.size()]
 	return m.global_transform
 
@@ -90,12 +90,12 @@ func _scatter_pickups() -> void:
 	pickups.name = "Pickups"
 	add_child(pickups)
 	var defs := [
-		{"id": "medkit", "pos": Vector3(-34, 0.5, 6)},
-		{"id": "phone", "pos": Vector3(14, 0.5, 6)},
-		{"id": "bandage", "pos": Vector3(0, -13.5, -62)},
-		{"id": "battery", "pos": Vector3(42, 0.5, -18)},
-		{"id": "crowbar", "pos": Vector3(-12, 0.5, 10)},
-		{"id": "keycard", "pos": Vector3(0, 0.5, 40)},
+		{"id": "medkit", "pos": Vector3(-10.2, 0.5, 1.2)},
+		{"id": "phone", "pos": Vector3(8.4, 0.5, 1.6)},
+		{"id": "bandage", "pos": Vector3(22.5, -11.4, 0)},
+		{"id": "battery", "pos": Vector3(-14.0, 0.5, -6.0)},
+		{"id": "crowbar", "pos": Vector3(1.2, 0.5, 8.4)},
+		{"id": "keycard", "pos": Vector3(-6.4, 0.5, 16.8)},
 	]
 	for d in defs:
 		_spawn_pickup_local(d["id"], d["pos"])

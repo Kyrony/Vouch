@@ -1,6 +1,8 @@
 extends RefCounted
 class_name HorrorSoftGoValidate
-## Shared headless checks for Lauren-cleared spawn pins + tower stub.
+## Shared headless checks for L2 short-id pins + v0.5 footprints + towers.
+
+const _V05: GDScript = preload("res://scripts/horror/world/neighborhood_v05.gd")
 
 
 static func _child_rng() -> Node:
@@ -20,6 +22,16 @@ static func validate_world(world: Node3D) -> String:
 	var expected: Array[String] = rng.call("spawn_id_list")
 	if expected.size() != int(rng.call("expected_count")):
 		return "SPAWN_IDS size %d != expected %d" % [expected.size(), ChildSpawnRNG.expected_count()]
+	var forbidden := [
+		"pm_master_bedroom",
+		"pm_bunker_utility_closet",
+		"pm_basement",
+		"garden_well_crawlspace",
+		"car_trunk_curb",
+	]
+	for sid in expected:
+		if forbidden.has(sid):
+			return "SPAWN_IDS used long-form id %s — keep PR #23 short ids" % sid
 	var child_points: Array = world.get_tree().get_nodes_in_group("child_spawn_points")
 	if child_points.size() != expected.size():
 		return "expected %d child spawn points, got %d" % [expected.size(), child_points.size()]
@@ -28,6 +40,8 @@ static func validate_world(world: Node3D) -> String:
 		var sid := str(node.get_meta("spawn_id", ""))
 		if sid.is_empty():
 			return "child spawn marker %s missing spawn_id" % node.name
+		if forbidden.has(sid):
+			return "world marker used long-form spawn_id=%s" % sid
 		if not expected.has(sid):
 			return "unexpected child spawn_id=%s" % sid
 		if seen.has(sid):
@@ -47,6 +61,64 @@ static func validate_world(world: Node3D) -> String:
 	var phones: Array = world.get_tree().get_nodes_in_group("signal_phones")
 	if phones.size() < 3:
 		return "expected signal phones, got %d" % phones.size()
+	var layout_err := validate_v05_layout(world)
+	if not layout_err.is_empty():
+		return layout_err
+	return ""
+
+
+static func validate_v05_layout(world: Node3D) -> String:
+	var mansion := world.get_node_or_null("PMMansion") as Node3D
+	if mansion == null:
+		return "PMMansion missing"
+	if mansion.global_position.x < 12.0:
+		return "PM mansion is not east of the cul-de-sac (x=%.1f)" % mansion.global_position.x
+	var families := world.get_node_or_null("FamilyHouses")
+	if families == null:
+		return "FamilyHouses missing"
+	for letter in ["A", "B", "C", "D"]:
+		if families.get_node_or_null("FamilyHouse_%s" % letter) == null:
+			return "FamilyHouse_%s missing from cul-de-sac" % letter
+	if world.get_node_or_null("UncleHouse") == null:
+		return "UncleHouse missing"
+	if world.get_node_or_null("UncleHouse/UncleGarage") == null:
+		return "Uncle garage missing"
+	for room_name in _V05.PM_L4_ROOMS:
+		if mansion.find_child(room_name, true, false) == null:
+			return "L4 PM room missing: %s" % room_name
+	var roads := world.get_node_or_null("Outdoor/Roads")
+	if roads == null:
+		return "Outdoor/Roads (cul-de-sac / curbs) missing"
+	var escape := world.get_node_or_null("Outdoor/HorrorEscapeZone")
+	if escape == null:
+		return "soft-gated HorrorEscapeZone missing"
+	if not bool(escape.get_meta("soft_gated", false)):
+		return "escape zone is not soft-gated"
+	if escape.get_node_or_null("Sign") != null:
+		return "escape signage present — master sheet has no escape routes"
+	var min_x := INF
+	var max_x := -INF
+	var min_z := INF
+	var max_z := -INF
+	for letter in ["A", "B", "C", "D"]:
+		var h: Node3D = families.get_node("FamilyHouse_%s" % letter)
+		min_x = minf(min_x, h.global_position.x)
+		max_x = maxf(max_x, h.global_position.x)
+		min_z = minf(min_z, h.global_position.z)
+		max_z = maxf(max_z, h.global_position.z)
+	min_x = minf(min_x, mansion.global_position.x)
+	max_x = maxf(max_x, mansion.global_position.x)
+	min_z = minf(min_z, mansion.global_position.z)
+	max_z = maxf(max_z, mansion.global_position.z)
+	var uncle: Node3D = world.get_node("UncleHouse")
+	min_x = minf(min_x, uncle.global_position.x)
+	max_x = maxf(max_x, uncle.global_position.x)
+	min_z = minf(min_z, uncle.global_position.z)
+	max_z = maxf(max_z, uncle.global_position.z)
+	var span_x: float = max_x - min_x
+	var span_z: float = max_z - min_z
+	if span_x < 28.0 or span_x > 56.0 or span_z < 22.0 or span_z > 48.0:
+		return "neighborhood span %.1fx%.1f not ~40m v0.5" % [span_x, span_z]
 	return ""
 
 
@@ -54,6 +126,10 @@ static func validate_tower_roll(world: Node3D) -> String:
 	var rules := _towers()
 	if rules == null:
 		return "TowerRules autoload missing"
+	var service: float = float(rules.call("service_radius"))
+	var weak: float = float(rules.call("weak_radius"))
+	if service <= 0.0 or weak <= service:
+		return "service/weak radii invalid (service=%.1f weak=%.1f)" % [service, weak]
 	var active: Array = rules.call("server_roll", world, 42)
 	var want: int = int(rules.call("active_count"))
 	if active.size() != want:

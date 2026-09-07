@@ -85,7 +85,7 @@ field as a placeholder — session codes are post-MVP.
 | Puppet Master | Life steal aura (radius, then cooldown) | `E` |
 | All | Pause / release mouse | `Esc` |
 
-**Goal:** Each **family team** spawns in their own **1-story house bedroom**. One missing child is hidden at a random location among **11 alive-only spawn pins** (see below). Find the child marker, then reach the **field escape zone** (+Z yard). Trust tools are **phone + live radio masts** (spotty radius, 3 active per match, one forced near the PM). The **Puppet Master** hunts from the **PM mansion** — radius life-steal aura with neon ring + recharge. PM wins if all survivors are drained before families escape with the child.
+**Goal:** Each **family team** spawns in their own **1-story house bedroom** (A–D around the cul-de-sac). One missing child is hidden at a random location among **11 alive-only spawn pins** (Leonardo L2 SoT, eng short ids). Find the child marker, then reach the **soft-gated field exit** (west yard, unmarked — master sheet has no escape routes). Trust tools are **phone + live radio masts** (service / weak / dead radii, 3 active per match, one forced near the PM). The **Puppet Master** hunts from the **east PM mansion** — radius life-steal aura with neon ring + recharge. PM wins if all survivors are drained before families escape with the child.
 
 Legacy sealed-room / tunnel modes: `VOUCH_BUNKER_ONLY=1` or `VOUCH_ESCAPE_PATH=1`.
 
@@ -232,23 +232,25 @@ pointing at what's missing.
 
 ## Horror child spawn points (11, alive-only)
 
-Host RNG picks **one** per match (`ChildSpawnRNG`). Teams map to **families** (house bedroom spawns). All pins are living hides — no grave sites.
+Host RNG picks **one** per match (`ChildSpawnRNG`). Teams map to **families** A–D (cul-de-sac bedroom spawns). All pins are living hides — no grave sites. IDs are Leonardo L2 SoT **eng short names** (PR #23). Dirty L2 map callouts are not source of truth.
 
-| # | `spawn_id` | Location |
-| --- | --- | --- |
-| 1 | `pm_attic` | PM mansion attic |
-| 2 | `master_bedroom` | PM mansion main floor |
-| 3 | `bunker_utility` | PM mansion underground bunker |
-| 4 | `basement` | PM mansion basement |
-| 5 | `uncle_bedroom` | Uncle house across the street |
-| 6 | `uncle_garage` | Uncle house attached garage |
-| 7 | `family_shed` | Yard shed |
-| 8 | `storm_drain` | Street storm drain |
-| 9 | `under_porch_crawl` | Under-porch dirt hide (trapped, alive) |
-| 10 | `garden_well` | Garden well / crawl |
-| 11 | `car_trunk` | Parked car trunk |
+| # | `spawn_id` | Callout | Location |
+| --- | --- | --- | --- |
+| 1 | `pm_attic` | PM ATTIC | PM mansion attic |
+| 2 | `master_bedroom` | PM MASTER BEDROOM | PM mansion master bedroom |
+| 3 | `bunker_utility` | PM BUNKER UTILITY CLOSET | PM bunker utility closet |
+| 4 | `basement` | PM BASEMENT | PM basement |
+| 5 | `uncle_bedroom` | UNCLE BEDROOM | Uncle house bedroom |
+| 6 | `uncle_garage` | UNCLE GARAGE | Uncle garage |
+| 7 | `family_shed` | FAMILY SHED | Shed by family houses |
+| 8 | `storm_drain` | STORM DRAIN | Street storm drain |
+| 9 | `under_porch_crawl` | UNDER-PORCH CRAWL / DIRT HIDE | House A porch crawl (no grave) |
+| 10 | `garden_well` | GARDEN WELL / CRAWLSPACE | Garden well / crawlspace |
+| 11 | `car_trunk` | CAR TRUNK (CURB) | Parked car trunk at curb |
 
-**Towers (soft-go):** many candidate masts; **3 active per match**; **1 forced near the PM**. Phone + mast radii carry a short scratch on the slate (not a voice or SMS line).
+See [`docs/blueprints/v0.5/`](docs/blueprints/v0.5/) for Leonardo v0.5 sheets.
+
+**Towers (soft-go):** many candidate masts; **3 active per match**; **1 forced near the PM**. Phone + mast use **service / weak / dead** radii. Scratch on the slate only (not a voice or SMS line).
 
 **HUD:** neon heart (health), cyan bar (stamina), violet bar (fear), phone + spotty signal.
 
@@ -352,7 +354,7 @@ scripts/horror/            Horror neighborhood factory (default play mode)
   characters/              PuppetMasterData, possession constants
   environment/             FamilyHouse, PMMansion, UncleHouse, Outdoor graybox builders
   items/                   EffectDefinitions, PlayerEffects (meter stacks)
-  world/                   NeighborhoodLayout, ChildSpawnRNG (11 alive-only pins), TowerRules
+  world/                   NeighborhoodV05, NeighborhoodLayout, ChildSpawnRNG (11 short-id pins), TowerRules
   ui/                      Neon HUD (heart / cyan / violet / phone signal) + neon menu
   horror_world.gd          World orchestrator
   match_horror.gd          Host-authoritative horror match builder
@@ -387,6 +389,7 @@ assets/
   brand/                       Small in-engine copy of the Vouch icon
 docs/
   MVP_GDD.md                  Design locks / what's in vs. out of MVP
+  blueprints/v0.5/            Leonardo Neighborhood Layout v0.5 sheets + L2 SoT
   brand/                       Reference copies of the Vouch logo/lockup
 ```
 

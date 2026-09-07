@@ -10,6 +10,9 @@ var dirt: StandardMaterial3D
 var blood: StandardMaterial3D
 var duct: StandardMaterial3D
 var wood: StandardMaterial3D
+var asphalt: StandardMaterial3D
+var curb: StandardMaterial3D
+var grass: StandardMaterial3D
 
 
 func _init() -> void:
@@ -21,6 +24,9 @@ func _init() -> void:
 	blood = _mat(Color(0.35, 0.12, 0.1))
 	duct = _mat(Color(0.2, 0.2, 0.22))
 	wood = _mat(Color(0.4, 0.28, 0.18))
+	asphalt = _mat(Color(0.18, 0.18, 0.2))
+	curb = _mat(Color(0.52, 0.5, 0.46))
+	grass = _mat(Color(0.3, 0.36, 0.26))
 
 
 func _mat(color: Color) -> StandardMaterial3D:
