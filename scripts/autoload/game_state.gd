@@ -58,6 +58,13 @@ var puppet_master_peer_id: int = -1
 ## without maintaining their own separate lookup.
 var local_player_node: Node3D = null
 
+## room_index -> current water level (0..1). Kept in sync on EVERY peer
+## (server included) by BrokenPipe's broadcast, so Player.gd can cheaply
+## check "is my current room flooded" from pure local position/state, and
+## EscapeSystem (server-side) can validate the same thing without an
+## extra registry. See BrokenPipe.gd.
+var room_water_levels: Dictionary = {}
+
 
 func reset_for_new_match() -> void:
 	phase = Phase.LOBBY
@@ -68,6 +75,7 @@ func reset_for_new_match() -> void:
 	puppet_master_won = false
 	puppet_master_peer_id = -1
 	local_player_node = null
+	room_water_levels.clear()
 
 
 func server_register_player(peer_id: int, display_name: String) -> void:

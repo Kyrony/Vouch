@@ -34,6 +34,13 @@ signal you_are_puppet_master(camera_targets: Array, eliminable_targets: Array)
 signal sabotage_result(room_index: int, success: bool)
 signal you_were_eliminated
 
+## The Puppet Master can only ever be in play with at least this many
+## players - below that, a solo "hunt everyone" role doesn't make sense.
+const MIN_PLAYERS_FOR_PUPPET_MASTER: int = 4
+## Even when eligible, the Puppet Master doesn't spawn every match - only
+## this fraction of otherwise-eligible matches get one.
+const SPAWN_CHANCE: float = 0.5
+
 ## Server-only: pm_peer_id -> Array[int] of granted camera+sabotage room
 ## indices (the "few" rooms, per the design brief).
 var _granted_targets: Dictionary = {}
@@ -47,12 +54,17 @@ func reset() -> void:
 	_eliminable_targets.clear()
 
 
-## Picks one of `peer_ids` to be the Puppet Master. Returns the chosen
-## peer id, or -1 if the pool was empty.
+## Picks one of `peer_ids` to be the Puppet Master, subject to the spawn
+## rules above (needs >= MIN_PLAYERS_FOR_PUPPET_MASTER, and even then only
+## SPAWN_CHANCE of matches get one at all). Returns the chosen peer id, or
+## -1 if no Puppet Master was assigned this match (a perfectly normal,
+## expected outcome - most systems already treat -1 as "no PM in play").
 func server_assign_puppet_master(peer_ids: Array) -> int:
 	if not multiplayer.is_server():
 		return -1
-	if peer_ids.is_empty():
+	if peer_ids.size() < MIN_PLAYERS_FOR_PUPPET_MASTER:
+		return -1
+	if randf() >= SPAWN_CHANCE:
 		return -1
 
 	var chosen: int = peer_ids[randi() % peer_ids.size()]

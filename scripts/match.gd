@@ -43,6 +43,16 @@ static func room_grid_position(index: int) -> Vector3:
 	return Vector3(col * GRID_SPACING, 0.0, row * GRID_SPACING)
 
 
+## Inverse of `room_grid_position()` - which room's grid cell a world
+## position currently falls within. Used purely client-side (e.g. to
+## check "is MY current room flooded") so it deliberately doesn't need any
+## server round-trip; it's just grid math.
+static func world_position_to_room_index(world_pos: Vector3) -> int:
+	var col := int(roundi(world_pos.x / GRID_SPACING))
+	var row := int(roundi(world_pos.z / GRID_SPACING))
+	return row * GRID_COLUMNS + col
+
+
 func _ready() -> void:
 	rooms_spawner.spawn_function = _spawn_room_pod
 	players_spawner.spawn_function = _spawn_player
@@ -98,6 +108,8 @@ func _server_build_match() -> void:
 func _plan_puzzle(room_count: int) -> Dictionary:
 	if room_count < 2:
 		return {}
+	if randf() >= MatchSettings.code_lock_chance:
+		return {}
 
 	var lockable: Array = []
 	for i in range(room_count):
@@ -117,7 +129,7 @@ func _plan_puzzle(room_count: int) -> Dictionary:
 
 	var clue_index: int = clue_candidates[randi() % clue_candidates.size()]
 	var code := "%04d" % (randi() % 10000)
-	var clue_kind := "book" if randf() < 0.5 else "flame_paper"
+	var clue_kind := "flame_paper" if randf() < MatchSettings.flame_paper_chance else "book"
 	return {
 		"locked_index": locked_index,
 		"clue_index": clue_index,
@@ -156,6 +168,11 @@ func _server_spawn_room(room_index: int, owner_peer_id: int, is_pm: bool, puzzle
 		"clue_kind": puzzle_plan.get("clue_kind", "") if puzzle_plan.get("clue_index", -1) == room_index else "",
 		"clue_code": puzzle_plan.get("code", "") if puzzle_plan.get("clue_index", -1) == room_index else "",
 	}
+	# Anything gated by a host-configurable spawn odd (MatchSettings) must
+	# be resolved HERE, server-side, and baked into `data` - see
+	# RoomPod.plan_recipe()'s doc comment for why `configure()` itself
+	# must never read MatchSettings directly.
+	data.merge(RoomPod.plan_recipe(is_pm))
 	var room: Node = rooms_spawner.spawn(data)
 	_rooms[room_index] = room
 

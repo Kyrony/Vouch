@@ -7,11 +7,15 @@ class_name LightSwitch
 ## `control_id` is assigned by RoomPod at spawn time.
 
 var control_id: String = ""
+## Set by RoomPod at spawn time - which room this switch physically lives
+## in (needed so LinkGraph can guarantee it never links to an effect in
+## this same room).
+var room_index: int = -1
 
 
 func _ready() -> void:
 	if multiplayer.is_server():
-		LinkGraph.server_register_control(control_id, self)
+		LinkGraph.server_register_control(control_id, self, room_index, "light")
 
 
 func interact(by_peer_id: int) -> void:
