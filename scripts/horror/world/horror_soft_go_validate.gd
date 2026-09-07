@@ -161,8 +161,8 @@ static func validate_outdoor_terrain(world: Node3D) -> String:
 	if not perr.is_empty():
 		return perr
 	var bunker: Node3D = world.find_child("Bunker", true, false) as Node3D
-	if bunker != null and pm.origin.distance_to(bunker.global_position) < 5.0:
-		if absf(pm.origin.y - bunker.global_position.y) < 2.5:
+	if bunker != null and pm_xf.origin.distance_to(bunker.global_position) < 5.0:
+		if absf(pm_xf.origin.y - bunker.global_position.y) < 2.5:
 			return "PM spawn is inside the bunker"
 	return ""
 
