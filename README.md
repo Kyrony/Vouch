@@ -90,7 +90,7 @@ field as a placeholder — session codes are post-MVP.
 
 ### L1b farm country (terrain + roads + markers)
 
-Layout SoT is Leonardo’s **farm-country** plates plus the QA **v2** sheet. Live Start Match instantiates the authored packed scene `scenes/Horror/HorrorWorld.tscn` — **no runtime terrain/road/neighborhood builder**. The farm is a **baked hilly heightfield** with one **hilltop main house** on the east cluster. No extra houses, bunkers, or masts. `NeighborhoodV05.OUTDOOR_ONLY` is **on**. L2 eng short ids stay 1:1 (CSV wins over plate typos). Pin 9 `under_porch_crawl` is on the SE road bend. Hold **Shift** to sprint at **1.4×** walk speed.
+Layout SoT is Leonardo’s **farm-country** plates plus the QA **v2** sheet. Live Start Match instantiates the authored packed scene `scenes/Horror/HorrorWorld.tscn` — **no runtime terrain/road/neighborhood builder**. The farm is a **baked hilly heightfield** with one **hilltop main house** on the east cluster. No extra houses, bunkers, or masts. `NeighborhoodV05.OUTDOOR_ONLY` is **on**. L2 eng short ids stay 1:1 (CSV wins over plate typos). Pin 9 `under_porch_crawl` is on the SE road bend. Hold **Shift** to sprint at **1.4×** walk speed. Sprint drains the yellow HUD stamina bar (~20%/s, ~5s full); the bar refills while walking or idle (~10%/s). Empty stamina drops you back to walk until it recovers.
 
 **In-editor check (Kyle):**
 
@@ -335,6 +335,9 @@ VOUCH_HORROR_MATCH_TEST=1 godot4 --headless --path .
 
 # Horror neighborhood smoke (standalone probe):
 godot4 --headless --path . -s res://scripts/vouch_horror_match_probe.gd
+
+# Sprint stamina drain + yellow HUD fill:
+godot4 --headless --path . -s res://scripts/vouch_stamina_sprint_probe.gd
 
 # Playable loop (phone/walkie) — bunker-only: VOUCH_BUNKER_ONLY=1; full escape path needs VOUCH_ESCAPE_PATH=1:
 VOUCH_PLAYABLE_LOOP_TEST=1 godot4 --headless --path .

@@ -125,6 +125,10 @@ func _probe_horror_match() -> String:
 	if not InputMap.has_action("sprint") or absf(sprint_speed / walk_speed - 1.4) > 0.001:
 		NetworkManager.leave_game()
 		return "sprint is missing or not 1.4x walk"
+	var stamina_err: String = _CHECK.call("validate_sprint_stamina")
+	if not stamina_err.is_empty():
+		NetworkManager.leave_game()
+		return stamina_err
 	print("  horror spawns=%d pickups=%d child_points=%d towers=%d house=%s sprint=%.2fx pins=%s" % [
 		spawn_count, pickups.get_child_count(), child_points.size(), TowerRules.get_active_ids().size(),
 		world_node.get_node("Outdoor/MainHouse").global_position,

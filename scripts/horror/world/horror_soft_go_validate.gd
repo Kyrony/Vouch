@@ -533,3 +533,49 @@ static func validate_life_steal() -> String:
 	if 100.0 / maxf(close, 0.01) < 6.0:
 		return "close TTK %.1fs is faster than several seconds" % (100.0 / close)
 	return ""
+
+
+static func validate_sprint_stamina() -> String:
+	var fx: GDScript = load("res://scripts/horror/items/player_effects.gd")
+	var player_script: GDScript = load("res://scripts/player.gd")
+	if fx == null or player_script == null:
+		return "stamina scripts failed to load"
+	var drain: float = float(fx.STAMINA_DRAIN_PER_SEC)
+	var regen: float = float(fx.STAMINA_REGEN_PER_SEC)
+	if drain < 15.0 or drain > 25.0:
+		return "sprint drain %.1f%%/s not in 15-25 band" % drain
+	if regen < 8.0 or regen > 15.0:
+		return "stamina regen %.1f%%/s not a walk/idle refill" % regen
+	var after_sprint: float = float(fx.call("simulate_stamina", 100.0, true, 1.0))
+	if after_sprint >= 100.0 or absf(after_sprint - (100.0 - drain)) > 0.6:
+		return "1s sprint did not drain ~%.0f (got %.2f)" % [drain, after_sprint]
+	var empty: float = float(fx.call("simulate_stamina", 100.0, true, 6.0))
+	if empty > 0.01:
+		return "full sprint should empty the bar in a few seconds, leftover=%.2f" % empty
+	var recovered: float = float(fx.call("simulate_stamina", 0.0, false, 1.0))
+	if absf(recovered - regen) > 0.6:
+		return "1s idle regen expected ~%.0f got %.2f" % [regen, recovered]
+	if bool(player_script.call("sprint_allowed", 0.0)):
+		return "empty stamina still allows sprint"
+	if bool(player_script.call("sprint_allowed", 0.4)):
+		return "near-empty stamina still allows sprint"
+	var walk: float = float(player_script.move_speed_for(false))
+	var gated: float = float(player_script.move_speed_for(bool(player_script.call("sprint_allowed", 0.0))))
+	if absf(gated - walk) > 0.001:
+		return "empty stamina still applies 1.4x (%.3f vs walk %.3f)" % [gated, walk]
+	return ""
+
+
+static func validate_stamina_hud_fill(hud: Control, stamina: float) -> String:
+	if hud == null or not hud.has_method("set_meters"):
+		return "NeonHud missing set_meters"
+	hud.call("set_meters", 100.0, 100.0, stamina, 0.0)
+	var bar := hud.get_node_or_null("Vitals/MeterColumn/StaminaRow/StaminaBar") as TextureProgressBar
+	if bar == null:
+		return "HUD stamina TextureProgressBar missing"
+	var expected := clampf(stamina / 100.0, 0.0, 1.0)
+	if absf(float(bar.value) - expected) > 0.002:
+		return "HUD stamina fill %.3f != live %.3f" % [float(bar.value), expected]
+	if absf(float(hud.get("stamina_ratio")) - expected) > 0.002:
+		return "HUD stamina_ratio %.3f != live %.3f" % [float(hud.get("stamina_ratio")), expected]
+	return ""
