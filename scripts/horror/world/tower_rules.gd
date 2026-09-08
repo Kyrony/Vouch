@@ -33,7 +33,7 @@ func server_roll(world: Node3D, rng_seed: int = -1) -> Array[String]:
 	reset()
 	var candidates: Array[Node3D] = _collect_candidates(world)
 	if candidates.is_empty():
-		push_error("[TowerRules] no tower candidates in world")
+		## Live farm has no mast geometry. Empty roll is expected.
 		return []
 	var pm_origin := _pm_origin(world)
 	var forced: Node3D = _nearest(candidates, pm_origin)
@@ -193,7 +193,7 @@ func _nearest_phone_distance(world_pos: Vector3) -> float:
 func _pm_origin(world: Node3D) -> Vector3:
 	if world.has_method("get_pm_spawn_transform"):
 		return world.call("get_pm_spawn_transform").origin
-	return Vector3(14.8, 0.12, 0)
+	return Vector3(40.0, 0.12, 10.0)
 
 
 func _nearest(nodes: Array[Node3D], origin: Vector3) -> Node3D:

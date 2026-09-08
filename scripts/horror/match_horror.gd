@@ -141,7 +141,7 @@ static func _spawn_pm_ai(match_node: Node, world: Node) -> void:
 	var ai: Node = scene.instantiate()
 	ai.name = "PMChaseAI"
 	match_node.add_child(ai)
-	var spawn: Vector3 = world.global_position + Vector3(14.8, 1.2, 0)
+	var spawn: Vector3 = world.global_position + Vector3(40.0, 1.2, 10.0)
 	if world.has_method("get_pm_spawn_transform"):
 		spawn = world.call("get_pm_spawn_transform").origin + Vector3(0, 1.0, 0)
 	if ai.has_method("server_activate"):

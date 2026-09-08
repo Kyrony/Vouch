@@ -8,9 +8,9 @@ A Blender/GLB kitbash + disclosure pass may replace these primitives later.
 Kit language: 1-story suburban, raised porch, foundation pillars, stairs, shed
 module, desaturated night + magenta porch mood.
 
-- Kit floor plan target: **~13.5 × 11 m** (bedroom at front-right).
-- Live v0.5 footprint stays `FAMILY_HOUSE_SIZE` (8 × 6.5 m) so the ~40 m
-  cul-de-sac ring still fits. Interior rooms follow the kit plan at that scale.
+- Kit floor plan / live graybox: **13.5 × 11 m** (bedroom at front-right).
+- L1b farm parcels have room for the kit footprint. Front door is a real
+  wall cut so bedroom / porch / yard stay walkable.
 - Pin 9 `under_porch_crawl` is a dark low volume under house A’s porch
   (`FamilyHouse_A/UnderPorchCrawl`). **No grave wording.**
 - Nearby `ShedModule` on each house is dressing only. The L2 `family_shed`

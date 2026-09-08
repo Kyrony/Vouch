@@ -40,29 +40,9 @@ func get_display_text() -> String:
 	return "The mast is dark. Another one may be live."
 
 
-func _build_visual(active: bool) -> void:
-	var rust := _mat(Color(0.28, 0.22, 0.18))
-	var brass := _mat(Color(0.52, 0.4, 0.2))
-	var mast: StaticBody3D = _GEOM.call("box", Vector3(0.28, 7.2, 0.28), Vector3(0, 3.6, 0), rust, 0)
-	mast.name = "Mast"
-	add_child(mast)
-	add_child(_GEOM.call("box", Vector3(2.4, 0.12, 0.12), Vector3(0, 6.6, 0), rust, 0))
-	add_child(_GEOM.call("box", Vector3(0.12, 0.12, 2.4), Vector3(0, 6.6, 0), rust, 0))
-	add_child(_GEOM.call("box", Vector3(0.8, 0.35, 0.8), Vector3(0, 0.18, 0), brass, 0))
-	var lamp := OmniLight3D.new()
-	lamp.name = "LiveLight"
-	lamp.position = Vector3(0, 6.9, 0)
-	lamp.light_color = Color(0.75, 0.45, 0.2)
-	lamp.omni_range = 10.0
-	lamp.light_energy = 0.15 if active else 0.02
-	add_child(lamp)
-	var col := CollisionShape3D.new()
-	col.name = "CollisionShape3D"
-	var sh := BoxShape3D.new()
-	sh.size = Vector3(1.2, 7.2, 1.2)
-	col.shape = sh
-	col.position = Vector3(0, 3.6, 0)
-	add_child(col)
+func _build_visual(_active: bool) -> void:
+	## Live farm has no mast meshes. Interactable stub only if instanced.
+	pass
 
 
 func _refresh_live_light() -> void:

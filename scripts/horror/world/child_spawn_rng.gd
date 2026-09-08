@@ -42,10 +42,14 @@ func server_roll(world: Node3D, rng_seed: int = -1) -> String:
 	var marker := _find_marker(world, chosen)
 	if marker == null:
 		for node in world.get_tree().get_nodes_in_group("child_spawn_points"):
-			if node is Marker3D:
-				marker = node
-				chosen = str(node.get_meta("spawn_id", ""))
-				break
+			if not (node is Marker3D):
+				continue
+			var sid := str(node.get_meta("spawn_id", ""))
+			if not SPAWN_IDS.has(sid):
+				continue
+			marker = node
+			chosen = sid
+			break
 	if marker == null:
 		push_error("[ChildSpawnRNG] no child spawn markers in world")
 		return ""
@@ -102,6 +106,8 @@ func _client_child_found(carrier_peer: int) -> void:
 
 
 func _find_marker(world: Node3D, spawn_id: String) -> Marker3D:
+	if not SPAWN_IDS.has(spawn_id):
+		return null
 	for node in world.get_tree().get_nodes_in_group("child_spawn_points"):
 		if node is Marker3D and str(node.get_meta("spawn_id", "")) == spawn_id:
 			return node

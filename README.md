@@ -86,20 +86,19 @@ field as a placeholder — session codes are post-MVP.
 | Puppet Master | Life steal aura (radius, then cooldown) | `E` |
 | All | Pause / release mouse | `Esc` |
 
-**Goal:** Host Match drops every player on the **outdoor street / yard** (phase 1 terrain-first rethink — not bedrooms, not the PM bunker). Walk the large grass/dirt field, the hills, and the asphalt cul-de-sac. One missing child is hidden at a random location among **11 alive-only spawn pins** (Leonardo L2 SoT ids). Find the child marker, then reach the **soft-gated field exit** (west yard, unmarked — master sheet has no escape routes). Trust tools are **phone + live radio masts** (service / weak / dead radii, 3 active per match, one forced near the PM). The **Puppet Master** also starts on the **east approach street**. PM wins if all survivors are drained before families escape with the child.
+**Goal:** Host Match drops families on **outdoor farm pads** (west parcels) and the Puppet Master on the **east loop courtyard pad**. Walk rolling hills and asphalt lanes. One missing child is hidden at a random location among **11 alive-only spawn pins** (Leonardo L2 SoT ids — labeled **Spawn Point** boxes). Find the child marker, then reach the **soft-gated field exit** (west field, unmarked — master sheet has no escape routes). Phone LED is the only flashlight. PM wins if all survivors are drained before families escape with the child.
 
-### Map rethink phase 1 (terrain first)
+### L1b farm country (terrain + roads + markers)
 
-This is a **terrain-first** neighborhood rethink. The deliverable is a **large continuous outdoor heightfield** (~100×84 m) with a few **gentle walkable hills**, **asphalt streets + curbs**, and first-person-readable grass/dirt vs road materials. Houses / the PM mansion stay kit-stubbed; interiors are **not** the spawn.
-
-**Why players used to land underground:** default horror spawns were family **bedrooms** (sealed 1-story boxes on a raised deck) and the PM **mansion foyer**, with L4 **basement / bunker** volumes at y=-4 / y=-12. Those interior paths had no outdoor exit. Phase 1 Host Match uses `Outdoor/PlayerSpawns` + `Outdoor_PM_Street` on the heightfield instead. L2 child pin ids are unchanged.
+Layout SoT is Leonardo’s **farm-country** plates plus the QA **v2** sheet (terrain / roads / spawn markers only). Live Start Match instantiates the authored packed scene `scenes/Horror/HorrorWorld.tscn` — **no runtime terrain/road/neighborhood builder**, and **no house, bunker, prop-kit, or mast meshes**. `NeighborhoodV05.OUTDOOR_ONLY` is **on**. L2 eng short ids stay 1:1 (CSV wins over plate typos). Pin 9 `under_porch_crawl` is on the SE road bend.
 
 **In-editor check (Kyle):**
 
 1. Open `project.godot` in Godot 4.3+, let it import, press **F5**.
-2. Home (painted menu) → click **CLASSIC** → **Host Match** → **Start Match** (one player is enough).
-3. You should stand on the **cul-de-sac asphalt or grass**, see green/brown ground vs dark road + light curbs, and be able to walk the whole yard including the perimeter hills. You should **not** start in a sealed bedroom, basement, or bunker.
-4. Optional second instance: **Play → Join** (blank IP) — host-authoritative outdoor spawns should match for the joiner.
+2. Home → **Play** → **Host Match** → **Start Match** (one player is enough).
+3. You should stand on **open farm terrain** (not inside a house or bunker). See rolling hills, farm lanes / the east road loop, and **11 labeled Spawn Point boxes**. The old `World/Outside` courtyard / mountain graybox stays hidden.
+4. No house frames, CRAWL labels, utility poles, or radio masts. Phone LED is the only flashlight (`R` while holding the phone).
+5. Optional second instance: **Play → Join** (blank IP) — host-authoritative outdoor pads should match for the joiner.
 
 Legacy sealed-room / tunnel modes: `VOUCH_BUNKER_ONLY=1` or `VOUCH_ESCAPE_PATH=1`.
 
@@ -246,21 +245,21 @@ pointing at what's missing.
 
 ## Horror child spawn points (11, alive-only)
 
-Host RNG picks **one** per match (`ChildSpawnRNG`). Teams map to **families** A–D (**outdoor cul-de-sac street spawns** in phase 1; house bedrooms stay as kit stubs). All pins are living hides — no grave sites. IDs are Leonardo L2 SoT **eng short names**. Art map labels are deferred.
+Host RNG picks **one** per match (`ChildSpawnRNG`). Families spawn on **outdoor pads** (A–D). All pins are living hides — no grave sites. IDs are Leonardo L2 SoT **eng short names**. Plate camelCase is not SoT.
 
-| # | `spawn_id` | Callout | Location |
+| # | `spawn_id` | Callout | Location (QA plate / eng) |
 | --- | --- | --- | --- |
-| 1 | `pm_attic` | PM ATTIC | PM mansion attic |
-| 2 | `master_bedroom` | PM MASTER BEDROOM | PM mansion master bedroom |
-| 3 | `bunker_utility` | PM BUNKER UTILITY CLOSET | PM bunker utility closet |
-| 4 | `basement` | PM BASEMENT | PM basement |
-| 5 | `uncle_bedroom` | UNCLE BEDROOM | Uncle house bedroom |
-| 6 | `uncle_garage` | UNCLE GARAGE | Uncle garage |
-| 7 | `family_shed` | FAMILY SHED | Shed by family houses |
-| 8 | `storm_drain` | STORM DRAIN | Street storm drain |
-| 9 | `under_porch_crawl` | UNDER-PORCH CRAWL / DIRT HIDE | House A porch crawl (no grave) |
-| 10 | `garden_well` | GARDEN WELL / CRAWLSPACE | Garden well / crawlspace |
-| 11 | `car_trunk` | CAR TRUNK (CURB) | Parked car trunk at curb |
+| 1 | `pm_attic` | PM ATTIC | West-inner north of the east road loop |
+| 2 | `master_bedroom` | PM MASTER BEDROOM | West-inner stack, south of pin 1 |
+| 3 | `bunker_utility` | PM BUNKER UTILITY CLOSET | West-inner stack, south of pin 2 |
+| 4 | `basement` | PM BASEMENT | West-inner south of the loop (**pin 4**) |
+| 5 | `uncle_bedroom` | UNCLE BEDROOM | East-inner north of the loop |
+| 6 | `uncle_garage` | UNCLE GARAGE | East-inner, south of pin 5 |
+| 7 | `family_shed` | FAMILY SHED | Far west circular road loop |
+| 8 | `storm_drain` | STORM DRAIN | South of the shed, west intersection |
+| 9 | `under_porch_crawl` | UNDER-PORCH CRAWL / DIRT HIDE | SE road bend of the east loop (QA v2; no grave) |
+| 10 | `garden_well` | GARDEN WELL / CRAWLSPACE | West of the central stack, between parallel lanes |
+| 11 | `car_trunk` | CAR TRUNK (CURB) | South hub three-way junction |
 
 See [`docs/blueprints/v0.5/`](docs/blueprints/v0.5/) for Leonardo v0.5 sheets.
 
@@ -268,9 +267,9 @@ See [`docs/blueprints/v0.5/`](docs/blueprints/v0.5/) for Leonardo v0.5 sheets.
 
 **HUD + smartphone (soft-go):** Leonardo’s approved UI pack is wired in `scripts/horror/ui/` and `assets/horror/ui/` + `assets/horror/hud/`. Home is Kyle’s React **VouchMenu** port: Control layout over the original creepy `menu_atmosphere` night-yard, gold/blood chrome, no VOUCH wordmark, no SIGNAL bars, and a Play-selected modes panel on boot. Mode thumbs stay blank placeholders (no plate, no `mansion-bg.png`). **Classic → START** is the live outdoor Host Match path; other modes toast stubs. Friends is a lobby-code stub. Settings saves master/SFX/fullscreen. Quit exits the process. In-match HUD v3: MISSING CHILD / ALIVE ONLY banner, shared empty neon-rim health/stamina/fear tracks (eng-owned fill %), phone LED + signal, PM ability cooldown, center **E INTERACT**. Phone light is the camera LED only — no torch glyph. Drain/TTK stay eng-owned. HUD textures are wiring refs; Leonardo may redraw them before Steam.
 
-**Environment kits (soft-go):** Family houses use modular porch / foundation / stairs / crawl graybox (`under_porch_crawl` under house A — no grave wording). PM bunker gets sealed concrete + pipes/shelves and a utility closet for `bunker_utility` (red/yellow neon, fluorescent; no gore, no guns). See `assets/horror/kits/README.md`. Kit plan sizes are art targets; live footprints stay v0.5.
+**HUD + smartphone (soft-go):** Leonardo’s approved UI pack is wired in `scripts/horror/ui/` and `assets/horror/ui/` + `assets/horror/hud/`. Home is a **hybrid plate**: `menu_leonardo_locked.png` is the full visual (neon **V** + strung **OUCH**, no X-stick); Godot only adds invisible hitboxes. **Classic** is the live outdoor Host Match path; other painted modes are soft stubs. In-match HUD: MISSING CHILD / ALIVE ONLY banner, stacked empty health-over-stamina tracks (eng-owned fill %), phone LED + signal, PM ability cooldown, center **E INTERACT**. Phone light is the camera LED only — no torch glyph. Drain/TTK stay eng-owned. Textures are wiring refs; Leonardo may redraw them before Steam.
 
-**HUD:** shared neon-rim empty tracks for health (red), stamina (cyan), and fear (violet), plus chips, phone LED, and signal.
+**HUD:** stacked horror-vial health over yellow stamina (empty tracks, eng fill %), phone LED, and signal. No fear bar.
 
 ## Friends-ready playtest (James checklist)
 
@@ -370,7 +369,7 @@ damage model, no gameplay purpose. Before shipping, remove:
 project.godot              Godot 4 project config (autoloads, input map, etc.)
 scripts/horror/            Horror neighborhood factory (default play mode)
   characters/              PuppetMasterData, possession constants
-  environment/             FamilyHouse, PMMansion, UncleHouse, Outdoor + Terrain heightfield
+  environment/             Outdoor terrain + roads, labeled L2 Spawn Point markers
   items/                   EffectDefinitions, PlayerEffects (meter stacks)
   world/                   NeighborhoodV05, NeighborhoodLayout, ChildSpawnRNG (11 L2 SoT pins), TowerRules
   ui/                      React VouchMenu port + HUD (banner / Classic / phone LED)
