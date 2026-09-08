@@ -17,7 +17,8 @@ func _ready() -> void:
 	_bind_authored_spawns()
 	_ensure_placeholder_gun()
 	_ensure_terrain_texture()
-	_run_semantic_maps()
+	## Mask placement must not block Start Match / player spawn.
+	call_deferred("_run_semantic_maps")
 	var clock := get_node_or_null("/root/MatchClock")
 	if clock and clock.has_method("apply_to_world"):
 		clock.call("apply_to_world", self)
@@ -90,13 +91,20 @@ func _ensure_terrain_texture() -> void:
 
 
 func _run_semantic_maps() -> void:
-	## Heightmap stays authored. Masks place roads / pads / vegetation on top.
+	## Heightmap stays authored. Masks dress the farm after the match is live.
+	## Failures stay warnings — authored lanes/pads/terrain must remain playable.
+	if not is_inside_tree():
+		return
 	var script: GDScript = load("res://scripts/horror/world/neighborhood_from_masks.gd")
 	if script == null:
+		push_warning("[HorrorWorld] neighborhood_from_masks.gd failed to load")
 		return
 	var gen: Object = script.new()
-	if gen.has_method("run"):
-		gen.call("run", self)
+	if gen == null or not gen.has_method("run"):
+		return
+	var err: Variant = gen.call("run", self)
+	if typeof(err) == TYPE_STRING and not str(err).is_empty():
+		push_warning("[HorrorWorld] semantic maps skipped: %s" % err)
 
 
 func _load_png(path: String) -> Texture2D:

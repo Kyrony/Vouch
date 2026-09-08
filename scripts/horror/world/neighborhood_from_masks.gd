@@ -1,17 +1,25 @@
 extends RefCounted
 class_name NeighborhoodFromMasks
-## Heightmap stays authored. Semantic masks drive roads, buildings, vegetation.
-## Order: cliff/exclusion → roads → buildings → vegetation → cleanup.
+## Heightmap stays authored. Semantic masks dress roads, leftover pads, vegetation.
+## Authored Outdoor/Roads + pads stay visible and colliding. Generation is cheap
+## so Start Match can finish; a failed pass must never blank the farm.
 
 const MASK_DIR := "res://assets/horror/farm/masks/"
 const BUILDINGS_JSON := "res://assets/horror/farm/masks/buildings.json"
 const ROADS_JSON := "res://assets/horror/farm/masks/roads.json"
 const ROOT_NAME := "SemanticGenerated"
 const SNAP_M: float = 18.0
-const SEED: int = 17041
+const RNG_SEED: int = 17041
 const CLIFF_SETBACK_M: float = 6.0
 const ROAD_WIDTH: float = 5.0
-const VEG_STEP: float = 3.6
+const VEG_STEP: float = 7.2
+const VEG_MAX: int = 96
+const ROAD_STEP_M: float = 10.0
+const ROAD_MAX_LANES: int = 36
+const TERRAIN_ORIGIN_X: float = -72.0
+const TERRAIN_ORIGIN_Z: float = -60.0
+const TERRAIN_SPAN_X: float = 144.0
+const TERRAIN_SPAN_Z: float = 120.0
 
 const SIZES := {
 	"mansion": Vector3(20.0, 3.2, 16.0),
@@ -29,19 +37,32 @@ const COLORS := {
 	"utility": Color(0.48, 0.50, 0.46),
 }
 
-var maps: SemanticMaps
-var seed: int = SEED
+var maps
+var rng_seed: int = RNG_SEED
 var generate_roads: bool = true
 var generate_buildings: bool = true
 var generate_vegetation: bool = true
+var _road_mat: StandardMaterial3D
+var _trunk_mat: StandardMaterial3D
+var _leaf_mat: StandardMaterial3D
+var _bush_mat: StandardMaterial3D
+var _grass_mat: StandardMaterial3D
 
 
 func run(world: Node3D) -> String:
-	maps = SemanticMaps.new()
-	var err := maps.load_all()
+	if world == null or not world.is_inside_tree():
+		return "world not ready"
+	var maps_script: GDScript = load("res://scripts/horror/world/semantic_maps.gd")
+	if maps_script == null:
+		return "semantic_maps.gd failed to load"
+	maps = maps_script.new()
+	if maps == null or not maps.has_method("load_all"):
+		return "semantic maps unavailable"
+	var err: String = str(maps.call("load_all"))
 	if not err.is_empty():
 		push_warning("[SemanticMaps] %s" % err)
 		return err
+	_make_shared_mats()
 	var root := _ensure_root(world)
 	_apply_cliff_exclusion(world)
 	if generate_roads:
@@ -57,6 +78,26 @@ func run(world: Node3D) -> String:
 	return ""
 
 
+func _make_shared_mats() -> void:
+	_road_mat = StandardMaterial3D.new()
+	_road_mat.albedo_color = Color(0.11, 0.11, 0.13)
+	_road_mat.roughness = 0.92
+	_trunk_mat = StandardMaterial3D.new()
+	_trunk_mat.albedo_color = Color(0.28, 0.18, 0.10)
+	_leaf_mat = StandardMaterial3D.new()
+	_leaf_mat.albedo_color = Color(0.18, 0.32, 0.12)
+	_leaf_mat.emission_enabled = true
+	_leaf_mat.emission = Color(0.08, 0.14, 0.05)
+	_leaf_mat.emission_energy_multiplier = 0.18
+	_bush_mat = StandardMaterial3D.new()
+	_bush_mat.albedo_color = Color(0.22, 0.38, 0.14)
+	_grass_mat = StandardMaterial3D.new()
+	_grass_mat.albedo_color = Color(0.34, 0.48, 0.18)
+	_grass_mat.emission_enabled = true
+	_grass_mat.emission = Color(0.12, 0.18, 0.06)
+	_grass_mat.emission_energy_multiplier = 0.12
+
+
 func _ensure_root(world: Node3D) -> Node3D:
 	var outdoor := world.get_node_or_null("Outdoor") as Node3D
 	if outdoor == null:
@@ -64,7 +105,7 @@ func _ensure_root(world: Node3D) -> Node3D:
 	var root := outdoor.get_node_or_null(ROOT_NAME) as Node3D
 	if root:
 		for child in root.get_children():
-			child.free()
+			child.queue_free()
 	else:
 		root = Node3D.new()
 		root.name = ROOT_NAME
@@ -78,10 +119,7 @@ func _apply_cliff_exclusion(_world: Node3D) -> void:
 
 
 func _place_roads(world: Node3D, root: Node3D) -> void:
-	var authored := world.get_node_or_null("Outdoor/Roads")
-	if authored:
-		for lane in authored.get_children():
-			_mute_body(lane)
+	## Keep authored Lane_* visible and colliding. Overlay a short sampled set.
 	var folder := Node3D.new()
 	folder.name = "GenRoads"
 	root.add_child(folder)
@@ -90,16 +128,15 @@ func _place_roads(world: Node3D, root: Node3D) -> void:
 		return
 	var idx := 0
 	for line in polylines:
-		if not (line is Array) or line.size() < 2:
-			continue
-		for i in range(line.size() - 1):
-			var a: Array = line[i]
-			var b: Array = line[i + 1]
-			if a.size() < 2 or b.size() < 2:
-				continue
-			var p0 := Vector2(float(a[0]), float(a[1]))
-			var p1 := Vector2(float(b[0]), float(b[1]))
-			if p0.distance_to(p1) < 1.2:
+		if idx >= ROAD_MAX_LANES:
+			break
+		var pts: Array = _resample_line(line, ROAD_STEP_M)
+		for i in range(pts.size() - 1):
+			if idx >= ROAD_MAX_LANES:
+				break
+			var p0: Vector2 = pts[i]
+			var p1: Vector2 = pts[i + 1]
+			if p0.distance_to(p1) < 2.4:
 				continue
 			if _road_hits_building(p0, p1):
 				continue
@@ -107,9 +144,39 @@ func _place_roads(world: Node3D, root: Node3D) -> void:
 			idx += 1
 
 
+func _resample_line(line: Variant, step_m: float) -> Array:
+	var out: Array = []
+	if not (line is Array) or (line as Array).size() < 2:
+		return out
+	var raw: Array = []
+	for item in line:
+		if item is Array and (item as Array).size() >= 2:
+			raw.append(Vector2(float(item[0]), float(item[1])))
+		elif item is Dictionary:
+			raw.append(Vector2(float(item.get("x", 0.0)), float(item.get("z", item.get("y", 0.0)))))
+	if raw.size() < 2:
+		return out
+	out.append(raw[0])
+	var carry := 0.0
+	for i in range(raw.size() - 1):
+		var a: Vector2 = raw[i]
+		var b: Vector2 = raw[i + 1]
+		var seg := a.distance_to(b)
+		if seg <= 0.001:
+			continue
+		carry += seg
+		if carry >= step_m:
+			out.append(b)
+			carry = 0.0
+	var last: Vector2 = raw[raw.size() - 1]
+	if out.is_empty() or (out[out.size() - 1] as Vector2).distance_to(last) > 1.0:
+		out.append(last)
+	return out
+
+
 func _road_hits_building(a: Vector2, b: Vector2) -> bool:
 	var mid := (a + b) * 0.5
-	return maps.is_building_world(mid.x, mid.y)
+	return bool(maps.call("is_building_world", mid.x, mid.y))
 
 
 func _spawn_lane(folder: Node3D, idx: int, a: Vector2, b: Vector2, world: Node3D) -> void:
@@ -124,10 +191,7 @@ func _spawn_lane(folder: Node3D, idx: int, a: Vector2, b: Vector2, world: Node3D
 	body.rotation.y = yaw
 	var mesh := BoxMesh.new()
 	mesh.size = Vector3(ROAD_WIDTH, 0.1, length)
-	var mat := StandardMaterial3D.new()
-	mat.albedo_color = Color(0.11, 0.11, 0.13)
-	mat.roughness = 0.92
-	mesh.material = mat
+	mesh.material = _road_mat
 	var inst := MeshInstance3D.new()
 	inst.name = "Mesh"
 	inst.mesh = mesh
@@ -154,11 +218,11 @@ func _place_buildings(world: Node3D, root: Node3D) -> void:
 		var kind := str(blob.get("kind", ""))
 		var x := float(blob.get("x", 0.0))
 		var z := float(blob.get("z", 0.0))
-		if maps.is_cliff_world(x, z):
+		if bool(maps.call("is_cliff_world", x, z)):
 			continue
 		if _near_cliff(x, z, CLIFF_SETBACK_M):
 			continue
-		if maps.is_road_world(x, z):
+		if bool(maps.call("is_road_world", x, z)):
 			continue
 		var snap := _snap_pad(kind, x, z, pads, used)
 		if snap != null:
@@ -238,32 +302,36 @@ func _place_vegetation(world: Node3D, root: Node3D) -> void:
 	folder.name = "GenVegetation"
 	root.add_child(folder)
 	var rng := RandomNumberGenerator.new()
-	rng.seed = seed
+	rng.seed = rng_seed
 	var counts := {"tree": 0, "bush": 0, "grass": 0}
-	var x := MapCoords.TERRAIN_ORIGIN_X + 4.0
-	while x < MapCoords.TERRAIN_ORIGIN_X + MapCoords.TERRAIN_SPAN_X - 4.0:
-		var z := MapCoords.TERRAIN_ORIGIN_Z + 4.0
-		while z < MapCoords.TERRAIN_ORIGIN_Z + MapCoords.TERRAIN_SPAN_Z - 4.0:
+	var planted := 0
+	var x := TERRAIN_ORIGIN_X + 6.0
+	while x < TERRAIN_ORIGIN_X + TERRAIN_SPAN_X - 6.0 and planted < VEG_MAX:
+		var z := TERRAIN_ORIGIN_Z + 6.0
+		while z < TERRAIN_ORIGIN_Z + TERRAIN_SPAN_Z - 6.0 and planted < VEG_MAX:
 			var jx := x + rng.randf_range(-0.7, 0.7)
 			var jz := z + rng.randf_range(-0.7, 0.7)
 			if not _can_plant(jx, jz):
 				z += VEG_STEP
 				continue
-			var dens := maps.vegetation_density_world(jx, jz)
+			var dens := int(maps.call("vegetation_density_world", jx, jz))
 			if dens <= 0:
 				z += VEG_STEP
 				continue
 			var roll := rng.randf()
 			var y := _ground_y(world, jx, jz)
-			if dens >= 3 and roll < 0.55:
+			if dens >= 3 and roll < 0.50:
 				_spawn_tree(folder, jx, y, jz, rng)
 				counts["tree"] += 1
-			elif dens >= 2 and roll < 0.50:
+				planted += 1
+			elif dens >= 2 and roll < 0.40:
 				_spawn_bush(folder, jx, y, jz, rng)
 				counts["bush"] += 1
-			elif dens >= 1 and roll < 0.45:
+				planted += 1
+			elif dens >= 1 and roll < 0.28:
 				_spawn_grass(folder, jx, y, jz, rng)
 				counts["grass"] += 1
+				planted += 1
 			z += VEG_STEP
 		x += VEG_STEP
 	print("[SemanticMaps] vegetation trees=%d bushes=%d grass=%d" % [
@@ -272,13 +340,13 @@ func _place_vegetation(world: Node3D, root: Node3D) -> void:
 
 
 func _can_plant(x: float, z: float) -> bool:
-	if maps.is_no_spawn_world(x, z):
+	if bool(maps.call("is_no_spawn_world", x, z)):
 		return false
-	if maps.is_road_world(x, z):
+	if bool(maps.call("is_road_world", x, z)):
 		return false
-	if maps.is_building_world(x, z):
+	if bool(maps.call("is_building_world", x, z)):
 		return false
-	if maps.is_cliff_world(x, z):
+	if bool(maps.call("is_cliff_world", x, z)):
 		return false
 	return true
 
@@ -287,16 +355,9 @@ func _spawn_tree(folder: Node3D, x: float, y: float, z: float, rng: RandomNumber
 	var n := Node3D.new()
 	n.name = "GenTree_%04d" % folder.get_child_count()
 	n.position = Vector3(x, y, z)
-	var trunk_mat := StandardMaterial3D.new()
-	trunk_mat.albedo_color = Color(0.28, 0.18, 0.10)
-	var leaf_mat := StandardMaterial3D.new()
-	leaf_mat.albedo_color = Color(0.18, 0.32, 0.12)
-	leaf_mat.emission_enabled = true
-	leaf_mat.emission = Color(0.08, 0.14, 0.05)
-	leaf_mat.emission_energy_multiplier = 0.18
 	var h := rng.randf_range(2.4, 3.6)
-	_add_cyl(n, "Trunk", 0.14, h, Vector3(0, h * 0.5, 0), trunk_mat)
-	_add_sphere(n, "Canopy", rng.randf_range(1.1, 1.6), Vector3(0, h + 0.4, 0), leaf_mat)
+	_add_cyl(n, "Trunk", 0.14, h, Vector3(0, h * 0.5, 0), _trunk_mat)
+	_add_sphere(n, "Canopy", rng.randf_range(1.1, 1.6), Vector3(0, h + 0.4, 0), _leaf_mat)
 	folder.add_child(n)
 
 
@@ -304,9 +365,7 @@ func _spawn_bush(folder: Node3D, x: float, y: float, z: float, rng: RandomNumber
 	var n := Node3D.new()
 	n.name = "GenBush_%04d" % folder.get_child_count()
 	n.position = Vector3(x, y, z)
-	var mat := StandardMaterial3D.new()
-	mat.albedo_color = Color(0.22, 0.38, 0.14)
-	_add_sphere(n, "Body", rng.randf_range(0.45, 0.75), Vector3(0, 0.4, 0), mat)
+	_add_sphere(n, "Body", rng.randf_range(0.45, 0.75), Vector3(0, 0.4, 0), _bush_mat)
 	folder.add_child(n)
 
 
@@ -314,14 +373,9 @@ func _spawn_grass(folder: Node3D, x: float, y: float, z: float, rng: RandomNumbe
 	var n := Node3D.new()
 	n.name = "GenGrass_%04d" % folder.get_child_count()
 	n.position = Vector3(x, y, z)
-	var mat := StandardMaterial3D.new()
-	mat.albedo_color = Color(0.34, 0.48, 0.18)
-	mat.emission_enabled = true
-	mat.emission = Color(0.12, 0.18, 0.06)
-	mat.emission_energy_multiplier = 0.12
 	var mesh := BoxMesh.new()
 	mesh.size = Vector3(0.22, rng.randf_range(0.18, 0.32), 0.08)
-	mesh.material = mat
+	mesh.material = _grass_mat
 	var inst := MeshInstance3D.new()
 	inst.name = "Blade"
 	inst.mesh = mesh
@@ -367,35 +421,37 @@ func _attach_debug(world: Node3D, root: Node3D) -> void:
 		view.call("bind_world", world)
 
 
-func _mute_body(node: Node) -> void:
-	if node is Node3D:
-		(node as Node3D).visible = false
-	for child in node.get_children():
-		if child is CollisionShape3D:
-			(child as CollisionShape3D).disabled = true
-		if child is MeshInstance3D:
-			(child as MeshInstance3D).visible = false
-
-
 func _near_cliff(x: float, z: float, setback: float) -> bool:
 	for d in [0.0, setback, setback * 0.5]:
-		if maps.is_cliff_world(x + d, z):
+		if bool(maps.call("is_cliff_world", x + d, z)):
 			return true
 	return false
 
 
 func _ground_y(world: Node3D, x: float, z: float) -> float:
-	if world.get_world_3d() == null:
+	var terrain := world.get_node_or_null("Outdoor/Terrain") as Node3D
+	if terrain == null:
 		return 1.0
-	var space := world.get_world_3d().direct_space_state
-	if space == null:
+	var hm: HeightMapShape3D = null
+	for child in terrain.get_children():
+		if child is CollisionShape3D and (child as CollisionShape3D).shape is HeightMapShape3D:
+			hm = (child as CollisionShape3D).shape
+			break
+	if hm == null:
 		return 1.0
-	var q := PhysicsRayQueryParameters3D.create(Vector3(x, 40.0, z), Vector3(x, -4.0, z))
-	q.collide_with_areas = false
-	var hit := space.intersect_ray(q)
-	if hit.has("position"):
-		return float((hit["position"] as Vector3).y)
-	return 1.0
+	var data: PackedFloat32Array = hm.map_data
+	var w := hm.map_width
+	var d := hm.map_depth
+	if w < 2 or d < 2 or data.size() < w * d:
+		return 1.0
+	var u := (x - TERRAIN_ORIGIN_X) / TERRAIN_SPAN_X
+	var v := (z - TERRAIN_ORIGIN_Z) / TERRAIN_SPAN_Z
+	var ix := clampi(int(round(u * float(w - 1))), 0, w - 1)
+	var iz := clampi(int(round(v * float(d - 1))), 0, d - 1)
+	var idx := iz * w + ix
+	if idx < 0 or idx >= data.size():
+		return 1.0
+	return data[idx]
 
 
 func _read_json(path: String) -> Array:

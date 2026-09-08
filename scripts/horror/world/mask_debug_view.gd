@@ -30,7 +30,9 @@ func _ready() -> void:
 
 
 func _unhandled_input(event: InputEvent) -> void:
-	var cycle := event.is_action_pressed("mask_debug_cycle")
+	var cycle := false
+	if InputMap.has_action("mask_debug_cycle"):
+		cycle = event.is_action_pressed("mask_debug_cycle")
 	if not cycle and event is InputEventKey and event.pressed and not event.echo:
 		cycle = event.physical_keycode == KEY_F8
 	if not cycle:
