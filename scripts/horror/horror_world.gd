@@ -4,6 +4,7 @@ class_name HorrorWorld
 ## Start Match instantiates that packed scene — it does not loop-build geometry.
 
 const PICKUP_SCENE: String = "res://scenes/Horror/WorldPickup.tscn"
+const GRASS_TEX := "res://assets/horror/farm/grass_dirt_tile.png"
 
 var _family_spawns: Array[Marker3D] = []
 var _pm_spawn: Marker3D = null
@@ -15,6 +16,7 @@ func _ready() -> void:
 	_suppress_parallel_worlds()
 	_bind_authored_spawns()
 	_ensure_placeholder_gun()
+	_ensure_terrain_texture()
 	var clock := get_node_or_null("/root/MatchClock")
 	if clock and clock.has_method("apply_to_world"):
 		clock.call("apply_to_world", self)
@@ -59,6 +61,49 @@ func _add_named_mesh(parent: Node3D, node_name: String, mesh: Mesh, size: Vector
 	inst.position = pos
 	inst.rotation_degrees = rot_deg
 	parent.add_child(inst)
+
+
+func _ensure_terrain_texture() -> void:
+	## Mesh has no UVs — triplanar grass/dirt so dusk/night still reads as ground.
+	var mesh := get_node_or_null("Outdoor/Terrain/MeshInstance3D") as MeshInstance3D
+	if mesh == null:
+		return
+	var mat := mesh.material_override as StandardMaterial3D
+	if mat == null:
+		mat = StandardMaterial3D.new()
+		mesh.material_override = mat
+	var tex: Texture2D = mat.albedo_texture
+	if tex == null or tex.get_width() < 8:
+		tex = _load_png(GRASS_TEX)
+		if tex:
+			mat.albedo_texture = tex
+	mat.albedo_color = Color(0.42, 0.50, 0.24, 1)
+	mat.roughness = 0.86
+	mat.cull_mode = BaseMaterial3D.CULL_DISABLED
+	mat.uv1_triplanar = true
+	mat.uv1_world_triplanar = true
+	mat.uv1_scale = Vector3(0.14, 0.14, 0.14)
+	mat.emission_enabled = true
+	mat.emission = Color(0.16, 0.20, 0.09, 1)
+	mat.emission_energy_multiplier = 0.22
+
+
+func _load_png(path: String) -> Texture2D:
+	if ResourceLoader.exists(path):
+		var imported := load(path) as Texture2D
+		if imported != null and imported.get_width() > 8:
+			return imported
+	if not FileAccess.file_exists(path):
+		return null
+	var fa := FileAccess.open(path, FileAccess.READ)
+	if fa == null:
+		return null
+	var buf := fa.get_buffer(int(fa.get_length()))
+	fa.close()
+	var img := Image.new()
+	if img.load_png_from_buffer(buf) != OK:
+		return null
+	return ImageTexture.create_from_image(img)
 
 
 func _bind_authored_spawns() -> void:

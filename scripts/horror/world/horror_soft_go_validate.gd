@@ -474,6 +474,13 @@ static func validate_outdoor_terrain(world: Node3D) -> String:
 		return "Outdoor/Terrain is not an authored heightfield"
 	if peak_y - valley_y < 3.5:
 		return "farm height contrast %.2f is too flat — need rolling hills" % (peak_y - valley_y)
+	if not FileAccess.file_exists("res://assets/horror/farm/grass_dirt_tile.png"):
+		return "farm grass/dirt tile missing — terrain needs visible albedo"
+	var world_tscn := FileAccess.get_file_as_string("res://scenes/Horror/HorrorWorld.tscn")
+	if not world_tscn.contains("grass_dirt_tile.png"):
+		return "Mat_grass must reference grass_dirt_tile.png"
+	if not world_tscn.contains("uv1_triplanar = true"):
+		return "farm terrain must triplanar-map grass (mesh has no UVs)"
 	return ""
 
 

@@ -51,13 +51,22 @@ const TEX_HIDE_PORCH := "hide_porch"
 
 static func texture(stem: String) -> Texture2D:
 	var path := "%s/%s.png" % [DIR, stem]
+	var imported: Texture2D = null
 	if ResourceLoader.exists(path):
-		var res: Resource = load(path)
-		return res as Texture2D
+		imported = load(path) as Texture2D
+	if imported != null and imported.get_width() > 4 and imported.get_height() > 4:
+		return imported
 	if FileAccess.file_exists(path):
-		var img := Image.load_from_file(path)
-		if img:
-			return ImageTexture.create_from_image(img)
+		var fa := FileAccess.open(path, FileAccess.READ)
+		if fa:
+			var buf := fa.get_buffer(int(fa.get_length()))
+			fa.close()
+			var img := Image.new()
+			if img.load_png_from_buffer(buf) == OK and img.get_width() > 0:
+				return ImageTexture.create_from_image(img)
+		var fallback := Image.load_from_file(path)
+		if fallback:
+			return ImageTexture.create_from_image(fallback)
 	return null
 
 

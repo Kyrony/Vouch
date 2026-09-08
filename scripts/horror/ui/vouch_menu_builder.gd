@@ -9,7 +9,7 @@ const _GLYPH: GDScript = preload("res://scripts/horror/ui/nav_glyph.gd")
 const TITLE_BG := "res://assets/horror/ui/menu_title_bg.png"
 const LOGO := "res://assets/horror/ui/vouch_fiery_logo.png"
 const NAV_TOP := 320.0
-const LOGO_SIZE := Vector2(560, 140)
+const LOGO_SIZE := Vector2(880, 260)
 
 const NAV := [
 	{"id": "play", "name": "PlayButton", "label": "PLAY", "glyph": "play"},
@@ -91,10 +91,12 @@ static func _ensure_atmosphere(lobby: Control) -> void:
 	tex.grow_horizontal = Control.GROW_DIRECTION_BOTH
 	tex.grow_vertical = Control.GROW_DIRECTION_BOTH
 	tex.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	tex.visible = true
+	tex.modulate = Color.WHITE
+	tex.self_modulate = Color.WHITE
 	tex.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 	tex.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_COVERED
-	if ResourceLoader.exists(TITLE_BG):
-		tex.texture = load(TITLE_BG) as Texture2D
+	tex.texture = load_png_texture(TITLE_BG)
 	var bg := lobby.get_node_or_null("Background")
 	if bg:
 		lobby.move_child(tex, bg.get_index() + 1)
@@ -114,8 +116,8 @@ static func _ensure_vignette(lobby: Control) -> void:
 	dim.grow_horizontal = Control.GROW_DIRECTION_BOTH
 	dim.grow_vertical = Control.GROW_DIRECTION_BOTH
 	dim.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	# Soft full-screen dim so gold nav / mode panel stay readable over the art.
-	dim.color = Color(0.012, 0.004, 0.01, 0.38)
+	# Light dim only — 38% black was swallowing Kyle's village plate.
+	dim.color = Color(0.012, 0.004, 0.01, 0.14)
 	var atmo := lobby.get_node_or_null("MenuAtmosphere")
 	if atmo:
 		lobby.move_child(dim, atmo.get_index() + 1)
@@ -131,7 +133,7 @@ static func _ensure_vignette(lobby: Control) -> void:
 	shade.offset_right = 0
 	shade.offset_bottom = 0
 	shade.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	shade.color = Color(0.012, 0.004, 0.01, 0.22)
+	shade.color = Color(0.012, 0.004, 0.01, 0.10)
 	lobby.move_child(shade, dim.get_index() + 1)
 
 
@@ -206,8 +208,9 @@ static func _ensure_logo(home: Control) -> void:
 	logo.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 	logo.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT
 	logo.visible = true
-	if ResourceLoader.exists(LOGO):
-		logo.texture = load(LOGO) as Texture2D
+	logo.modulate = Color.WHITE
+	logo.self_modulate = Color.WHITE
+	logo.texture = load_png_texture(LOGO)
 
 
 static func _ensure_nav(home: Control) -> void:
@@ -558,6 +561,36 @@ static func _ensure_button(parent: Node, node_name: String, text: String) -> But
 		parent.add_child(btn)
 	btn.text = text
 	return btn
+
+
+## Prefer the imported CompressedTexture2D. If the .ctex cache is stale or
+## blank after a PNG byte-swap, decode Kyle's exact file bytes so the plate
+## and fiery wordmark still show.
+static func load_png_texture(path: String) -> Texture2D:
+	var imported: Texture2D = null
+	if ResourceLoader.exists(path):
+		imported = load(path) as Texture2D
+	if imported != null and imported.get_width() > 8 and imported.get_height() > 8:
+		return imported
+	return _png_from_bytes(path)
+
+
+static func _png_from_bytes(path: String) -> Texture2D:
+	if not FileAccess.file_exists(path):
+		return null
+	var fa := FileAccess.open(path, FileAccess.READ)
+	if fa == null:
+		return null
+	var buf := fa.get_buffer(int(fa.get_length()))
+	fa.close()
+	if buf.is_empty():
+		return null
+	var img := Image.new()
+	if img.load_png_from_buffer(buf) != OK:
+		return null
+	if img.get_width() < 1 or img.get_height() < 1:
+		return null
+	return ImageTexture.create_from_image(img)
 
 
 static func _drop_legacy_panels(lobby: Control) -> void:
