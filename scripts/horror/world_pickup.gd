@@ -72,12 +72,26 @@ func get_prompt() -> String:
 func server_try_pickup(peer_id: int) -> bool:
 	if _taken:
 		return false
-	if not PlayerInventory.server_add_item(peer_id, item_id):
+	if item_id == "puppet":
+		# The Puppet Master dons the puppet instead of pocketing it.
+		PuppetControlSystem.server_take_puppet(peer_id)
+	elif not PlayerInventory.server_add_item(peer_id, item_id):
 		return false
 	_taken = true
 	_client_hide.rpc()
 	queue_free()
 	return true
+
+
+## The PM picks up the puppet (survivor pickup RPC blocks the PM, so this is
+## a dedicated path).
+@rpc("any_peer", "call_remote", "reliable")
+func rpc_pm_take() -> void:
+	if not multiplayer.is_server():
+		return
+	var sender := multiplayer.get_remote_sender_id()
+	if item_id == "puppet" and sender == GameState.puppet_master_peer_id:
+		server_try_pickup(sender)
 
 
 @rpc("authority", "call_local", "reliable")

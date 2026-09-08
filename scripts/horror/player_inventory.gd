@@ -5,12 +5,19 @@ const _CATALOG: GDScript = preload("res://scripts/horror/items/item_catalog.gd")
 
 signal inventory_changed(slots: Array, selected: int)
 signal local_inventory_changed(slots: Array, selected: int)
+## Fired when a survivor begins a timed use (for a HUD progress bar).
+signal _use_started(peer_id: int, item_id: String, duration: float)
 
 const SLOT_COUNT: int = 8
 const EMPTY: String = ""
 
 var _inventories: Dictionary = {}
 var _selected: Dictionary = {}
+var _pending_use: Dictionary = {}  # peer -> {slot, item} timed use in progress
+
+
+func server_use_duration(item_id: String) -> float:
+	return _CATALOG.use_time(item_id)
 
 
 func reset() -> void:
@@ -153,10 +160,33 @@ func _server_use_selected(sender: int) -> void:
 		if PhoneDevice.server_recharge(sender):
 			server_remove_slot(sender, sel)
 		return
-	# Consume the item only if the use actually did something / it's a
-	# one-shot. Reusable tools (crowbar, light switch) stay in the slot.
-	if _apply_use_item(sender, item):
-		server_remove_slot(sender, sel)
+	# Different items take different amounts of time to use (medkit is slow,
+	# a flare is quick). Hold to finish; the effect applies on completion.
+	var dur: float = _CATALOG.use_time(item)
+	if dur <= 0.0:
+		_finish_use(sender, sel, item)
+		return
+	_pending_use[sender] = {"slot": sel, "item": item}
+	_use_started.emit(sender, item, dur)
+	var timer := get_tree().create_timer(dur)
+	timer.timeout.connect(_complete_pending_use.bind(sender, item))
+
+
+func _complete_pending_use(sender: int, item_id: String) -> void:
+	var pending: Dictionary = _pending_use.get(sender, {})
+	if pending.is_empty() or str(pending.get("item")) != item_id:
+		return
+	_pending_use.erase(sender)
+	# Cancel if they swapped off the item mid-use.
+	if server_selected_item(sender) != item_id:
+		return
+	_finish_use(sender, int(pending["slot"]), item_id)
+
+
+## Applies the effect and consumes the slot if the item is a one-shot.
+func _finish_use(sender: int, slot: int, item_id: String) -> void:
+	if _apply_use_item(sender, item_id):
+		server_remove_slot(sender, slot)
 
 
 func _server_drop_selected(sender: int) -> void:
@@ -206,21 +236,28 @@ func _apply_use_item(peer_id: int, item_id: String) -> bool:
 		"adrenaline":
 			PlayerEffects.server_set_stamina(peer_id, float(def.get("stamina", 100.0)), true)
 			PlayerEffects.server_set_fear(peer_id, 0.0)
-			PlayerEffects.server_set_stringed(peer_id, false)  # snap your own strings
+			PuppetStringSystem.server_cut(peer_id, -1)  # snap all your own strings
 			return true
 		"scissors":
 			return _use_scissors(peer_id, float(def.get("cut_range", 4.0)))
 		"fuse":
-			return _use_fuse(peer_id)
-		"light_switch":
-			_toggle_room_lights(peer_id)
-			return false  # reusable switch
+			return _use_fuse(peer_id, float(def.get("insert_range", 3.0)))
 		"flare":
 			_drop_flare(peer_id, def)
 			return true
 		"crowbar":
-			_swing_crowbar(peer_id, def)
+			# Both a weapon (stun the PM) and a pry bar (force locked barriers).
+			_crowbar_stun(peer_id, def)
+			_pry_barrier(peer_id, float(def.get("pry_range", 3.0)))
 			return false  # reusable tool
+		"key", "lockpick":
+			var did := _unlock_barrier(peer_id, float(def.get("unlock_range", 3.0)))
+			return did and item_id == "key"  # keys are one-use; lockpicks reusable
+		"puppet":
+			PuppetControlSystem.server_take_puppet(peer_id)
+			return false  # reusable — the PM wears it
+		"strings":
+			return false  # shot with fire; nothing to do on R
 		"keycard":
 			return true
 		_:
@@ -228,7 +265,25 @@ func _apply_use_item(peer_id: int, item_id: String) -> bool:
 			return true
 
 
-## Scissors: free the nearest stringed survivor in reach (or cut your own).
+## Finds the nearest node in `group` within `reach` of the peer.
+func _nearest_in_group(peer_id: int, group: String, reach: float) -> Node:
+	var me := _find_player(peer_id) as Node3D
+	if me == null:
+		return null
+	var best: Node = null
+	var best_dist := reach
+	for node in get_tree().get_nodes_in_group(group):
+		if not (node is Node3D):
+			continue
+		var d := me.global_position.distance_to((node as Node3D).global_position)
+		if d <= best_dist:
+			best_dist = d
+			best = node
+	return best
+
+
+## Scissors: cut the strings off the nearest tethered survivor in reach — or
+## free a puppet-possessed teammate, or cut your own strings.
 func _use_scissors(peer_id: int, reach: float) -> bool:
 	var me := _find_player(peer_id) as Node3D
 	if me == null:
@@ -237,38 +292,47 @@ func _use_scissors(peer_id: int, reach: float) -> bool:
 	var best_dist: float = reach
 	for node in get_tree().get_nodes_in_group("players"):
 		var pid := str(node.name).to_int()
-		if pid == peer_id or not PlayerEffects.server_is_stringed(pid):
+		if pid == peer_id:
+			continue
+		if PuppetStringSystem.server_string_count(pid) <= 0 and not PuppetControlSystem.server_is_possessed(pid):
 			continue
 		var d := me.global_position.distance_to((node as Node3D).global_position)
 		if d <= best_dist:
 			best_dist = d
 			best_peer = pid
 	if best_peer != -1:
-		PlayerEffects.server_set_stringed(best_peer, false)
+		if PuppetControlSystem.server_is_possessed(best_peer):
+			PuppetControlSystem.server_free(best_peer)
+		PuppetStringSystem.server_cut(best_peer, -1)
 		return true
-	if PlayerEffects.server_is_stringed(peer_id):
-		PlayerEffects.server_set_stringed(peer_id, false)
+	if PuppetStringSystem.server_string_count(peer_id) > 0:
+		PuppetStringSystem.server_cut(peer_id, -1)
 		return true
 	return false  # nothing to cut — keep the scissors
 
 
-## Fuse: restore power (+comms) to your room, only if it was actually out.
-func _use_fuse(peer_id: int) -> bool:
-	var room := int(GameState.players.get(peer_id, {}).get("room_id", -1))
-	if room < 0 or RoomUtilities.is_enabled(room, RoomUtilities.UTILITY_POWER):
-		return false
-	RoomUtilities.server_set_utility(room, RoomUtilities.UTILITY_POWER, true)
-	RoomUtilities.server_set_utility(room, RoomUtilities.UTILITY_COMMS, true)
-	return true
+## Fuse: slot it into a nearby fuse box to power that circuit's lights,
+## motorised doors/garages, and cell tower. Consumed only if a box took it.
+func _use_fuse(peer_id: int, reach: float) -> bool:
+	var box := _nearest_in_group(peer_id, "fuse_boxes", reach)
+	if box and box.has_method("needs_fuse") and box.call("needs_fuse"):
+		return bool(box.call("server_insert_fuse", peer_id))
+	return false
 
 
-## Light switch: flip your room's lights (power) on/off.
-func _toggle_room_lights(peer_id: int) -> void:
-	var room := int(GameState.players.get(peer_id, {}).get("room_id", -1))
-	if room < 0:
-		return
-	var on := RoomUtilities.is_enabled(room, RoomUtilities.UTILITY_POWER)
-	RoomUtilities.server_set_utility(room, RoomUtilities.UTILITY_POWER, not on)
+## Crowbar (pry): force the nearest locked barrier open.
+func _pry_barrier(peer_id: int, reach: float) -> void:
+	var barrier := _nearest_in_group(peer_id, "lockables", reach)
+	if barrier and barrier.has_method("server_force_open"):
+		barrier.call("server_force_open", peer_id)
+
+
+## Key / lockpick: quietly unlock the nearest locked barrier.
+func _unlock_barrier(peer_id: int, reach: float) -> bool:
+	var barrier := _nearest_in_group(peer_id, "lockables", reach)
+	if barrier and barrier.has_method("server_is_locked") and barrier.call("server_is_locked"):
+		return bool(barrier.call("server_unlock", peer_id))
+	return false
 
 
 ## Flare: drop a temporary light at your feet.
@@ -281,9 +345,9 @@ func _drop_flare(peer_id: int, def: Dictionary) -> void:
 		float(def.get("light_range", 9.0)), float(def.get("light_seconds", 30.0)))
 
 
-## Crowbar: strike the Puppet Master if they're right in front, locking out
-## their abilities briefly.
-func _swing_crowbar(peer_id: int, def: Dictionary) -> void:
+## Crowbar (weapon): strike the Puppet Master if they're right in front,
+## locking out their abilities briefly.
+func _crowbar_stun(peer_id: int, def: Dictionary) -> void:
 	var pm := GameState.puppet_master_peer_id
 	if pm <= 0:
 		return

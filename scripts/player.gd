@@ -117,6 +117,14 @@ var _stamina_bar: ProgressBar = null
 var _fear_bar: ProgressBar = null
 var _hotbar_labels: Array[Label] = []
 var _neon_hud: Control = null
+
+# Puppet Master string tether / possession state (replicated to this survivor).
+var _tether_slow: float = 0.0
+var _tether_immobilized: bool = false
+var _possessed: bool = false
+var _trap_check_accum: float = 0.0
+var _has_puppet: bool = false  # PM: currently wearing the puppet
+var _grab_check_accum: float = 0.0
 var _local_health: float = 100.0
 var _local_stamina: float = 100.0
 var _local_max_health: float = 100.0
@@ -176,6 +184,9 @@ func _ready() -> void:
 			PlayerInventory.local_inventory_changed.connect(_on_local_inventory_changed)
 			PlayerEffects.local_meters_changed.connect(_on_local_meters_changed)
 			PhoneDevice.local_phone_state.connect(_on_local_phone_state)
+			PuppetStringSystem.local_tether_changed.connect(_on_local_tether)
+			PuppetControlSystem.local_possessed_changed.connect(_on_local_possessed)
+			PuppetControlSystem.local_puppet_state_changed.connect(_on_puppet_state)
 		_pause_menu = get_node_or_null("/root/Main/PauseMenu")
 		_wire_lose_overlay()
 	else:
@@ -227,6 +238,13 @@ func _unhandled_input(event: InputEvent) -> void:
 
 	if event.is_action_pressed("interact"):
 		_try_interact()
+	elif horror_mode and is_horror_puppet_master:
+		# Strings are the PM's innate weapon: fire shoots a string into whoever
+		# you're aiming at, or pins a trap to a surface. R ghosts their strings.
+		if event.is_action_pressed("fire"):
+			_pm_fire_string()
+		elif event.is_action_pressed("use_item"):
+			_pm_ghost_string()
 	elif horror_mode and not is_horror_puppet_master:
 		if event.is_action_pressed("use_item"):
 			_request_use_item()
@@ -263,6 +281,8 @@ func _physics_process(delta: float) -> void:
 			_pm_controller = get_node_or_null("PuppetMasterController")
 			if _pm_controller:
 				_pm_controller.call("process_movement", delta, locked)
+			if _has_puppet:
+				_pm_puppet_grab_tick(delta)
 
 		move_and_slide()
 
@@ -294,8 +314,24 @@ func _apply_ground_velocity(delta: float, locked: bool) -> void:
 	var want_sprint := (not locked) and (not _crouching) and Input.is_action_pressed("sprint") and direction != Vector3.ZERO
 	if horror_mode and not sprint_allowed(_local_stamina, _stamina_exhausted):
 		want_sprint = false
+	# Puppet strings drag you down; being possessed locks you in place.
+	if _possessed or _tether_immobilized:
+		want_sprint = false
 	_is_sprinting = want_sprint
 	var effective_speed := move_speed_for(want_sprint, _crouching, water_level)
+	if _possessed:
+		effective_speed = 0.0
+	elif _tether_slow > 0.0:
+		effective_speed *= (1.0 - _tether_slow)
+	# Walk into a surface-pinned string trap and it snaps onto you.
+	if horror_mode and not is_horror_puppet_master:
+		_trap_check_accum += delta
+		if _trap_check_accum >= 0.3:
+			_trap_check_accum = 0.0
+			if multiplayer.is_server():
+				PuppetStringSystem.server_check_traps(multiplayer.get_unique_id(), global_position)
+			else:
+				PuppetStringSystem.request_check_traps.rpc_id(1, global_position)
 
 	if direction:
 		velocity.x = direction.x * effective_speed
@@ -448,6 +484,22 @@ func _update_interact_prompt() -> void:
 
 
 func _try_interact() -> void:
+	# Possessed? E is the escape-the-mind struggle, nothing else works.
+	if _possessed:
+		if multiplayer.is_server():
+			PuppetControlSystem.server_struggle(multiplayer.get_unique_id())
+		else:
+			PuppetControlSystem.request_struggle.rpc_id(1)
+		return
+	# PM can grab the puppet prop off the ground.
+	if horror_mode and is_horror_puppet_master and interact_ray.is_colliding():
+		var pm_hit := interact_ray.get_collider()
+		if pm_hit and pm_hit.is_in_group("world_pickups") and str(pm_hit.get("item_id")) == "puppet":
+			if multiplayer.is_server():
+				pm_hit.call("server_try_pickup", multiplayer.get_unique_id())
+			else:
+				pm_hit.rpc_id(1, "rpc_pm_take")
+			return
 	if horror_mode and not is_horror_puppet_master:
 		var child_pos := ChildSpawnRNG.get_spawn_position()
 		if child_pos != Vector3.ZERO and global_position.distance_to(child_pos) < 3.5:
@@ -601,6 +653,90 @@ func _process_held_paper(delta: float) -> void:
 
 
 # --- Test-only gun (REMOVE BEFORE FULL RELEASE) ---------------------------
+
+## --- Puppet Master: strings + puppet ---
+
+func _on_puppet_state(active: bool) -> void:
+	_has_puppet = active
+	if active:
+		_show_toast("You are wearing the puppet — walk into a survivor to seize them.")
+
+
+## Raycast from the PM camera; returns {"hit": bool, "collider": Node, "pos": Vector3}.
+func _pm_camera_hit(max_dist: float = 40.0) -> Dictionary:
+	var cam := camera
+	if cam == null:
+		return {"hit": false}
+	var from := cam.global_position
+	var to := from - cam.global_transform.basis.z * max_dist
+	var params := PhysicsRayQueryParameters3D.create(from, to)
+	params.collide_with_bodies = true
+	params.exclude = [self]
+	var hit := get_world_3d().direct_space_state.intersect_ray(params)
+	if hit.is_empty():
+		return {"hit": false}
+	return {"hit": true, "collider": hit.get("collider"), "pos": hit.get("position", to)}
+
+
+func _pm_fire_string() -> void:
+	var aim := _pm_camera_hit()
+	if not aim.get("hit", false):
+		return
+	var col: Object = aim.get("collider")
+	var victim := _peer_from_node(col)
+	if victim > 0 and victim != multiplayer.get_unique_id():
+		if multiplayer.is_server():
+			PuppetStringSystem.server_shoot_string(multiplayer.get_unique_id(), victim)
+		else:
+			PuppetStringSystem.request_shoot.rpc_id(1, victim)
+	else:
+		# Aimed at the world — pin a trap there.
+		if multiplayer.is_server():
+			PuppetStringSystem.server_place_trap(multiplayer.get_unique_id(), aim.get("pos"))
+		else:
+			PuppetStringSystem.request_trap.rpc_id(1, aim.get("pos"))
+
+
+func _pm_ghost_string() -> void:
+	var aim := _pm_camera_hit()
+	var victim := _peer_from_node(aim.get("collider")) if aim.get("hit", false) else -1
+	if victim <= 0:
+		return
+	if multiplayer.is_server():
+		PuppetStringSystem.server_make_ghost(multiplayer.get_unique_id(), victim)
+	else:
+		PuppetStringSystem.request_ghost.rpc_id(1, victim)
+
+
+func _pm_puppet_grab_tick(delta: float) -> void:
+	_grab_check_accum += delta
+	if _grab_check_accum < 0.25:
+		return
+	_grab_check_accum = 0.0
+	var nearest := -1
+	var nearest_d := PuppetControlSystem.GRAB_RANGE
+	for node in get_tree().get_nodes_in_group("players"):
+		var pid := _peer_from_node(node)
+		if pid <= 0 or pid == multiplayer.get_unique_id():
+			continue
+		var d := global_position.distance_to((node as Node3D).global_position)
+		if d <= nearest_d:
+			nearest_d = d
+			nearest = pid
+	if nearest > 0:
+		if multiplayer.is_server():
+			PuppetControlSystem.server_puppet_grab(multiplayer.get_unique_id(), nearest, nearest_d)
+		else:
+			PuppetControlSystem.request_grab.rpc_id(1, nearest, nearest_d)
+
+
+func _peer_from_node(node: Object) -> int:
+	if node == null or not (node is Node):
+		return -1
+	if not (node as Node).is_in_group("players"):
+		return -1
+	return str((node as Node).name).to_int()
+
 
 func _fire_gun() -> void:
 	if multiplayer.is_server():
@@ -1319,6 +1455,26 @@ func _on_local_meters_changed(hp: float, stamina: float, fear: float) -> void:
 func _on_local_phone_state(_battery: float, _led_on: bool, _has_phone: bool) -> void:
 	_sync_horror_hud_signal()
 	_update_phone_led_visuals()
+
+
+func _on_local_tether(strings: int, _ghost: bool, immobilized: bool) -> void:
+	_tether_immobilized = immobilized
+	if immobilized:
+		_tether_slow = PuppetStringSystem.IMMOBILIZE_SLOW
+	elif strings > 0:
+		_tether_slow = minf(float(strings) * PuppetStringSystem.SLOW_PER_STRING, PuppetStringSystem.MAX_SLOW)
+	else:
+		_tether_slow = 0.0
+	if _neon_hud and _neon_hud.has_method("set_tether"):
+		_neon_hud.call("set_tether", strings, immobilized)
+
+
+func _on_local_possessed(possessed: bool, struggle: float, needed: float) -> void:
+	_possessed = possessed
+	if possessed:
+		_show_toast("The puppet has you! Mash E to escape your mind (%d/%d)." % [int(struggle), int(needed)])
+	if _neon_hud and _neon_hud.has_method("set_possessed"):
+		_neon_hud.call("set_possessed", possessed, struggle, needed)
 
 
 func _sync_horror_hud_signal() -> void:

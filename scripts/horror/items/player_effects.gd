@@ -9,9 +9,6 @@ const _EffectDefs: GDScript = preload("res://scripts/horror/items/effect_definit
 signal meters_changed(peer_id: int, health: float, stamina: float, fear: float)
 signal local_meters_changed(health: float, stamina: float, fear: float)
 signal local_effect_state(effect_id: String, time_left: float, cooldown_left: float, duration: float, cooldown: float)
-## True while the Puppet Master's aura has this survivor on "strings"
-## (tethered/controlled). Scissors or an adrenaline shot cut it.
-signal local_stringed_changed(stringed: bool)
 
 # ── TUNABLES — tweak these to balance gameplay ──
 const DEFAULT_MAX: float = 100.0  # starting cap for meters
@@ -26,7 +23,6 @@ var _fear: Dictionary = {}
 var _max: Dictionary = {}
 var _sprinting: Dictionary = {}
 var _active_effects: Dictionary = {}  # peer_id -> Array of {id, time_left, cooldown_left}
-var _stringed: Dictionary = {}  # peer_id -> bool (on the PM's strings)
 
 
 func reset() -> void:
@@ -36,7 +32,6 @@ func reset() -> void:
 	_max.clear()
 	_sprinting.clear()
 	_active_effects.clear()
-	_stringed.clear()
 
 
 func server_init_peer(peer_id: int) -> void:
@@ -165,27 +160,6 @@ func server_set_fear(peer_id: int, value: float) -> void:
 	_broadcast_meters(peer_id)
 
 
-## --- Puppet "strings" (PM tether) ---
-
-func server_set_stringed(peer_id: int, on: bool) -> void:
-	if not multiplayer.is_server():
-		return
-	if bool(_stringed.get(peer_id, false)) == on:
-		return
-	_stringed[peer_id] = on
-	if peer_id == multiplayer.get_unique_id():
-		local_stringed_changed.emit(on)
-	else:
-		_client_stringed.rpc_id(peer_id, on)
-
-
-func server_is_stringed(peer_id: int) -> bool:
-	return bool(_stringed.get(peer_id, false))
-
-
-@rpc("authority", "call_remote", "reliable")
-func _client_stringed(on: bool) -> void:
-	local_stringed_changed.emit(on)
 
 
 func server_is_sprinting(peer_id: int) -> bool:
@@ -224,8 +198,6 @@ func server_apply_life_steal(victim_peer: int, pm_peer: int, dist: float, max_ra
 	var rate: float = life_steal_drain_per_sec(dist, max_range)
 	PlayerHealth.server_apply_drain(victim_peer, rate * delta, pm_peer)
 	_apply_meter_delta(victim_peer, _EffectDefs.Meter.FEAR, rate * 0.15 * delta)
-	# Being drained puts the survivor on the PM's strings until cut.
-	server_set_stringed(victim_peer, true)
 	if pm_peer > 0:
 		_apply_meter_delta(pm_peer, _EffectDefs.Meter.STAMINA, -rate * 0.08 * delta)
 
