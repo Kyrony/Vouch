@@ -90,7 +90,7 @@ field as a placeholder — session codes are post-MVP.
 
 ### L1b farm country (terrain + roads + markers)
 
-Layout SoT is Leonardo’s **farm-country** plates plus the QA sheet (terrain / roads / spawn markers only). Live Start Match loads `scenes/Horror/HorrorWorld.tscn` via `MatchHorror` — **no house, bunker, prop-kit, or mast meshes**. `NeighborhoodV05.OUTDOOR_ONLY` is **on**. L2 eng short ids stay 1:1 (CSV wins over plate camelCase). Pin 9 `under_porch_crawl` is placed at the House A porch pad even when the QA plate omits it.
+Layout SoT is Leonardo’s **farm-country** plates plus the QA **v2** sheet (terrain / roads / spawn markers only). Live Start Match loads `scenes/Horror/HorrorWorld.tscn` via `MatchHorror` — **no house, bunker, prop-kit, or mast meshes**. `NeighborhoodV05.OUTDOOR_ONLY` is **on**. L2 eng short ids stay 1:1 (CSV wins over plate typos). Pin 9 `under_porch_crawl` is on the SE road bend.
 
 **In-editor check (Kyle):**
 
@@ -255,11 +255,11 @@ Host RNG picks **one** per match (`ChildSpawnRNG`). Families spawn on **outdoor 
 | 4 | `basement` | PM BASEMENT | West-inner south of the loop (**pin 4**) |
 | 5 | `uncle_bedroom` | UNCLE BEDROOM | East-inner north of the loop |
 | 6 | `uncle_garage` | UNCLE GARAGE | East-inner, south of pin 5 |
-| 7 | `family_shed` | FAMILY SHED | Far northwest field |
-| 8 | `storm_drain` | STORM DRAIN | West road junction |
-| 9 | `under_porch_crawl` | UNDER-PORCH CRAWL / DIRT HIDE | House A porch pad (QA plate omits pin 9; do not drop) |
-| 10 | `garden_well` | GARDEN WELL / CRAWLSPACE | Field just west of the east loop |
-| 11 | `car_trunk` | CAR TRUNK (CURB) | Outside the south curve of the east loop |
+| 7 | `family_shed` | FAMILY SHED | Far west circular road loop |
+| 8 | `storm_drain` | STORM DRAIN | South of the shed, west intersection |
+| 9 | `under_porch_crawl` | UNDER-PORCH CRAWL / DIRT HIDE | SE road bend of the east loop (QA v2; no grave) |
+| 10 | `garden_well` | GARDEN WELL / CRAWLSPACE | West of the central stack, between parallel lanes |
+| 11 | `car_trunk` | CAR TRUNK (CURB) | South hub three-way junction |
 
 See [`docs/blueprints/v0.5/`](docs/blueprints/v0.5/) for Leonardo v0.5 sheets.
 

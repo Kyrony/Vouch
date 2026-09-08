@@ -124,6 +124,11 @@ static func validate_l2_pin_homes(world: Node3D) -> String:
 		return "under_porch_crawl must be pin 9 — do not collapse onto basement"
 	if basement.global_position.distance_to(crawl.global_position) < 12.0:
 		return "basement and under_porch_crawl markers collapsed — place by eng id, not art pin 4"
+	## QA v2: pin 9 sits on the SE road bend, not the old House A porch.
+	if crawl.global_position.x < 20.0 or crawl.global_position.z < 8.0:
+		return "under_porch_crawl is not on the QA v2 SE road bend (xz=%.1f,%.1f)" % [
+			crawl.global_position.x, crawl.global_position.z,
+		]
 	return ""
 
 

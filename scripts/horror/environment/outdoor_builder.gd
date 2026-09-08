@@ -86,6 +86,22 @@ static func _build_roads(root: Node3D, mats) -> void:
 	roads.add_child(_GEOM.call("cylinder", 1.6, 0.16, Vector3(0, ROAD_Y + 0.04, 0), mats.grass))
 	## East loop interior pad (QA plate oval).
 	roads.add_child(_GEOM.call("box", Vector3(12.0, ROAD_THICK, 8.0), Vector3(40.0, ROAD_Y, 10.0), mats.asphalt))
+	## West shed loop (QA v2 pin 7).
+	var shed: Vector2 = _V05.SHED_LOOP
+	roads.add_child(_GEOM.call(
+		"cylinder",
+		_V05.SHED_LOOP_RADIUS,
+		ROAD_THICK,
+		Vector3(shed.x, ROAD_Y, shed.y),
+		mats.asphalt,
+	))
+	roads.add_child(_GEOM.call(
+		"cylinder",
+		1.5,
+		0.16,
+		Vector3(shed.x, ROAD_Y + 0.04, shed.y),
+		mats.grass,
+	))
 
 	for spec in _V05.ROAD_SPANS:
 		_add_road_span(roads, spec["a"], spec["b"], float(spec["r"]) * 2.0, mats)

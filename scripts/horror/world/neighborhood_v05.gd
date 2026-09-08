@@ -79,23 +79,26 @@ const OUTDOOR_FAMILY_SPAWNS: Array[Vector3] = [
 const OUTDOOR_PM_SPAWN := Vector3(40.0, 0.12, 10.0)
 const OUTDOOR_SPAWN_Y_MIN: float = -0.35
 
-## L2 footprint pins — QA plate (terrain/roads/markers) is visual SoT.
-## World +X east, +Z south. East oval loop around the old PM pad.
-## CSV snake_case wins over plate camelCase. Pin 9 is omitted on the QA
-## plate — keep it at House A porch so the 11-id SoT is complete.
+## L2 footprint pins — QA v2 plate (terrain/roads/markers) is visual SoT.
+## World +X east, +Z south. East oval loop + west shed loop.
+## CSV snake_case wins over plate typos (master_become, unclebecome, …).
+## Art may stamp a second "1" in the north clearing — only one pm_attic.
 const L2_WORLD_MARKERS := {
 	"pm_attic": Vector3(30.0, 0, -14.0),
 	"master_bedroom": Vector3(30.0, 0, -7.0),
 	"bunker_utility": Vector3(30.0, 0, 0.0),
-	"basement": Vector3(30.0, 0, 7.0),
-	"uncle_bedroom": Vector3(50.0, 0, -14.0),
-	"uncle_garage": Vector3(50.0, 0, -5.0),
+	"basement": Vector3(28.0, 0, 7.0),
+	"uncle_bedroom": Vector3(50.0, 0, -12.0),
+	"uncle_garage": Vector3(52.0, 0, -2.0),
 	"family_shed": Vector3(-50.0, 0, -40.0),
-	"storm_drain": Vector3(2.0, 0, 8.0),
-	"under_porch_crawl": Vector3(-12.0, 0, -8.0),
-	"garden_well": Vector3(14.0, 0, -2.0),
-	"car_trunk": Vector3(40.0, 0, 20.0),
+	"storm_drain": Vector3(-40.0, 0, -18.0),
+	"under_porch_crawl": Vector3(50.0, 0, 16.0),
+	"garden_well": Vector3(16.0, 0, -6.0),
+	"car_trunk": Vector3(0.0, 0, 16.0),
 }
+
+const SHED_LOOP := Vector2(-50.0, -40.0)
+const SHED_LOOP_RADIUS: float = 4.8
 
 const PM_L4_ROOMS: Array[String] = [
 	"Attic",
@@ -156,8 +159,11 @@ const PM_L4_DUCT_LINKS: Array[Dictionary] = [
 ## James verify: Leonardo L2 legend camelCase is NOT SoT. Never wire these.
 const L2_ART_DRIFT_IDS: Array[String] = [
 	"masterBedroom",
+	"master_become",
 	"bunkerUtility",
 	"uncleBedroom",
+	"unclebecome",
+	"uncle_become",
 	"uncleGarage",
 	"familyShed",
 	"stormDrain",

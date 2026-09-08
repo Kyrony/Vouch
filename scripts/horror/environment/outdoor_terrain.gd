@@ -104,6 +104,7 @@ static func _hill_sum(x: float, z: float) -> float:
 static func _road_weight(x: float, z: float) -> float:
 	var w := 0.0
 	w = maxf(w, _disk_weight(Vector2(x, z), Vector2.ZERO, _V05.BULB_RADIUS + 1.6, 1.4))
+	w = maxf(w, _disk_weight(Vector2(x, z), _V05.SHED_LOOP, _V05.SHED_LOOP_RADIUS + 0.4, 1.4))
 	for spec in _V05.ROAD_SPANS:
 		var a: Vector2 = spec["a"]
 		var b: Vector2 = spec["b"]

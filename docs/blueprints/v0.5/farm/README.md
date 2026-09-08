@@ -11,21 +11,23 @@ Kyle / Leonardo plates for the **open farm** Host Match. Soft-go: **terrain, roa
 
 ## L2 eng short ids (do not “fix” from the art sheet)
 
-**James verify (locked):** camelCase on Leonardo legends is **not** SoT. Do not wire camelCase or long-form ids. The QA plate may omit **pin 9** — still place `under_porch_crawl` at the House A porch pad.
+**James verify (locked):** camelCase / plate typos (`master_become`, `unclebecome`) are **not** SoT. Use `master_bedroom` / `uncle_bedroom`. Art may stamp a second **1** in the north clearing — only one `pm_attic`.
+
+QA **v2** places all 11 pins, including pin 9 on the SE road bend.
 
 Live markers use only:
 
-1. `pm_attic` — west-inner north of the east loop
+1. `pm_attic` — west-inner north of the east loop (central stack)
 2. `master_bedroom`
 3. `bunker_utility`
-4. `basement` — pin 4, west-inner south of the loop
-5. `uncle_bedroom` — east-inner north
-6. `uncle_garage`
-7. `family_shed` — far northwest field
-8. `storm_drain` — west road junction
-9. `under_porch_crawl` — House A porch / dirt hide, **no grave**
-10. `garden_well` — field just west of the east loop
-11. `car_trunk` — outside the south curve of the east loop
+4. `basement` — pin 4, slightly west of the stack south end
+5. `uncle_bedroom` — east of the central stack
+6. `uncle_garage` — south-east of pin 5
+7. `family_shed` — far west circular road loop
+8. `storm_drain` — south of the shed, west intersection
+9. `under_porch_crawl` — SE road bend of the east loop, **no grave**
+10. `garden_well` — west of the central stack, between parallel lanes
+11. `car_trunk` — south hub three-way junction
 
 Canonical table: [`../L2_child_rng_spawns.csv`](../L2_child_rng_spawns.csv).
 
