@@ -67,7 +67,7 @@ static func _build_player_spawns(root: Node3D) -> Array[Marker3D]:
 	folder.name = "PlayerSpawns"
 	root.add_child(folder)
 	var out: Array[Marker3D] = []
-	var yaws: Array[float] = [0.55, -PI / 2.0, 0.0, PI]
+	var yaws: Array[float] = [0.45, -PI / 2.0, PI, PI]
 	var letters: Array[String] = ["A", "B", "C", "D"]
 	for i in _V05.OUTDOOR_FAMILY_SPAWNS.size():
 		var pos: Vector3 = _grounded(_V05.OUTDOOR_FAMILY_SPAWNS[i])
@@ -92,7 +92,7 @@ static func _build_roads(root: Node3D, mats) -> void:
 
 	roads.add_child(_GEOM.call("cylinder", _V05.BULB_RADIUS + 1.2, ROAD_THICK, Vector3(0, ROAD_Y, 0), mats.asphalt))
 	roads.add_child(_GEOM.call("cylinder", 1.6, 0.16, Vector3(0, ROAD_Y + 0.04, 0), mats.grass))
-	roads.add_child(_GEOM.call("box", Vector3(14.0, ROAD_THICK, 10.0), Vector3(24.0, ROAD_Y, -4.0), mats.asphalt))
+	roads.add_child(_GEOM.call("box", Vector3(14.0, ROAD_THICK, 10.0), Vector3(40.0, ROAD_Y, 10.0), mats.asphalt))
 
 	for spec in _V05.ROAD_SPANS:
 		_add_road_span(roads, spec["a"], spec["b"], float(spec["r"]) * 2.0, mats)
@@ -132,8 +132,8 @@ static func _add_road_span(roads: Node3D, a: Vector2, b: Vector2, width: float, 
 
 static func _add_curbs(roads: Node3D, mats) -> void:
 	roads.add_child(_GEOM.call("cylinder", _V05.BULB_RADIUS + 1.45, CURB_H, Vector3(0, ROAD_Y + 0.04, 0), mats.curb, 0))
-	roads.add_child(_GEOM.call("box", Vector3(14.0, CURB_H, 0.26), Vector3(24.0, ROAD_Y + 0.08, 1.15), mats.curb, 0))
-	roads.add_child(_GEOM.call("box", Vector3(14.0, CURB_H, 0.26), Vector3(24.0, ROAD_Y + 0.08, -9.15), mats.curb, 0))
+	roads.add_child(_GEOM.call("box", Vector3(14.0, CURB_H, 0.26), Vector3(40.0, ROAD_Y + 0.08, 15.15), mats.curb, 0))
+	roads.add_child(_GEOM.call("box", Vector3(14.0, CURB_H, 0.26), Vector3(40.0, ROAD_Y + 0.08, 4.85), mats.curb, 0))
 
 
 static func _add_road_paint(roads: Node3D) -> void:

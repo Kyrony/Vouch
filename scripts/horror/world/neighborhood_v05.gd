@@ -44,39 +44,39 @@ const UNCLE_HOUSE_SIZE := Vector3(10.0, 2.8, 8.0)
 const UNCLE_GARAGE_SIZE := Vector3(6.4, 2.7, 7.2)
 const MANSION_SIZE := Vector3(20.0, 3.2, 16.0)
 
-## L1b parcels — spaced rural footprints, not a 9.2 m cul-de-sac.
+## L1 farm parcels — hub between A/B/D, long drive east to PM, courtyard south.
 const FAMILY_HOUSES: Array[Dictionary] = [
-	{"letter": "A", "index": 0, "origin": Vector3(-32.0, 0, -20.0), "yaw": 0.55},
-	{"letter": "B", "index": 1, "origin": Vector3(-44.0, 0, 10.0), "yaw": -PI / 2.0},
-	{"letter": "C", "index": 2, "origin": Vector3(8.0, 0, -28.0), "yaw": 0.0},
-	{"letter": "D", "index": 3, "origin": Vector3(6.0, 0, 32.0), "yaw": PI},
+	{"letter": "A", "index": 0, "origin": Vector3(-12.0, 0, -14.0), "yaw": 0.45},
+	{"letter": "B", "index": 1, "origin": Vector3(-38.0, 0, -12.0), "yaw": -PI / 2.0},
+	{"letter": "C", "index": 2, "origin": Vector3(32.0, 0, 20.0), "yaw": PI},
+	{"letter": "D", "index": 3, "origin": Vector3(6.0, 0, 30.0), "yaw": PI},
 ]
 
-const UNCLE_ORIGIN := Vector3(-12.0, 0, 8.0)
+const UNCLE_ORIGIN := Vector3(10.0, 0, 6.0)
 const UNCLE_YAW: float = -PI / 2.0
 
-## L1b: garage sits northeast of the PM mansion, not glued to the uncle house.
-const UNCLE_GARAGE_ORIGIN := Vector3(48.0, 0, -18.0)
+## L1: garage sits east of the PM mansion, not glued to the uncle house.
+const UNCLE_GARAGE_ORIGIN := Vector3(56.0, 0, -6.0)
 const UNCLE_GARAGE_YAW: float = PI / 2.0
 
-const MANSION_ORIGIN := Vector3(36.0, 0, -4.0)
-const MANSION_YAW: float = -PI / 2.0
+const MANSION_ORIGIN := Vector3(40.0, 0, -6.0)
+const MANSION_YAW: float = 0.0
 
-const FAMILY_SHED_POS := Vector3(-52.0, 0, -38.0)
-const STORM_DRAIN_POS := Vector3(2.4, 0, 3.0)
-const GARDEN_WELL_POS := Vector3(-24.0, 0, -26.0)
-const CAR_TRUNK_POS := Vector3(10.0, 0, 3.6)
-const SOFT_ESCAPE_POS := Vector3(-60.0, 0.5, 10.0)
-const MANSION_COURTYARD := Vector3(24.0, 0.12, -4.0)
+const FAMILY_SHED_POS := Vector3(-50.0, 0, -40.0)
+const STORM_DRAIN_POS := Vector3(2.2, 0, 4.0)
+const GARDEN_WELL_POS := Vector3(-22.0, 0, -28.0)
+const CAR_TRUNK_POS := Vector3(18.0, 0, 3.4)
+const SOFT_ESCAPE_POS := Vector3(-62.0, 0.5, 12.0)
+const MANSION_COURTYARD := Vector3(40.0, 0.12, 10.0)
 
 ## Fallback Host Match pads (builders write the live porch / courtyard markers).
 const OUTDOOR_FAMILY_SPAWNS: Array[Vector3] = [
-	Vector3(-32.0, 0.12, -13.5),
-	Vector3(-36.5, 0.12, 10.0),
-	Vector3(8.0, 0.12, -20.5),
-	Vector3(6.0, 0.12, 24.5),
+	Vector3(-12.0, 0.12, -7.0),
+	Vector3(-30.0, 0.12, -12.0),
+	Vector3(32.0, 0.12, 13.0),
+	Vector3(6.0, 0.12, 22.0),
 ]
-const OUTDOOR_PM_SPAWN := Vector3(24.0, 0.12, -4.0)
+const OUTDOOR_PM_SPAWN := Vector3(40.0, 0.12, 10.0)
 const OUTDOOR_SPAWN_Y_MIN: float = -0.35
 
 const PM_L4_ROOMS: Array[String] = [
@@ -96,55 +96,86 @@ const PM_L4_ROOMS: Array[String] = [
 ]
 
 const TOWER_CANDIDATES: Array[Dictionary] = [
-	{"id": "pm_gate", "pos": Vector3(26.0, 0, -2.5)},
-	{"id": "pm_east", "pos": Vector3(50.0, 0, -4.0)},
-	{"id": "pm_north", "pos": Vector3(36.0, 0, -20.0)},
-	{"id": "pm_south", "pos": Vector3(36.0, 0, 12.0)},
+	{"id": "pm_gate", "pos": Vector3(38.0, 0, 8.0)},
+	{"id": "pm_east", "pos": Vector3(54.0, 0, -6.0)},
+	{"id": "pm_north", "pos": Vector3(40.0, 0, -20.0)},
+	{"id": "pm_south", "pos": Vector3(40.0, 0, 14.0)},
 	{"id": "hub", "pos": Vector3(0, 0, 0)},
-	{"id": "house_a", "pos": Vector3(-28.0, 0, -16.0)},
-	{"id": "house_b", "pos": Vector3(-40.0, 0, 6.0)},
+	{"id": "house_a", "pos": Vector3(-10.0, 0, -10.0)},
+	{"id": "house_b", "pos": Vector3(-34.0, 0, -12.0)},
+	{"id": "house_c", "pos": Vector3(30.0, 0, 16.0)},
 	{"id": "house_d", "pos": Vector3(8.0, 0, 26.0)},
-	{"id": "uncle_yard", "pos": Vector3(-16.0, 0, 8.0)},
-	{"id": "shed_hill", "pos": Vector3(-48.0, 0, -34.0)},
-	{"id": "garden", "pos": Vector3(-22.0, 0, -24.0)},
-	{"id": "field_west", "pos": Vector3(-36.0, 0, 22.0)},
-	{"id": "field_south", "pos": Vector3(18.0, 0, 38.0)},
+	{"id": "uncle_yard", "pos": Vector3(8.0, 0, 6.0)},
+	{"id": "shed_hill", "pos": Vector3(-46.0, 0, -36.0)},
+	{"id": "garden", "pos": Vector3(-20.0, 0, -26.0)},
+	{"id": "field_west", "pos": Vector3(-36.0, 0, 18.0)},
+	{"id": "field_nw", "pos": Vector3(-28.0, 0, -36.0)},
 	{"id": "lane_north", "pos": Vector3(0.0, 0, -22.0)},
 ]
 
 const PHONE_SPOTS: Array[Dictionary] = [
-	{"id": "house_a_porch", "pos": Vector3(-30.4, 0.2, -14.8)},
-	{"id": "house_b_porch", "pos": Vector3(-38.2, 0.2, 10.0)},
-	{"id": "uncle_phone", "pos": Vector3(-8.2, 0.2, 8.0)},
-	{"id": "mansion_gate_phone", "pos": Vector3(22.5, 0.2, -2.4)},
+	{"id": "house_a_porch", "pos": Vector3(-10.4, 0.2, -8.2)},
+	{"id": "house_b_porch", "pos": Vector3(-32.0, 0.2, -12.0)},
+	{"id": "uncle_phone", "pos": Vector3(14.0, 0.2, 6.0)},
+	{"id": "mansion_gate_phone", "pos": Vector3(38.0, 0.2, 8.5)},
+]
+
+## L4 duct graph (art connections). Names match PM_L4_ROOMS.
+const PM_L4_DUCT_LINKS: Array[Dictionary] = [
+	{"a": "Attic", "b": "Study"},
+	{"a": "Study", "b": "Kitchen"},
+	{"a": "Study", "b": "MasterBedroom"},
+	{"a": "MasterBedroom", "b": "Living"},
+	{"a": "Living", "b": "Basement"},
+	{"a": "Basement", "b": "Bunker"},
+	{"a": "Bunker", "b": "UtilityCloset"},
+	{"a": "UtilityCloset", "b": "Hallway"},
+	{"a": "Hallway", "b": "Stairwell"},
+	{"a": "Stairwell", "b": "Dining"},
+	{"a": "Dining", "b": "Kitchen"},
+]
+
+## Farm-plate camelCase / dirty labels — never use these as spawn_id.
+const L2_ART_DRIFT_IDS: Array[String] = [
+	"masterBedroom",
+	"bunkerUtility",
+	"uncleBedroom",
+	"uncleGarage",
+	"familyShed",
+	"stormDrain",
+	"underPorchCrawl",
+	"gardenWell",
+	"carTrunk",
 ]
 
 ## Shared by OutdoorBuilder (meshes) and OutdoorTerrain (flatten).
 const ROAD_SPANS: Array[Dictionary] = [
-	{"a": Vector2(-58.0, 0.0), "b": Vector2(54.0, 0.0), "r": 3.4},
+	{"a": Vector2(-60.0, 0.0), "b": Vector2(58.0, 0.0), "r": 3.4},
 	{"a": Vector2(0.0, -42.0), "b": Vector2(0.0, 44.0), "r": 3.0},
 	{"a": Vector2(-16.0, -14.0), "b": Vector2(16.0, -14.0), "r": 2.6},
 	{"a": Vector2(-16.0, 14.0), "b": Vector2(16.0, 14.0), "r": 2.6},
 	{"a": Vector2(-16.0, -14.0), "b": Vector2(-16.0, 14.0), "r": 2.6},
 	{"a": Vector2(16.0, -14.0), "b": Vector2(16.0, 14.0), "r": 2.6},
-	{"a": Vector2(16.0, 0.0), "b": Vector2(30.0, -4.0), "r": 3.2},
-	{"a": Vector2(-32.0, -8.0), "b": Vector2(-16.0, 0.0), "r": 2.4},
-	{"a": Vector2(-44.0, 10.0), "b": Vector2(-16.0, 0.0), "r": 2.4},
+	{"a": Vector2(8.0, 0.0), "b": Vector2(40.0, -6.0), "r": 3.2},
+	{"a": Vector2(40.0, -6.0), "b": Vector2(40.0, 10.0), "r": 3.0},
+	{"a": Vector2(-12.0, -14.0), "b": Vector2(0.0, 0.0), "r": 2.4},
+	{"a": Vector2(-38.0, -12.0), "b": Vector2(-12.0, -14.0), "r": 2.4},
+	{"a": Vector2(32.0, 20.0), "b": Vector2(40.0, 10.0), "r": 2.4},
 	{"a": Vector2(0.0, 14.0), "b": Vector2(6.0, 26.0), "r": 2.4},
-	{"a": Vector2(0.0, -14.0), "b": Vector2(8.0, -24.0), "r": 2.4},
-	{"a": Vector2(-32.0, -20.0), "b": Vector2(-48.0, -36.0), "r": 2.2},
+	{"a": Vector2(-12.0, -14.0), "b": Vector2(-48.0, -38.0), "r": 2.2},
+	{"a": Vector2(40.0, -6.0), "b": Vector2(56.0, -6.0), "r": 2.4},
 ]
 
 const BUILDING_PADS: Array[Dictionary] = [
-	{"pos": Vector2(-32.0, -20.0), "r": 11.0},
-	{"pos": Vector2(-44.0, 10.0), "r": 11.0},
-	{"pos": Vector2(8.0, -28.0), "r": 11.0},
-	{"pos": Vector2(6.0, 32.0), "r": 11.0},
-	{"pos": Vector2(-12.0, 8.0), "r": 9.0},
-	{"pos": Vector2(36.0, -4.0), "r": 14.0},
-	{"pos": Vector2(48.0, -18.0), "r": 6.0},
-	{"pos": Vector2(-52.0, -38.0), "r": 4.5},
-	{"pos": Vector2(24.0, -4.0), "r": 8.0},
+	{"pos": Vector2(-12.0, -14.0), "r": 11.0},
+	{"pos": Vector2(-38.0, -12.0), "r": 11.0},
+	{"pos": Vector2(32.0, 20.0), "r": 11.0},
+	{"pos": Vector2(6.0, 30.0), "r": 11.0},
+	{"pos": Vector2(10.0, 6.0), "r": 9.0},
+	{"pos": Vector2(40.0, -6.0), "r": 14.0},
+	{"pos": Vector2(56.0, -6.0), "r": 6.0},
+	{"pos": Vector2(-50.0, -40.0), "r": 4.5},
+	{"pos": Vector2(40.0, 10.0), "r": 8.0},
 ]
 
 

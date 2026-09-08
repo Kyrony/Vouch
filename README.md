@@ -89,7 +89,7 @@ field as a placeholder — session codes are post-MVP.
 
 ### L1b graybox farm neighborhood
 
-Layout SoT is Leonardo **L1b — BASE ARCHITECTURE (FARM COUNTRY)** (v0.5 + Kyle farm pivot): open/hilly, **~80 m** building span, rural footprints spaced on parcels — not the old tight cul-de-sac. Family houses A–D use the **13.5×11 m** modular kit (porch crawl on A). Uncle house is L-shaped west of the PM; the garage sits **northeast of the mansion**. The east PM mansion has L4 named rooms, including bunker + utility closet. All of this is **simple graybox / CSG boxes** with real door cuts. `NeighborhoodV05.OUTDOOR_ONLY` is **off**.
+Layout SoT is Leonardo’s aligned **farm-country pack** (`docs/blueprints/v0.5/farm/`): **L1** footprints (~80 m scale, spaced houses + east PM), **L2** eng short pin ids 1:1, **L3** towers (3 active, 1 near PM), **L4** mansion rooms + ducts. Family houses A–D use the **13.5×11 m** modular kit (porch crawl on A). Uncle house sits between the families and the PM; the garage is **east of the mansion**. Courtyard / front door face **south**. All of this is **simple graybox / CSG boxes** with real door cuts. `NeighborhoodV05.OUTDOOR_ONLY` is **off**.
 
 **Why players used to land underground:** sealed bedroom / foyer boxes and L4 basement / bunker volumes at y=-4 / y=-12 had no outdoor exit. Host Match now uses **porch / courtyard** markers that sit on flattened pads at ground level, and every playable building has a `walkable_exits` door cut.
 

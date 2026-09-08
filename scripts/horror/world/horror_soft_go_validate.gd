@@ -29,8 +29,15 @@ static func validate_world(world: Node3D) -> String:
 		if str(expected[i]) != str(sot[i]):
 			return "ChildSpawnRNG[%d]=%s != L2 SoT %s" % [i, expected[i], sot[i]]
 	for sid in expected:
-		if (str(sid).begins_with("pm_") and sid != "pm_attic") or str(sid).ends_with("_closet") or str(sid).ends_with("_crawlspace") or str(sid).ends_with("_curb"):
-			return "SPAWN_IDS used long-form id %s — eng short ids only" % sid
+		var sid_s := str(sid)
+		if (sid_s.begins_with("pm_") and sid_s != "pm_attic") or sid_s.ends_with("_closet") or sid_s.ends_with("_crawlspace") or sid_s.ends_with("_curb"):
+			return "SPAWN_IDS used long-form id %s — eng short ids only" % sid_s
+		if _V05.L2_ART_DRIFT_IDS.has(sid_s):
+			return "SPAWN_IDS used farm-plate art label %s — eng short ids only" % sid_s
+	for drift in _V05.L2_ART_DRIFT_IDS:
+		for node in world.get_tree().get_nodes_in_group("child_spawn_points"):
+			if str(node.get_meta("spawn_id", "")) == str(drift):
+				return "child marker used art-drift id %s — eng short ids only" % drift
 	var child_points: Array = world.get_tree().get_nodes_in_group("child_spawn_points")
 	if child_points.size() != expected.size():
 		return "expected %d child spawn points, got %d" % [expected.size(), child_points.size()]
@@ -89,6 +96,19 @@ static func validate_v05_layout(world: Node3D) -> String:
 	for room_name in _V05.PM_L4_ROOMS:
 		if mansion.find_child(room_name, true, false) == null:
 			return "L4 PM room missing: %s" % room_name
+	var ducts: Node = mansion.find_child("DuctSystem", true, false)
+	if ducts == null:
+		return "L4 DuctSystem missing"
+	for link in _V05.PM_L4_DUCT_LINKS:
+		var want_a: String = str(link["a"])
+		var want_b: String = str(link["b"])
+		var found_link := false
+		for child in ducts.get_children():
+			if str(child.get_meta("duct_a", "")) == want_a and str(child.get_meta("duct_b", "")) == want_b:
+				found_link = true
+				break
+		if not found_link:
+			return "L4 duct link missing: %s-%s" % [want_a, want_b]
 	var roads := world.get_node_or_null("Outdoor/Roads")
 	if roads == null:
 		return "Outdoor/Roads (farm lanes / curbs) missing"
@@ -135,15 +155,26 @@ static func validate_v05_layout(world: Node3D) -> String:
 		return "expected walkable door exits on graybox buildings, got %d" % exits.size()
 	if bool(_V05.OUTDOOR_ONLY):
 		return "OUTDOOR_ONLY is still on — Host Match should use the graybox farm"
+	var house_a: Node3D = families.get_node("FamilyHouse_A")
+	var house_b: Node3D = families.get_node("FamilyHouse_B")
+	var house_c: Node3D = families.get_node("FamilyHouse_C")
 	if world.has_method("get_family_spawn_transform"):
 		var fam0_xf: Transform3D = world.call("get_family_spawn_transform", 0)
-		var house_a: Node3D = families.get_node("FamilyHouse_A")
 		if fam0_xf.origin.distance_to(house_a.global_position) > 16.0:
 			return "family 0 spawn is not on house A parcel"
 	if world.has_method("get_pm_spawn_transform"):
 		var pm_xf: Transform3D = world.call("get_pm_spawn_transform")
 		if pm_xf.origin.distance_to(mansion.global_position) > 22.0:
 			return "PM spawn is not at mansion approach / foyer"
+		if pm_xf.origin.z + 0.5 < mansion.global_position.z:
+			return "PM courtyard is not south of the mansion (L1 farm)"
+	if house_b.global_position.x >= house_a.global_position.x:
+		return "Family House B should sit west of House A (L1 farm)"
+	if house_c.global_position.z <= mansion.global_position.z:
+		return "Family House C should sit south of the PM approach (L1 farm)"
+	var garage: Node3D = world.get_node_or_null("UncleGarage") as Node3D
+	if garage and garage.global_position.x <= mansion.global_position.x:
+		return "Uncle garage should sit east of the PM mansion (L1 farm)"
 	return ""
 
 

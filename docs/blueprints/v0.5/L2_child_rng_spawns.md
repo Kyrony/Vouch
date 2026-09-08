@@ -2,7 +2,7 @@
 
 Pin source of truth for Neighborhood Layout v0.5. **Use these `spawn_id` values exactly.** They match `ChildSpawnRNG.SPAWN_IDS`.
 
-Art map labels are deferred. Dirty L2 map callouts are not source of truth.
+Art map labels are deferred. Dirty L2 map callouts (camelCase like `masterBedroom`, shuffled pin numbers) are not source of truth.
 
 All 11 pins are **alive-only**. Pin 9 is an under-porch crawl / dirt hide — no grave wording.
 

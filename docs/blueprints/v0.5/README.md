@@ -6,10 +6,10 @@ Kyle locked these sheets as the graybox production look. Eng traces in this fold
 | --- | --- | --- |
 | Master | `master.png` | Whole neighborhood. **No escape routes** on the sheet — field exit stays soft-gated. |
 | L1 Base Architecture | `L1-base.png` | Original tight cul-de-sac plate (superseded for layout). |
-| L1b Farm Country | Kyle farm pivot plate | **Layout SoT.** Open/hilly farm, ~80 m scale, spaced rural footprints, roads between parcels. Houses A–D, uncle + detached garage, east PM mansion. |
-| L2 Child RNG Spawns | `L2-source-of-truth.png`, `L2-spawns.png` | 11 alive-only pins. **SoT is the table**, not dirty L2 map labels. |
-| L3 Towers & Service | `L3-towers.png` | Many mast candidates; **3 active / match**; **1 always near the PM mansion**; service / weak / dead phone radii. |
-| L4 PM Interior | `L4-pm-interior.png` | Attic, master bedroom, study, kitchen, dining, living, bathroom, hallway, stairwell, basement, bunker, utility closet + ducts. |
+| L1 Farm (aligned pack) | [`farm/L1-farm.png`](farm/L1-farm.png) | **Layout SoT.** Open/hilly footprints, ~80 m scale, spaced houses + east PM mansion. See [`farm/README.md`](farm/README.md). |
+| L2 Child RNG (aligned pack) | [`farm/L2-farm.png`](farm/L2-farm.png) | 11 alive-only pins. **Eng short ids 1:1** — ignore art camelCase / number drift. |
+| L3 Towers (aligned pack) | [`farm/L3-farm.png`](farm/L3-farm.png) | Many candidates; **3 active / match**; **1 near PM**; service / weak / dead. |
+| L4 PM Interior (aligned pack) | [`farm/L4-farm.png`](farm/L4-farm.png) | Attic, master, study, kitchen, dining, living, bath, hallway, stairwell, basement, bunker, utility closet + ducts. |
 | HUD icon pack (soft-go) | wired in `assets/horror/hud/` | Leonardo v2 neon-horror HUD: heart / cyan pulse / violet glitch-eye / **phone LED** (not a torch) / signal full-weak-dead. Wiring ref — Leonardo redraw may replace textures before Steam. |
 | Smartphone item (soft-go) | `ITEM_DEVICE_SMARTPHONE_01` | Graphite/gold phone; camera LED is the only flashlight. Sheet drain (~15%/min LED, ~2%/min passive) is concept only — eng tunables live on `PhoneDevice`. |
 | Family house kit (soft-go) | porch / under-porch crawl | Raised porch, foundation, stairs, shed module. Pin 9 `under_porch_crawl` is a readable low crawl under house A. Live graybox is the **13.5×11 m** kit plan on L1b parcels. No grave wording. |

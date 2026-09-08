@@ -277,17 +277,30 @@ static func _build_ducts(root: Node3D, mats) -> void:
 	var ducts := Node3D.new()
 	ducts.name = "DuctSystem"
 	root.add_child(ducts)
-	var segments := [
-		{"size": Vector3(2.2, 0.9, 8.0), "pos": Vector3(-4.0, 2.6, 0)},
-		{"size": Vector3(8.0, 0.9, 2.2), "pos": Vector3(0, 2.6, -4.4)},
-		{"size": Vector3(2.2, 0.9, 6.0), "pos": Vector3(4.2, 2.6, 1.8)},
-		{"size": Vector3(2.2, 0.9, 5.0), "pos": Vector3(-3.4, BASEMENT_Y + 2.6, -2.4)},
-		{"size": Vector3(2.2, 0.9, 6.0), "pos": Vector3(0, BUNKER_Y + 3.0, 0)},
-		{"size": Vector3(4.0, 0.9, 2.0), "pos": Vector3(-4.0, BUNKER_Y + 3.0, -3.4)},
-	]
-	for seg in segments:
-		var tunnel: StaticBody3D = _GEOM.call("box", seg["size"], seg["pos"], mats.duct, 0)
+	# Visual runs sit near the L4 rooms they link (collision off — not player traps).
+	var placements := {
+		"Attic-Study": {"size": Vector3(1.6, 0.7, 4.2), "pos": Vector3(-1.2, ATTIC_Y - 0.4, -2.4)},
+		"Study-Kitchen": {"size": Vector3(4.8, 0.7, 1.6), "pos": Vector3(-2.8, 2.6, -4.6)},
+		"Study-MasterBedroom": {"size": Vector3(4.2, 0.7, 1.6), "pos": Vector3(3.2, 2.6, -1.6)},
+		"MasterBedroom-Living": {"size": Vector3(1.6, 0.7, 5.0), "pos": Vector3(6.2, 1.8, 3.6)},
+		"Living-Basement": {"size": Vector3(1.6, 3.2, 1.6), "pos": Vector3(-6.2, BASEMENT_Y + 2.0, 4.2)},
+		"Basement-Bunker": {"size": Vector3(1.6, 6.4, 1.6), "pos": Vector3(0.0, BUNKER_Y + 4.0, 2.2)},
+		"Bunker-UtilityCloset": {"size": Vector3(3.2, 0.7, 1.6), "pos": Vector3(-3.2, BUNKER_Y + 2.8, -3.4)},
+		"UtilityCloset-Hallway": {"size": Vector3(1.6, 10.4, 1.6), "pos": Vector3(-4.4, BUNKER_Y + 6.2, 4.4)},
+		"Hallway-Stairwell": {"size": Vector3(2.4, 0.7, 1.6), "pos": Vector3(0.0, 2.4, 1.6)},
+		"Stairwell-Dining": {"size": Vector3(4.6, 0.7, 1.6), "pos": Vector3(-3.2, 2.4, 0.2)},
+		"Dining-Kitchen": {"size": Vector3(1.6, 0.7, 4.4), "pos": Vector3(-6.4, 2.6, -2.2)},
+	}
+	for link in _V05.PM_L4_DUCT_LINKS:
+		var a: String = str(link["a"])
+		var b: String = str(link["b"])
+		var key: String = "%s-%s" % [a, b]
+		var spec: Dictionary = placements.get(key, {"size": Vector3(1.6, 0.7, 2.4), "pos": Vector3.ZERO})
+		var tunnel: StaticBody3D = _GEOM.call("box", spec["size"], spec["pos"], mats.duct, 0)
+		tunnel.name = "Duct_%s_%s" % [a, b]
 		tunnel.add_to_group("crawl_ducts")
+		tunnel.set_meta("duct_a", a)
+		tunnel.set_meta("duct_b", b)
 		ducts.add_child(tunnel)
 
 
