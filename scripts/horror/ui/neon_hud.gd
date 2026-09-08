@@ -346,6 +346,7 @@ func _build_signal_widget(parent: VBoxContainer) -> void:
 	panel.add_theme_stylebox_override("panel", _KIT.panel(_KIT.GREY, 6, Color(0.02, 0.02, 0.03, 0.82)))
 	parent.add_child(panel)
 	var row := HBoxContainer.new()
+	row.name = "Row"
 	row.set_anchors_preset(PRESET_FULL_RECT)
 	row.offset_left = 6
 	row.offset_right = -6

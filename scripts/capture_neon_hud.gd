@@ -47,7 +47,7 @@ func _run() -> void:
 		quit(1)
 		return
 	var battery := hud.get_node_or_null("TopRight/SignalBattery/BatteryRow/BatteryBar") as TextureProgressBar
-	var signal_icon := hud.get_node_or_null("TopRight/SignalBattery/SignalWidget/SignalIcon") as TextureRect
+	var signal_icon := hud.get_node_or_null("TopRight/SignalBattery/SignalWidget/Row/SignalIcon") as TextureRect
 	if battery == null or signal_icon == null:
 		push_error("HUD RAIL CAPTURE FAILED: top-right signal/battery missing")
 		quit(1)
@@ -103,13 +103,68 @@ func _run() -> void:
 	])
 	print("TRACKS=%s %s" % [health.texture_under.resource_path, stamina.texture_under.resource_path])
 	print("BATTERY=%s" % battery.texture_under.resource_path)
-	var tex := root.get_viewport().get_texture()
-	if tex:
-		var img: Image = tex.get_image()
-		if img:
-			var out := "res://assets/horror/hud/_rail_capture.png"
-			var err := img.save_png(out)
-			if err == OK:
-				print("SCREENSHOT=%s %dx%d" % [out, img.get_width(), img.get_height()])
+	var shot := _compose_plate(hud, health, stamina, battery, signal_icon, rail)
+	var out := "user://hud_rail_layout.png"
+	var err := shot.save_png(out)
+	if err != OK:
+		push_error("HUD RAIL CAPTURE FAILED: could not write plate")
+		quit(1)
+		return
+	print("SCREENSHOT=%s %dx%d" % [out, shot.get_width(), shot.get_height()])
 	print("HUD RAIL CAPTURE OK")
 	quit(0)
+
+
+func _compose_plate(hud: Control, health: TextureProgressBar, stamina: TextureProgressBar, battery: TextureProgressBar, signal_icon: TextureRect, rail: VBoxContainer) -> Image:
+	var plate := Image.create(1280, 720, false, Image.FORMAT_RGBA8)
+	plate.fill(Color(0.024, 0.02, 0.031, 1.0))
+	_blit(plate, health.texture_under, health.global_position, Vector2(280, 28))
+	_fill_bar(plate, health, Color(0.55, 0.06, 0.10))
+	_blit(plate, stamina.texture_under, stamina.global_position, Vector2(280, 28))
+	_fill_bar(plate, stamina, Color(1.0, 0.70, 0.0))
+	_blit(plate, signal_icon.texture, signal_icon.global_position, Vector2(48, 36))
+	_blit(plate, battery.texture_under, battery.global_position, Vector2(120, 36))
+	_fill_bar(plate, battery, Color(0.98, 0.72, 0.12))
+	for cell in rail.get_children():
+		var well := cell.get_node_or_null("Well") as TextureRect
+		var icon := cell.get_node_or_null("Icon") as TextureRect
+		if well and well.texture:
+			_blit(plate, well.texture, well.global_position, Vector2(72, 72))
+		if icon and icon.texture and icon.visible:
+			_blit(plate, icon.texture, icon.global_position, Vector2(48, 48))
+	# Reticle — HUD is full-rect on the 1280×720 plate.
+	var c := hud.size * 0.5
+	_rect(plate, int(c.x) - 2, int(c.y) - 10, 4, 8, Color(1, 1, 1, 0.75))
+	_rect(plate, int(c.x) - 2, int(c.y) + 2, 4, 8, Color(1, 1, 1, 0.75))
+	_rect(plate, int(c.x) - 10, int(c.y) - 2, 8, 4, Color(1, 1, 1, 0.75))
+	_rect(plate, int(c.x) + 2, int(c.y) - 2, 8, 4, Color(1, 1, 1, 0.75))
+	return plate
+
+
+func _fill_bar(plate: Image, bar: TextureProgressBar, color: Color) -> void:
+	var pos := bar.global_position
+	var ratio := clampf(float(bar.value), 0.0, 1.0)
+	if bar.name == "BatteryBar":
+		_rect(plate, int(pos.x + 8), int(pos.y + 8), int(100.0 * ratio), 20, color)
+		return
+	_rect(plate, int(pos.x + 8), int(pos.y + 6), int(244.0 * ratio), 16, color)
+
+
+func _blit(plate: Image, tex: Texture2D, pos: Vector2, size: Vector2) -> void:
+	if tex == null:
+		return
+	var src: Image = tex.get_image()
+	if src == null:
+		return
+	src = src.duplicate()
+	src.resize(int(size.x), int(size.y), Image.INTERPOLATE_LANCZOS)
+	var dest := Vector2i(int(pos.x), int(pos.y))
+	plate.blend_rect(src, Rect2i(Vector2i.ZERO, src.get_size()), dest)
+
+
+func _rect(plate: Image, x: int, y: int, w: int, h: int, color: Color) -> void:
+	for yy in range(maxi(y, 0), mini(y + h, plate.get_height())):
+		for xx in range(maxi(x, 0), mini(x + w, plate.get_width())):
+			var prev := plate.get_pixel(xx, yy)
+			plate.set_pixel(xx, yy, prev.blend(color))
+
