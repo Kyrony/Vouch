@@ -1,8 +1,9 @@
-[gd_scene load_steps=5 format=3]
+[gd_scene load_steps=6 format=3]
 
 [ext_resource type="Script" path="res://scripts/lobby.gd" id="1"]
 [ext_resource type="Texture2D" path="res://assets/horror/ui/menu_leonardo_locked.png" id="2"]
 [ext_resource type="Script" path="res://scripts/horror/ui/menu_hitbox_layout.gd" id="3"]
+[ext_resource type="Texture2D" path="res://assets/horror/ui/menu_modes_cover.png" id="4"]
 
 [sub_resource type="StyleBoxEmpty" id="StyleBoxEmpty_hitbox"]
 
@@ -42,6 +43,16 @@ layout_mode = 0
 offset_right = 1280.0
 offset_bottom = 720.0
 mouse_filter = 2
+
+[node name="ModesCover" type="TextureRect" parent="HomePanel/HitboxRoot"]
+layout_mode = 0
+offset_left = 332.0
+offset_top = 236.0
+offset_right = 580.0
+offset_bottom = 636.0
+mouse_filter = 2
+texture = ExtResource("4")
+expand_mode = 1
 
 [node name="MenuButtons" type="Control" parent="HomePanel/HitboxRoot"]
 layout_mode = 0
@@ -126,6 +137,7 @@ flat = true
 tooltip_text = "Quit"
 
 [node name="GameModes" type="Control" parent="HomePanel/HitboxRoot"]
+visible = false
 layout_mode = 0
 offset_right = 1280.0
 offset_bottom = 720.0
@@ -255,7 +267,7 @@ anchor_bottom = 0.0
 offset_left = -200.0
 offset_top = 72.0
 offset_right = 200.0
-offset_bottom = 360.0
+offset_bottom = 420.0
 grow_horizontal = 2
 theme_override_constants/separation = 10
 
@@ -282,31 +294,24 @@ placeholder_text = "Host IP (blank = 127.0.0.1)"
 layout_mode = 2
 text = "Join"
 
-[node name="LobbyCodeRow" type="HBoxContainer" parent="PlayPanel/VBoxContainer"]
-layout_mode = 2
-theme_override_constants/separation = 8
-
-[node name="LobbyCodeLabel" type="Label" parent="PlayPanel/VBoxContainer/LobbyCodeRow"]
-layout_mode = 2
-theme_override_colors/font_color = Color(0.55, 0.62, 0.68, 1)
-text = "Lobby code"
-
-[node name="LobbyCodeInput" type="LineEdit" parent="PlayPanel/VBoxContainer/LobbyCodeRow"]
-layout_mode = 2
-size_flags_horizontal = 3
-placeholder_text = "Lobby codes not wired yet — use direct IP above"
-editable = false
-
 [node name="StartMatchButton" type="Button" parent="PlayPanel/VBoxContainer"]
 layout_mode = 2
-text = "Start Match (host only)"
+text = "Start Match"
 
 [node name="StatusLabel" type="Label" parent="PlayPanel/VBoxContainer"]
 layout_mode = 2
 theme_override_colors/font_color = Color(0.6, 0.85, 0.95, 1)
 horizontal_alignment = 1
 autowrap_mode = 3
-text = "Host to start a lobby, or join a friend's IP."
+text = "Host a match or join a friend's IP."
+
+[node name="PlayerCountLabel" type="Label" parent="PlayPanel/VBoxContainer"]
+layout_mode = 2
+horizontal_alignment = 1
+text = "Players: 0"
+
+[node name="PlayerListBox" type="VBoxContainer" parent="PlayPanel/VBoxContainer"]
+layout_mode = 2
 
 [node name="BackButton" type="Button" parent="PlayPanel"]
 layout_mode = 1
@@ -317,178 +322,6 @@ offset_right = 184.0
 offset_bottom = 60.0
 custom_minimum_size = Vector2(160, 44)
 text = "Back"
-
-[node name="MatchSettingsClientLabel" type="Label" parent="PlayPanel"]
-visible = false
-layout_mode = 1
-anchors_preset = 12
-anchor_top = 0.4
-anchor_right = 1.0
-anchor_bottom = 0.5
-offset_left = 40.0
-offset_right = -40.0
-grow_horizontal = 2
-theme_override_colors/font_color = Color(0.55, 0.65, 0.75, 1)
-horizontal_alignment = 1
-autowrap_mode = 3
-text = "Spawn odds are set by the host before the match starts."
-
-[node name="MatchSettingsPanel" type="Panel" parent="PlayPanel"]
-visible = false
-layout_mode = 1
-anchors_preset = 12
-anchor_top = 0.4
-anchor_right = 1.0
-anchor_bottom = 0.66
-offset_left = 40.0
-offset_top = 0.0
-offset_right = -40.0
-offset_bottom = 0.0
-grow_horizontal = 2
-grow_vertical = 2
-
-[node name="VBoxContainer" type="VBoxContainer" parent="PlayPanel/MatchSettingsPanel"]
-layout_mode = 1
-anchors_preset = 15
-anchor_right = 1.0
-anchor_bottom = 1.0
-grow_horizontal = 2
-grow_vertical = 2
-offset_left = 12.0
-offset_top = 6.0
-offset_right = -12.0
-offset_bottom = -6.0
-theme_override_constants/separation = 2
-
-[node name="TitleLabel" type="Label" parent="PlayPanel/MatchSettingsPanel/VBoxContainer"]
-layout_mode = 2
-theme_override_font_sizes/font_size = 15
-theme_override_colors/font_color = Color(0.75, 0.9, 1, 1)
-text = "Host spawn odds"
-
-[node name="SubtitleLabel" type="Label" parent="PlayPanel/MatchSettingsPanel/VBoxContainer"]
-layout_mode = 2
-theme_override_font_sizes/font_size = 11
-theme_override_colors/font_color = Color(0.55, 0.7, 0.8, 1)
-text = "Applied when the host starts the match. Clients cannot change these."
-
-[node name="HiddenHallwayRow" type="HBoxContainer" parent="PlayPanel/MatchSettingsPanel/VBoxContainer"]
-layout_mode = 2
-
-[node name="Label" type="Label" parent="PlayPanel/MatchSettingsPanel/VBoxContainer/HiddenHallwayRow"]
-layout_mode = 2
-custom_minimum_size = Vector2(180, 0)
-text = "Hidden hallway chance"
-
-[node name="Slider" type="HSlider" parent="PlayPanel/MatchSettingsPanel/VBoxContainer/HiddenHallwayRow"]
-layout_mode = 2
-size_flags_horizontal = 3
-max_value = 1.0
-step = 0.05
-value = 0.6
-
-[node name="ValueLabel" type="Label" parent="PlayPanel/MatchSettingsPanel/VBoxContainer/HiddenHallwayRow"]
-layout_mode = 2
-custom_minimum_size = Vector2(40, 0)
-text = "60%"
-
-[node name="CodeLockRow" type="HBoxContainer" parent="PlayPanel/MatchSettingsPanel/VBoxContainer"]
-layout_mode = 2
-
-[node name="Label" type="Label" parent="PlayPanel/MatchSettingsPanel/VBoxContainer/CodeLockRow"]
-layout_mode = 2
-custom_minimum_size = Vector2(180, 0)
-text = "Code-lock puzzle chance"
-
-[node name="Slider" type="HSlider" parent="PlayPanel/MatchSettingsPanel/VBoxContainer/CodeLockRow"]
-layout_mode = 2
-size_flags_horizontal = 3
-max_value = 1.0
-step = 0.05
-value = 0.6
-
-[node name="ValueLabel" type="Label" parent="PlayPanel/MatchSettingsPanel/VBoxContainer/CodeLockRow"]
-layout_mode = 2
-custom_minimum_size = Vector2(40, 0)
-text = "60%"
-
-[node name="FlamePaperRow" type="HBoxContainer" parent="PlayPanel/MatchSettingsPanel/VBoxContainer"]
-layout_mode = 2
-
-[node name="Label" type="Label" parent="PlayPanel/MatchSettingsPanel/VBoxContainer/FlamePaperRow"]
-layout_mode = 2
-custom_minimum_size = Vector2(180, 0)
-text = "Flame-paper clue (vs book)"
-
-[node name="Slider" type="HSlider" parent="PlayPanel/MatchSettingsPanel/VBoxContainer/FlamePaperRow"]
-layout_mode = 2
-size_flags_horizontal = 3
-max_value = 1.0
-step = 0.05
-value = 0.5
-
-[node name="ValueLabel" type="Label" parent="PlayPanel/MatchSettingsPanel/VBoxContainer/FlamePaperRow"]
-layout_mode = 2
-custom_minimum_size = Vector2(40, 0)
-text = "50%"
-
-[node name="FloodValveRow" type="HBoxContainer" parent="PlayPanel/MatchSettingsPanel/VBoxContainer"]
-layout_mode = 2
-
-[node name="Label" type="Label" parent="PlayPanel/MatchSettingsPanel/VBoxContainer/FloodValveRow"]
-layout_mode = 2
-custom_minimum_size = Vector2(180, 0)
-text = "Flood valve per room"
-
-[node name="Slider" type="HSlider" parent="PlayPanel/MatchSettingsPanel/VBoxContainer/FloodValveRow"]
-layout_mode = 2
-size_flags_horizontal = 3
-max_value = 1.0
-step = 0.05
-value = 0.3
-
-[node name="ValueLabel" type="Label" parent="PlayPanel/MatchSettingsPanel/VBoxContainer/FloodValveRow"]
-layout_mode = 2
-custom_minimum_size = Vector2(40, 0)
-text = "30%"
-
-[node name="PlayerListPanel" type="Panel" parent="PlayPanel"]
-layout_mode = 1
-anchors_preset = 12
-anchor_top = 0.68
-anchor_right = 1.0
-anchor_bottom = 1.0
-offset_left = 40.0
-offset_top = 0.0
-offset_right = -40.0
-offset_bottom = -30.0
-grow_horizontal = 2
-grow_vertical = 0
-
-[node name="VBoxContainer" type="VBoxContainer" parent="PlayPanel/PlayerListPanel"]
-layout_mode = 1
-anchors_preset = 15
-anchor_right = 1.0
-anchor_bottom = 1.0
-grow_horizontal = 2
-grow_vertical = 2
-offset_left = 12.0
-offset_top = 8.0
-offset_right = -12.0
-offset_bottom = -8.0
-
-[node name="PlayerCountLabel" type="Label" parent="PlayPanel/PlayerListPanel/VBoxContainer"]
-layout_mode = 2
-theme_override_font_sizes/font_size = 16
-text = "Players connected: 0"
-
-[node name="PlayerListScroll" type="ScrollContainer" parent="PlayPanel/PlayerListPanel/VBoxContainer"]
-layout_mode = 2
-size_flags_vertical = 3
-
-[node name="PlayerListBox" type="VBoxContainer" parent="PlayPanel/PlayerListPanel/VBoxContainer/PlayerListScroll"]
-layout_mode = 2
-size_flags_horizontal = 3
 
 [node name="SettingsPanel" type="Control" parent="."]
 visible = false

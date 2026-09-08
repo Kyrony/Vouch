@@ -48,9 +48,18 @@ static func validate_menu(lobby: Control) -> String:
 		var hit := lobby.get_node(path) as Button
 		if not hit.text.is_empty():
 			return "hitbox %s still has visible text" % path
-		var style := hit.get_theme_stylebox("normal")
-		if style is StyleBoxFlat:
-			return "hitbox %s still uses StyleBoxFlat chrome" % path
+		var hover := hit.get_theme_stylebox("hover")
+		if not (hover is StyleBoxFlat):
+			return "hitbox %s needs a neon glow hover box" % path
+	var modes := lobby.get_node_or_null("HomePanel/HitboxRoot/GameModes") as Control
+	if modes == null:
+		return "GameModes panel missing"
+	if modes.visible:
+		return "game-modes panel must stay hidden until Play"
+	if lobby.get_node_or_null("HomePanel/HitboxRoot/ModesCover") == null:
+		return "ModesCover missing"
+	if lobby.get_node_or_null("PlayPanel/MatchSettingsPanel") != null:
+		return "Host Lobby still has spawn-odds sliders"
 	var classic := lobby.get_node("HomePanel/HitboxRoot/GameModes/ClassicButton") as Button
 	if classic.disabled:
 		return "Classic must stay the live Host Match path"
@@ -104,6 +113,12 @@ static func _validate_boot_scene_file() -> String:
 		return "Lobby.tscn must reference menu_leonardo_locked.png"
 	if tscn.contains("NavColumn"):
 		return "Lobby.tscn still has NavColumn"
+	if tscn.contains("MatchSettingsPanel") or tscn.contains("HiddenHallwayRow"):
+		return "Lobby.tscn Host Lobby still has spawn-odds sliders"
+	var play_chunk := tscn.get_slice('[node name="PlayPanel"', 1)
+	play_chunk = play_chunk.get_slice('[node name="SettingsPanel"', 0)
+	if play_chunk.contains("type=\"HSlider\""):
+		return "PlayPanel still has sliders"
 	var home := tscn.get_slice('[node name="PlayPanel"', 0)
 	for line in home.split("\n"):
 		var trimmed := line.strip_edges()

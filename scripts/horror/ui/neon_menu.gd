@@ -78,7 +78,7 @@ static func _apply_home_hitboxes(home: Control) -> void:
 	]:
 		var btn := home.get_node_or_null(path) as Button
 		if btn:
-			_KIT.apply_invisible_hitbox(btn)
+			_KIT.apply_plate_hitbox(btn, false)
 	var classic := home.get_node_or_null("HitboxRoot/GameModes/ClassicButton") as Button
 	if classic:
 		classic.disabled = false
@@ -134,10 +134,17 @@ static func _style_play(play: Control) -> void:
 	var join := play.get_node_or_null("VBoxContainer/JoinRow/JoinButton") as Button
 	if join:
 		_KIT.apply_button(join, "normal")
-	for panel_name in ["MatchSettingsPanel", "PlayerListPanel"]:
-		var p := play.get_node_or_null(panel_name) as Panel
-		if p:
-			p.add_theme_stylebox_override("panel", _KIT.panel_default())
+	var list := play.get_node_or_null("VBoxContainer/PlayerListBox")
+	if list == null:
+		list = play.get_node_or_null("PlayerListPanel")
+	if list is Panel:
+		(list as Panel).add_theme_stylebox_override("panel", _KIT.panel_default())
+
+
+static func set_play_selected(home: Control, selected: bool) -> void:
+	var play := home.get_node_or_null("HitboxRoot/MenuButtons/PlayButton") as Button
+	if play:
+		_KIT.apply_plate_hitbox(play, selected)
 
 
 static func _style_settings(settings: Control) -> void:

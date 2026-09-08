@@ -63,19 +63,42 @@ static func invisible_hitbox() -> StyleBoxEmpty:
 	return StyleBoxEmpty.new()
 
 
-static func apply_invisible_hitbox(button: Button) -> void:
-	var empty := invisible_hitbox()
+static func glow_box(border: Color, fill_alpha: float = 0.08, glow: float = 10.0) -> StyleBoxFlat:
+	var box := StyleBoxFlat.new()
+	box.bg_color = Color(border.r, border.g, border.b, fill_alpha)
+	box.border_color = border
+	box.set_border_width_all(2)
+	box.set_corner_radius_all(2)
+	box.shadow_color = Color(border.r, border.g, border.b, 0.62)
+	box.shadow_size = int(glow)
+	box.shadow_offset = Vector2.ZERO
+	box.content_margin_left = 8
+	box.content_margin_right = 8
+	box.content_margin_top = 6
+	box.content_margin_bottom = 6
+	return box
+
+
+static func apply_plate_hitbox(button: Button, selected: bool = false) -> void:
+	var idle := glow_box(Color(0.55, 0.58, 0.62, 0.45), 0.05, 0.0)
+	idle.set_border_width_all(1)
+	idle.shadow_size = 0
+	var hover := glow_box(YELLOW, 0.10, 12.0)
+	var pressed := glow_box(RED, 0.12, 10.0)
+	var focus := glow_box(YELLOW, 0.10, 12.0)
+	if selected:
+		idle = glow_box(YELLOW, 0.12, 12.0)
 	button.flat = true
 	button.text = ""
 	button.focus_mode = Control.FOCUS_ALL
 	button.mouse_filter = Control.MOUSE_FILTER_STOP
 	button.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
 	button.icon = null
-	button.add_theme_stylebox_override("normal", empty)
-	button.add_theme_stylebox_override("hover", empty)
-	button.add_theme_stylebox_override("pressed", empty)
-	button.add_theme_stylebox_override("focus", empty)
-	button.add_theme_stylebox_override("disabled", empty)
+	button.add_theme_stylebox_override("normal", idle)
+	button.add_theme_stylebox_override("hover", hover)
+	button.add_theme_stylebox_override("pressed", pressed)
+	button.add_theme_stylebox_override("focus", focus)
+	button.add_theme_stylebox_override("disabled", idle)
 	var clear := Color(1, 1, 1, 0)
 	button.add_theme_color_override("font_color", clear)
 	button.add_theme_color_override("font_hover_color", clear)
@@ -84,6 +107,10 @@ static func apply_invisible_hitbox(button: Button) -> void:
 	button.add_theme_color_override("font_disabled_color", clear)
 	button.add_theme_color_override("icon_normal_color", clear)
 	button.add_theme_color_override("icon_hover_color", clear)
+
+
+static func apply_invisible_hitbox(button: Button) -> void:
+	apply_plate_hitbox(button, false)
 
 
 static func apply_button(button: Button, kind: String = "normal") -> void:
