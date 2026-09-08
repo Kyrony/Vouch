@@ -21,6 +21,7 @@ class_name Player
 enum Modal { NONE, PHONE, KEYPAD, BINARY, WALKIE, PAUSE }
 
 const SPEED: float = 4.5
+const SPRINT_MULTIPLIER: float = 1.4
 const JUMP_VELOCITY: float = 3.2
 const MOUSE_SENSITIVITY: float = 0.0025
 const TOAST_DURATION: float = 4.5
@@ -117,6 +118,7 @@ var _fear_bar: ProgressBar = null
 var _hotbar_labels: Array[Label] = []
 var _neon_hud: Control = null
 var _local_health: float = 100.0
+var _local_stamina: float = 100.0
 var _local_max_health: float = 100.0
 var _inventory_slots: Array = []
 var _inventory_selected: int = 0
@@ -277,9 +279,10 @@ func _apply_ground_velocity(delta: float, locked: bool) -> void:
 
 	var current_room: int = WorldScale.world_position_to_room_index(global_position)
 	var water_level: float = GameState.room_water_levels.get(current_room, 0.0)
-	var effective_speed := SPEED * (1.0 - water_level * 0.6)
-	if _crouching:
-		effective_speed *= 0.55
+	var want_sprint := (not locked) and (not _crouching) and Input.is_action_pressed("sprint") and direction != Vector3.ZERO
+	if horror_mode and _local_stamina <= 0.5:
+		want_sprint = false
+	var effective_speed := move_speed_for(want_sprint, _crouching, water_level)
 
 	if direction:
 		velocity.x = direction.x * effective_speed
@@ -287,6 +290,15 @@ func _apply_ground_velocity(delta: float, locked: bool) -> void:
 	else:
 		velocity.x = move_toward(velocity.x, 0, effective_speed)
 		velocity.z = move_toward(velocity.z, 0, effective_speed)
+
+
+static func move_speed_for(sprinting: bool, crouching: bool = false, water_level: float = 0.0) -> float:
+	var speed := SPEED * (1.0 - water_level * 0.6)
+	if crouching:
+		return speed * 0.55
+	if sprinting:
+		return speed * SPRINT_MULTIPLIER
+	return speed
 
 
 func _apply_ladder_velocity() -> void:
@@ -1121,6 +1133,7 @@ func _on_local_health_changed(hp: float, cap: float) -> void:
 
 func _on_local_meters_changed(hp: float, stamina: float, fear: float) -> void:
 	_local_health = hp
+	_local_stamina = stamina
 	_local_fear = fear
 	if _neon_hud:
 		_neon_hud.set_meters(hp, _local_max_health, stamina, fear)

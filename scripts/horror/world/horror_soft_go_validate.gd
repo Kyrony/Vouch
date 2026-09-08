@@ -254,12 +254,25 @@ static func dump_live_world(world_root: Node) -> String:
 	if horror:
 		var auto_names := _generated_auto_names(horror)
 		summary.append("  horror_world_source=res://scenes/Horror/HorrorWorld.tscn")
-		summary.append("  outdoor_exists=%s roads=%s terrain=%s markers=%s" % [
+		var terrain := horror.get_node_or_null("Outdoor/Terrain")
+		var house := horror.get_node_or_null("Outdoor/MainHouse") as Node3D
+		summary.append("  outdoor_exists=%s roads=%s terrain=%s markers=%s main_house=%s" % [
 			horror.get_node_or_null("Outdoor") != null,
 			horror.get_node_or_null("Outdoor/Roads") != null,
-			horror.get_node_or_null("Outdoor/Terrain") != null,
+			terrain != null,
 			horror.get_node_or_null("L2SpawnMarkers") != null,
+			house != null,
 		])
+		if terrain:
+			summary.append("  authored_heightfield=%s peak_y=%s valley_y=%s" % [
+				terrain.get_meta("authored_heightfield", false),
+				terrain.get_meta("peak_y", 0.0),
+				terrain.get_meta("valley_y", 0.0),
+			])
+		if house:
+			summary.append("  main_house_pos=%s on_hilltop=%s" % [
+				house.global_position, house.get_meta("on_hilltop", false),
+			])
 		summary.append("  generated_at_names_under_farm=%d" % auto_names.size())
 		for n in auto_names:
 			summary.append("    AUTO %s" % n)
@@ -338,7 +351,7 @@ static func validate_v05_layout(world: Node3D) -> String:
 	if world.get_node_or_null("L2SpawnMarkers") == null:
 		return "L2SpawnMarkers root missing"
 	if not bool(_V05.OUTDOOR_ONLY):
-		return "OUTDOOR_ONLY must stay on — Host Match is terrain+roads only"
+		return "OUTDOOR_ONLY must stay on — no extra neighborhood houses"
 	if bool(_V05.GRAYBOX_NEIGHBORHOOD):
 		return "GRAYBOX_NEIGHBORHOOD must stay off — no house/bunker shells"
 	var min_x := INF
@@ -395,13 +408,41 @@ static func validate_outdoor_terrain(world: Node3D) -> String:
 	var perr: String = _spawn_must_be_outdoor(pm_xf.origin, "PM")
 	if not perr.is_empty():
 		return perr
+	if pm_xf.origin.y < 3.0:
+		return "PM spawn is not on the hilltop (y=%.2f)" % pm_xf.origin.y
+	var house_err := validate_hilltop_main_house(world)
+	if not house_err.is_empty():
+		return house_err
+	var peak_y: float = float(terrain.get_meta("peak_y", 0.0))
+	var valley_y: float = float(terrain.get_meta("valley_y", 0.0))
+	if not bool(terrain.get_meta("authored_heightfield", false)):
+		return "Outdoor/Terrain is not an authored heightfield"
+	if peak_y - valley_y < 3.5:
+		return "farm height contrast %.2f is too flat — need rolling hills" % (peak_y - valley_y)
+	return ""
+
+
+static func validate_hilltop_main_house(world: Node3D) -> String:
+	var house := world.get_node_or_null("Outdoor/MainHouse") as Node3D
+	if house == null:
+		return "Outdoor/MainHouse missing — one hilltop main house is required"
+	if house.find_child("PMMansion", true, false) != null:
+		return "legacy PMMansion kit leaked under MainHouse"
+	if not bool(house.get_meta("on_hilltop", false)):
+		return "MainHouse missing on_hilltop meta"
+	if house.global_position.y < 3.5:
+		return "MainHouse is not on a hill (y=%.2f)" % house.global_position.y
+	if house.global_position.x < 28.0 or house.global_position.x > 52.0:
+		return "MainHouse xz is not on the L1b east house cluster"
+	if house.get_node_or_null("Core") == null:
+		return "MainHouse missing graybox Core"
 	return ""
 
 
 static func _spawn_must_be_outdoor(origin: Vector3, label: String) -> String:
 	if origin.y < _V05.OUTDOOR_SPAWN_Y_MIN:
 		return "%s spawn is underground y=%.2f" % [label, origin.y]
-	if origin.y > 6.5:
+	if origin.y > 8.5:
 		return "%s spawn is not on walkable farm terrain (y=%.2f)" % [label, origin.y]
 	return ""
 

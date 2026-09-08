@@ -88,6 +88,9 @@ func _probe() -> String:
 	if world.get_node_or_null("Outdoor/Roads") == null:
 		main.queue_free()
 		return "Outdoor/Roads missing"
+	if world.get_node_or_null("Outdoor/MainHouse") == null:
+		main.queue_free()
+		return "Outdoor/MainHouse missing"
 	if world.get_node_or_null("L2SpawnMarkers") == null:
 		main.queue_free()
 		return "L2SpawnMarkers missing"
@@ -103,6 +106,21 @@ func _probe() -> String:
 	if pm_xf.origin.y < -0.35:
 		main.queue_free()
 		return "PM spawn is underground y=%s" % pm_xf.origin
+	if pm_xf.origin.y < 3.0:
+		main.queue_free()
+		return "PM spawn is not on the hilltop y=%s" % pm_xf.origin
+	var house: Node3D = world.get_node("Outdoor/MainHouse")
+	if house.global_position.y < 3.5:
+		main.queue_free()
+		return "MainHouse is not on a hill y=%s" % house.global_position
+	if not InputMap.has_action("sprint"):
+		main.queue_free()
+		return "sprint input action missing"
+	var walk_speed: float = float(player_speed_walk())
+	var sprint_speed: float = float(player_speed_sprint())
+	if absf(sprint_speed / walk_speed - 1.4) > 0.001:
+		main.queue_free()
+		return "sprint is %.3fx walk, want 1.4" % (sprint_speed / walk_speed)
 
 	var pickups := world.get_node_or_null("Pickups")
 	if pickups == null or pickups.get_child_count() < 1:
@@ -175,12 +193,24 @@ func _probe() -> String:
 
 	var rng := root.get_node_or_null("ChildSpawnRNG")
 	var pins: Array = rng.call("spawn_id_list") if rng else []
-	print("  horror farm_pads=%d pickups=%d child_points=%d towers=%d fam0=%s pm=%s pins=%s" % [
+	print("  horror farm_pads=%d pickups=%d child_points=%d towers=%d fam0=%s pm=%s house=%s sprint=%.2fx pins=%s" % [
 		spawn_count, pickups.get_child_count(), child_points.size(),
 		world.get_tree().get_nodes_in_group("active_towers").size(),
 		fam0.origin,
 		pm_xf.origin,
+		house.global_position,
+		sprint_speed / walk_speed,
 		pins,
 	])
 	main.queue_free()
 	return ""
+
+
+func player_speed_walk() -> float:
+	var script: GDScript = load("res://scripts/player.gd")
+	return float(script.move_speed_for(false))
+
+
+func player_speed_sprint() -> float:
+	var script: GDScript = load("res://scripts/player.gd")
+	return float(script.move_speed_for(true))
