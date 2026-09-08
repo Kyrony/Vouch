@@ -85,20 +85,21 @@ field as a placeholder — session codes are post-MVP.
 | Puppet Master | Life steal aura (radius, then cooldown) | `E` |
 | All | Pause / release mouse | `Esc` |
 
-**Goal:** Host Match drops every player on the **outdoor street / yard** (phase 1 terrain-first rethink — not bedrooms, not the PM bunker). Walk the large grass/dirt field, the hills, and the asphalt cul-de-sac. One missing child is hidden at a random location among **11 alive-only spawn pins** (Leonardo L2 SoT ids). Find the child marker, then reach the **soft-gated field exit** (west yard, unmarked — master sheet has no escape routes). Trust tools are **phone + live radio masts** (service / weak / dead radii, 3 active per match, one forced near the PM). The **Puppet Master** also starts on the **east approach street**. PM wins if all survivors are drained before families escape with the child.
+**Goal:** Host Match drops families on a **house porch** in the L1b farm neighborhood (walk **into** the graybox house or **out** to the yard). The Puppet Master starts on the **mansion courtyard / foyer** with an open front door to the approach. Walk the open grass/dirt fields, farm-country hills, and asphalt lanes between parcels. One missing child is hidden at a random location among **11 alive-only spawn pins** (Leonardo L2 SoT ids). Find the child marker, then reach the **soft-gated field exit** (west field, unmarked — master sheet has no escape routes). Trust tools are **phone + live radio masts** (service / weak / dead radii, 3 active per match, one forced near the PM). PM wins if all survivors are drained before families escape with the child.
 
-### Map rethink phase 1 (terrain first)
+### L1b graybox farm neighborhood
 
-This is a **terrain-first** neighborhood rethink. The deliverable is a **large continuous outdoor heightfield** (~100×84 m) with a few **gentle walkable hills**, **asphalt streets + curbs**, and first-person-readable grass/dirt vs road materials. Houses / the PM mansion stay kit-stubbed; interiors are **not** the spawn.
+Layout SoT is Leonardo **L1b — BASE ARCHITECTURE (FARM COUNTRY)** (v0.5 + Kyle farm pivot): open/hilly, **~80 m** building span, rural footprints spaced on parcels — not the old tight cul-de-sac. Family houses A–D use the **13.5×11 m** modular kit (porch crawl on A). Uncle house is L-shaped west of the PM; the garage sits **northeast of the mansion**. The east PM mansion has L4 named rooms, including bunker + utility closet. All of this is **simple graybox / CSG boxes** with real door cuts. `NeighborhoodV05.OUTDOOR_ONLY` is **off**.
 
-**Why players used to land underground:** default horror spawns were family **bedrooms** (sealed 1-story boxes on a raised deck) and the PM **mansion foyer**, with L4 **basement / bunker** volumes at y=-4 / y=-12. Those interior paths had no outdoor exit. Phase 1 Host Match uses `Outdoor/PlayerSpawns` + `Outdoor_PM_Street` on the heightfield instead. L2 child pin ids are unchanged.
+**Why players used to land underground:** sealed bedroom / foyer boxes and L4 basement / bunker volumes at y=-4 / y=-12 had no outdoor exit. Host Match now uses **porch / courtyard** markers that sit on flattened pads at ground level, and every playable building has a `walkable_exits` door cut.
 
 **In-editor check (Kyle):**
 
 1. Open `project.godot` in Godot 4.3+, let it import, press **F5**.
 2. Home → **Play** → **Host Match** → **Start Match** (one player is enough).
-3. You should stand on the **cul-de-sac asphalt or grass**, see green/brown ground vs dark road + light curbs, and be able to walk the whole yard including the perimeter hills. You should **not** start in a sealed bedroom, basement, or bunker.
-4. Optional second instance: **Play → Join** (blank IP) — host-authoritative outdoor spawns should match for the joiner.
+3. You should stand on a **family porch** (or the mansion courtyard if you are PM), see farm lanes + rolling hills, and be able to **walk into the house and back out to the yard**. You should **not** start in a sealed bedroom, basement, or bunker.
+4. Walk the west fields and the east mansion approach. Slopes should be gentle. Phone LED is the only flashlight (`R` while holding the phone).
+5. Optional second instance: **Play → Join** (blank IP) — host-authoritative graybox spawns should match for the joiner.
 
 Legacy sealed-room / tunnel modes: `VOUCH_BUNKER_ONLY=1` or `VOUCH_ESCAPE_PATH=1`.
 
@@ -245,7 +246,7 @@ pointing at what's missing.
 
 ## Horror child spawn points (11, alive-only)
 
-Host RNG picks **one** per match (`ChildSpawnRNG`). Teams map to **families** A–D (**outdoor cul-de-sac street spawns** in phase 1; house bedrooms stay as kit stubs). All pins are living hides — no grave sites. IDs are Leonardo L2 SoT **eng short names**. Art map labels are deferred.
+Host RNG picks **one** per match (`ChildSpawnRNG`). Teams map to **families** A–D (**porch spawns** on L1b parcels; bedrooms are enterable graybox with door cuts). All pins are living hides — no grave sites. IDs are Leonardo L2 SoT **eng short names**. Art map labels are deferred.
 
 | # | `spawn_id` | Callout | Location |
 | --- | --- | --- | --- |
@@ -267,7 +268,7 @@ See [`docs/blueprints/v0.5/`](docs/blueprints/v0.5/) for Leonardo v0.5 sheets.
 
 **HUD + smartphone (soft-go):** Leonardo’s v2 neon-horror icon language is wired in `scripts/horror/ui/neon_hud.gd` and `assets/horror/hud/` (heart / cyan pulse / violet glitch-eye / yellow **phone LED** / signal full-weak-dead). The inventory `phone` is diegetic `ITEM_DEVICE_SMARTPHONE_01` — graphite/gold mesh, camera LED spotlight, eng-tunable battery drain on `PhoneDevice`. Sheet ~15%/min LED and ~2%/min passive are concept only. No handheld flashlight item. Textures are wiring refs; Leonardo may redraw them before Steam.
 
-**Environment kits (soft-go):** Family houses use modular porch / foundation / stairs / crawl graybox (`under_porch_crawl` under house A — no grave wording). PM bunker gets sealed concrete + pipes/shelves and a utility closet for `bunker_utility` (red/yellow neon, fluorescent; no gore, no guns). See `assets/horror/kits/README.md`. Kit plan sizes are art targets; live footprints stay v0.5.
+**Environment kits (soft-go):** Family houses use modular porch / foundation / stairs / crawl graybox at the **13.5×11 m** kit plan (`under_porch_crawl` under house A — no grave wording). PM bunker gets concrete + pipes/shelves and a utility closet for `bunker_utility` (red/yellow neon, fluorescent; no gore, no guns). See `assets/horror/kits/README.md`.
 
 **HUD:** neon heart (health), cyan bar (stamina), violet bar (fear), phone + spotty signal.
 

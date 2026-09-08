@@ -1,6 +1,6 @@
 extends RefCounted
 class_name NeighborhoodLayout
-## Assembles v0.5 cul-de-sac families, east PM mansion, uncle, yard.
+## Assembles L1b farm parcels: families A–D, uncle + garage, east PM mansion.
 
 const _FAMILY: GDScript = preload("res://scripts/horror/environment/family_house_builder.gd")
 const _UNCLE: GDScript = preload("res://scripts/horror/environment/uncle_house_builder.gd")
@@ -13,7 +13,8 @@ const _V05: GDScript = preload("res://scripts/horror/world/neighborhood_v05.gd")
 
 static func build(parent: Node3D, max_families: int = 4) -> Dictionary:
 	var mats = _MATS.new()
-	var family_spawns: Array[Marker3D] = []
+	var bedroom_spawns: Array[Marker3D] = []
+	var porch_spawns: Array[Marker3D] = []
 	var houses: Array = _V05.FAMILY_HOUSES
 	var family_count: int = clampi(max_families, 1, houses.size())
 
@@ -32,32 +33,54 @@ static func build(parent: Node3D, max_families: int = 4) -> Dictionary:
 			float(spec["yaw"]),
 			str(spec["letter"]),
 		)
-		family_spawns.append(result["bedroom_spawn"])
+		bedroom_spawns.append(result["bedroom_spawn"])
+		if result.get("porch_spawn") is Marker3D:
+			porch_spawns.append(result["porch_spawn"])
 
 	var uncle_result: Dictionary = _UNCLE.call("build", parent, _V05.UNCLE_ORIGIN, mats, _V05.UNCLE_YAW)
+	var garage_result: Dictionary = _UNCLE.call(
+		"build_garage",
+		parent,
+		_V05.UNCLE_GARAGE_ORIGIN,
+		mats,
+		_V05.UNCLE_GARAGE_YAW,
+	)
 	var mansion_result: Dictionary = _MANSION.call("build", parent, _V05.MANSION_ORIGIN, mats, _V05.MANSION_YAW)
 	var outdoor_result: Dictionary = _OUTDOOR.call("build", parent, mats)
 	var trust_result: Dictionary = _TRUST.call("build", parent)
 
-	# Phase 1: Host Match uses outdoor street/yard markers, not sealed bedrooms / bunker.
-	# Bedroom markers stay on the houses for later interior work; L2 child pins unchanged.
 	var outdoor_spawns: Array = outdoor_result.get("player_spawns", [])
 	var live_spawns: Array[Marker3D] = []
-	for m in outdoor_spawns:
-		live_spawns.append(m)
+	if _V05.OUTDOOR_ONLY:
+		for m in outdoor_spawns:
+			if m is Marker3D:
+				live_spawns.append(m)
+	else:
+		for m in porch_spawns:
+			live_spawns.append(m)
+		if live_spawns.is_empty():
+			for m in outdoor_spawns:
+				if m is Marker3D:
+					live_spawns.append(m)
 	if live_spawns.is_empty():
-		live_spawns = family_spawns
+		live_spawns = bedroom_spawns
 
 	var pm_spawn: Marker3D = mansion_result["pm_spawn"]
-	var outdoor_pm = outdoor_result.get("pm_spawn")
-	if outdoor_pm is Marker3D:
-		pm_spawn = outdoor_pm
+	if _V05.OUTDOOR_ONLY:
+		var outdoor_pm = outdoor_result.get("pm_spawn")
+		if outdoor_pm is Marker3D:
+			pm_spawn = outdoor_pm
+	elif mansion_result.get("courtyard_spawn") is Marker3D:
+		# Approach / foyer with outdoor access — courtyard sits just outside the open door.
+		pm_spawn = mansion_result["courtyard_spawn"]
 
 	return {
 		"family_spawns": live_spawns,
-		"bedroom_spawns": family_spawns,
+		"bedroom_spawns": bedroom_spawns,
+		"porch_spawns": porch_spawns,
 		"pm_spawn": pm_spawn,
 		"uncle_root": uncle_result["root"],
+		"garage_root": garage_result["root"],
 		"mansion_root": mansion_result["root"],
 		"outdoor_root": outdoor_result["root"],
 		"family_count": family_count,

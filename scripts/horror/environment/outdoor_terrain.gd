@@ -1,33 +1,36 @@
 extends RefCounted
 class_name OutdoorTerrain
-## Phase 1 walkable outdoor heightfield: large grass/dirt ground + a few hills.
-## Central ~40 m neighborhood stays nearly flat so houses / L2 pins stay valid.
-## Hills are gaussian bumps (gentle slopes, not cliff boxes).
+## L1b farm-country heightfield: open rolling hills, streets + pads flattened.
+## Hills are gaussian bumps (gentle walkable slopes, not cliff boxes).
 
 const _V05: GDScript = preload("res://scripts/horror/world/neighborhood_v05.gd")
 
 ## Vertex counts (cells = n - 1). HeightMapShape3D uses 1 unit per cell; we scale XZ.
-const MAP_WIDTH: int = 73
-const MAP_DEPTH: int = 61
-const CELL: float = 1.4
+const MAP_WIDTH: int = 97
+const MAP_DEPTH: int = 81
+const CELL: float = 1.5
 const TERRAIN_SPAN_X: float = (MAP_WIDTH - 1) * CELL
 const TERRAIN_SPAN_Z: float = (MAP_DEPTH - 1) * CELL
 
-## Keep the v0.5 ring + streets at ~y=0 so existing kits don't sink or float.
-const FLAT_RADIUS: float = 20.0
-const FLAT_BLEND: float = 8.0
+## Small hub flatten only — fields stay rolling (L1b contours).
+const FLAT_RADIUS: float = 7.0
+const FLAT_BLEND: float = 5.0
 
-## Hills sit outside the cul-de-sac. sigma keeps max slope ~10° (walkable).
+## Farm hills sit in the fields and behind parcels. sigma keeps max slope walkable.
 const HILLS: Array[Dictionary] = [
-	{"id": "nw", "pos": Vector2(-34.0, -26.0), "height": 3.4, "sigma": 13.0},
-	{"id": "sw", "pos": Vector2(-32.0, 30.0), "height": 2.8, "sigma": 12.0},
-	{"id": "ne", "pos": Vector2(38.0, -28.0), "height": 3.0, "sigma": 13.0},
-	{"id": "se", "pos": Vector2(36.0, 32.0), "height": 2.5, "sigma": 12.0},
+	{"id": "shed_nw", "pos": Vector2(-50.0, -40.0), "height": 4.4, "sigma": 14.0},
+	{"id": "west_pasture", "pos": Vector2(-56.0, 12.0), "height": 2.8, "sigma": 12.0},
+	{"id": "sw_field", "pos": Vector2(-40.0, 38.0), "height": 3.3, "sigma": 13.0},
+	{"id": "north_ridge", "pos": Vector2(10.0, -48.0), "height": 3.5, "sigma": 13.0},
+	{"id": "ne_behind_pm", "pos": Vector2(54.0, -36.0), "height": 3.9, "sigma": 14.0},
+	{"id": "se_pasture", "pos": Vector2(46.0, 40.0), "height": 2.9, "sigma": 12.0},
+	{"id": "east_rise", "pos": Vector2(64.0, 8.0), "height": 2.3, "sigma": 10.0},
 ]
 
 const GRASS_COLOR := Color(0.30, 0.46, 0.22)
 const DIRT_COLOR := Color(0.46, 0.33, 0.20)
 const HILL_GRASS := Color(0.36, 0.40, 0.22)
+const FIELD_COLOR := Color(0.42, 0.38, 0.22)
 
 
 static func build(parent: Node3D) -> Dictionary:
@@ -69,8 +72,8 @@ static func height_at(x: float, z: float) -> float:
 	var raw: float = _hill_sum(x, z)
 	var radial := Vector2(x, z).length()
 	var basin: float = _smoothstep(FLAT_RADIUS, FLAT_RADIUS + FLAT_BLEND, radial)
-	var road: float = 1.0 - _road_weight(x, z)
-	return raw * basin * road
+	var flatten: float = maxf(_road_weight(x, z), _pad_weight(x, z))
+	return raw * basin * (1.0 - flatten)
 
 
 static func _build_heights() -> PackedFloat32Array:
@@ -99,16 +102,21 @@ static func _hill_sum(x: float, z: float) -> float:
 
 
 static func _road_weight(x: float, z: float) -> float:
-	## 1 on asphalt centerlines (flatten terrain so streets stay walkable).
 	var w := 0.0
-	# Cul-de-sac bulb.
-	w = maxf(w, _disk_weight(Vector2(x, z), Vector2.ZERO, _V05.BULB_RADIUS + 3.2, 1.6))
-	# Stem south + extension past uncle.
-	w = maxf(w, _capsule_weight(Vector2(x, z), Vector2(0, 4.0), Vector2(0, 30.0), 3.4, 1.4))
-	# East mansion approach.
-	w = maxf(w, _capsule_weight(Vector2(x, z), Vector2(4.0, 0), Vector2(20.0, 0), 3.0, 1.4))
-	# West field lane.
-	w = maxf(w, _capsule_weight(Vector2(x, z), Vector2(-4.0, 0), Vector2(-22.0, 0), 2.6, 1.4))
+	w = maxf(w, _disk_weight(Vector2(x, z), Vector2.ZERO, _V05.BULB_RADIUS + 1.6, 1.4))
+	for spec in _V05.ROAD_SPANS:
+		var a: Vector2 = spec["a"]
+		var b: Vector2 = spec["b"]
+		var r: float = float(spec["r"])
+		w = maxf(w, _capsule_weight(Vector2(x, z), a, b, r, 1.5))
+	return clampf(w, 0.0, 1.0)
+
+
+static func _pad_weight(x: float, z: float) -> float:
+	var w := 0.0
+	for spec in _V05.BUILDING_PADS:
+		var p: Vector2 = spec["pos"]
+		w = maxf(w, _disk_weight(Vector2(x, z), p, float(spec["r"]), 3.0))
 	return clampf(w, 0.0, 1.0)
 
 
@@ -176,8 +184,15 @@ static func _vert(i: int, j: int, hx: float, hz: float, heights: PackedFloat32Ar
 		var dx: float = heights[j * MAP_WIDTH + i + 1] - heights[j * MAP_WIDTH + i - 1]
 		var dz: float = heights[(j + 1) * MAP_WIDTH + i] - heights[(j - 1) * MAP_WIDTH + i]
 		slope = sqrt(dx * dx + dz * dz) / (2.0 * CELL)
+	var field_w: float = 0.0
+	if absf(x + 38.0) < 10.0 and z > 16.0 and z < 36.0:
+		field_w = 0.55
+	if absf(x - 20.0) < 9.0 and z > 18.0 and z < 34.0:
+		field_w = 0.45
 	var dirt_w: float = clampf(y / 2.4 + slope * 3.2, 0.0, 1.0)
-	var col: Color = GRASS_COLOR.lerp(HILL_GRASS, clampf(y / 3.0, 0.0, 1.0)).lerp(DIRT_COLOR, dirt_w)
+	var col: Color = GRASS_COLOR.lerp(HILL_GRASS, clampf(y / 3.0, 0.0, 1.0))
+	col = col.lerp(FIELD_COLOR, field_w)
+	col = col.lerp(DIRT_COLOR, dirt_w)
 	return {
 		"pos": Vector3(x, y, z),
 		"uv": Vector2(float(i) / float(MAP_WIDTH - 1), float(j) / float(MAP_DEPTH - 1)) * 8.0,
@@ -200,6 +215,5 @@ static func _add_collision(root: StaticBody3D, heights: PackedFloat32Array) -> v
 	var col := CollisionShape3D.new()
 	col.name = "CollisionShape3D"
 	col.shape = shape
-	# HeightMap cells are 1 m; scale XZ so the mesh and collider share the same span.
 	col.scale = Vector3(CELL, 1.0, CELL)
 	root.add_child(col)

@@ -74,24 +74,24 @@ static func validate_v05_layout(world: Node3D) -> String:
 	var mansion := world.get_node_or_null("PMMansion") as Node3D
 	if mansion == null:
 		return "PMMansion missing"
-	if mansion.global_position.x < 12.0:
-		return "PM mansion is not east of the cul-de-sac (x=%.1f)" % mansion.global_position.x
+	if mansion.global_position.x < 20.0:
+		return "PM mansion is not east/center-right on L1b (x=%.1f)" % mansion.global_position.x
 	var families := world.get_node_or_null("FamilyHouses")
 	if families == null:
 		return "FamilyHouses missing"
 	for letter in ["A", "B", "C", "D"]:
 		if families.get_node_or_null("FamilyHouse_%s" % letter) == null:
-			return "FamilyHouse_%s missing from cul-de-sac" % letter
+			return "FamilyHouse_%s missing from L1b farm parcels" % letter
 	if world.get_node_or_null("UncleHouse") == null:
 		return "UncleHouse missing"
-	if world.get_node_or_null("UncleHouse/UncleGarage") == null:
+	if world.get_node_or_null("UncleGarage") == null and world.get_node_or_null("UncleHouse/UncleGarage") == null:
 		return "Uncle garage missing"
 	for room_name in _V05.PM_L4_ROOMS:
 		if mansion.find_child(room_name, true, false) == null:
 			return "L4 PM room missing: %s" % room_name
 	var roads := world.get_node_or_null("Outdoor/Roads")
 	if roads == null:
-		return "Outdoor/Roads (cul-de-sac / curbs) missing"
+		return "Outdoor/Roads (farm lanes / curbs) missing"
 	var escape := world.get_node_or_null("Outdoor/HorrorEscapeZone")
 	if escape == null:
 		return "soft-gated HorrorEscapeZone missing"
@@ -120,8 +120,30 @@ static func validate_v05_layout(world: Node3D) -> String:
 	max_z = maxf(max_z, uncle.global_position.z)
 	var span_x: float = max_x - min_x
 	var span_z: float = max_z - min_z
-	if span_x < 28.0 or span_x > 56.0 or span_z < 22.0 or span_z > 48.0:
-		return "neighborhood span %.1fx%.1f not ~40m v0.5" % [span_x, span_z]
+	if span_x < 56.0 or span_x > 150.0 or span_z < 40.0 or span_z > 130.0:
+		return "neighborhood span %.1fx%.1f not L1b farm (~80m+)" % [span_x, span_z]
+	var min_house_d := INF
+	for i in 4:
+		var ha: Node3D = families.get_node("FamilyHouse_%s" % ["A", "B", "C", "D"][i])
+		for j in range(i + 1, 4):
+			var hb: Node3D = families.get_node("FamilyHouse_%s" % ["A", "B", "C", "D"][j])
+			min_house_d = minf(min_house_d, ha.global_position.distance_to(hb.global_position))
+	if min_house_d < 18.0:
+		return "family houses too tight (min %.1fm) — L1b wants spaced parcels" % min_house_d
+	var exits: Array = world.get_tree().get_nodes_in_group("walkable_exits")
+	if exits.size() < 6:
+		return "expected walkable door exits on graybox buildings, got %d" % exits.size()
+	if bool(_V05.OUTDOOR_ONLY):
+		return "OUTDOOR_ONLY is still on — Host Match should use the graybox farm"
+	if world.has_method("get_family_spawn_transform"):
+		var fam0_xf: Transform3D = world.call("get_family_spawn_transform", 0)
+		var house_a: Node3D = families.get_node("FamilyHouse_A")
+		if fam0_xf.origin.distance_to(house_a.global_position) > 16.0:
+			return "family 0 spawn is not on house A parcel"
+	if world.has_method("get_pm_spawn_transform"):
+		var pm_xf: Transform3D = world.call("get_pm_spawn_transform")
+		if pm_xf.origin.distance_to(mansion.global_position) > 22.0:
+			return "PM spawn is not at mansion approach / foyer"
 	return ""
 
 
@@ -131,7 +153,7 @@ static func validate_outdoor_terrain(world: Node3D) -> String:
 		return "Outdoor missing"
 	var terrain := outdoor.get_node_or_null("Terrain")
 	if terrain == null:
-		return "Outdoor/Terrain missing (phase 1 heightfield)"
+		return "Outdoor/Terrain missing (L1b farm heightfield)"
 	if terrain.get_node_or_null("CollisionShape3D") == null:
 		return "Outdoor/Terrain missing collision"
 	var span_x: float = float(terrain.get_meta("span_x", 0.0))
@@ -141,8 +163,8 @@ static func validate_outdoor_terrain(world: Node3D) -> String:
 	var hills := outdoor.get_node_or_null("Hills")
 	if hills == null:
 		return "Outdoor/Hills missing"
-	if hills.get_child_count() < 3:
-		return "expected a few hills, got %d" % hills.get_child_count()
+	if hills.get_child_count() < 5:
+		return "expected farm-country hills (>=5), got %d" % hills.get_child_count()
 	var roads := outdoor.get_node_or_null("Roads")
 	if roads == null or roads.get_child_count() < 4:
 		return "Outdoor/Roads missing street pieces"
@@ -170,8 +192,8 @@ static func validate_outdoor_terrain(world: Node3D) -> String:
 static func _spawn_must_be_outdoor(origin: Vector3, label: String) -> String:
 	if origin.y < _V05.OUTDOOR_SPAWN_Y_MIN:
 		return "%s spawn is underground y=%.2f" % [label, origin.y]
-	if origin.y > 4.5:
-		return "%s spawn is not on outdoor ground (y=%.2f)" % [label, origin.y]
+	if origin.y > 6.5:
+		return "%s spawn is not on walkable graybox / yard (y=%.2f)" % [label, origin.y]
 	return ""
 
 

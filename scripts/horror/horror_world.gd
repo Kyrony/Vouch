@@ -21,7 +21,7 @@ func _ready() -> void:
 	var pm = built.get("pm_spawn")
 	_pm_spawn = pm if pm is Marker3D else null
 	_scatter_pickups()
-	print("[HorrorWorld] neighborhood built families=%d outdoor_spawns=%d terrain=phase1" % [
+	print("[HorrorWorld] neighborhood built families=%d graybox_spawns=%d terrain=l1b_farm" % [
 		built["family_count"], _family_spawns.size(),
 	])
 
@@ -46,20 +46,20 @@ func server_init_match(player_count: int) -> void:
 
 func get_family_spawn_transform(family_index: int) -> Transform3D:
 	if _family_spawns.is_empty():
-		return Transform3D(Basis.IDENTITY, Vector3(0, 0.2, -4.8))
+		return Transform3D(Basis.IDENTITY, Vector3(-32.0, 0.2, -14.0))
 	var idx := clampi(family_index, 0, _family_spawns.size() - 1)
 	return _family_spawns[idx].global_transform
 
 
 func get_pm_spawn_transform() -> Transform3D:
 	if _pm_spawn == null:
-		return Transform3D(Basis.IDENTITY, Vector3(14.8, 0.2, 0))
+		return Transform3D(Basis.IDENTITY, Vector3(24.0, 0.2, -4.0))
 	return _pm_spawn.global_transform
 
 
 func get_random_spawn_transform() -> Transform3D:
 	if _family_spawns.is_empty():
-		return Transform3D(Basis.IDENTITY, Vector3(0, 0.2, -4.8))
+		return Transform3D(Basis.IDENTITY, Vector3(-32.0, 0.2, -14.0))
 	var m: Marker3D = _family_spawns[randi() % _family_spawns.size()]
 	return m.global_transform
 
@@ -96,12 +96,12 @@ func _scatter_pickups() -> void:
 	pickups.name = "Pickups"
 	add_child(pickups)
 	var defs := [
-		{"id": "medkit", "pos": Vector3(-10.2, 0.5, 1.2)},
-		{"id": "phone", "pos": Vector3(8.4, 0.5, 1.6)},
-		{"id": "bandage", "pos": Vector3(22.5, -11.4, 0)},
-		{"id": "battery", "pos": Vector3(-14.0, 0.5, -6.0)},
-		{"id": "crowbar", "pos": Vector3(1.2, 0.5, 8.4)},
-		{"id": "keycard", "pos": Vector3(-6.4, 0.5, 16.8)},
+		{"id": "medkit", "pos": Vector3(-40.0, 0.9, 10.0)},
+		{"id": "phone", "pos": Vector3(2.0, 0.5, 2.0)},
+		{"id": "bandage", "pos": Vector3(24.0, 0.5, -4.0)},
+		{"id": "battery", "pos": Vector3(-52.0, 0.5, -38.0)},
+		{"id": "crowbar", "pos": Vector3(6.0, 0.9, 28.0)},
+		{"id": "keycard", "pos": Vector3(-12.0, 0.5, 8.0)},
 	]
 	for d in defs:
 		_spawn_pickup_local(d["id"], d["pos"])

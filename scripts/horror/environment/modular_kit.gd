@@ -1,7 +1,7 @@
 extends RefCounted
 class_name HorrorModularKit
 ## Soft-go modular graybox pieces for Leonardo environment kits.
-## Neighborhood footprint stays v0.5; these are kit-language primitives.
+## L1b farm graybox primitives (kit-language, not Steam-final GLB).
 
 const _GEOM: GDScript = preload("res://scripts/rooms/geometry_util.gd")
 
@@ -56,11 +56,27 @@ static func add_window(parent: Node3D, pos: Vector3, mats) -> void:
 
 
 static func add_door(parent: Node3D, pos: Vector3, mats) -> void:
-	add_box(parent, Vector3(1.05, 2.15, 0.1), pos, mats.wood)
-	add_box(parent, Vector3(0.28, 0.28, 0.04), pos + Vector3(0.0, 0.55, 0.07), mats.glass)
+	## Closed slab — use only where the opening is already beside the leaf.
+	add_box(parent, Vector3(1.05, 2.15, 0.1), pos, mats.wood, 0)
+	add_box(parent, Vector3(0.28, 0.28, 0.04), pos + Vector3(0.0, 0.55, 0.07), mats.glass, 0)
 	add_box(parent, Vector3(1.22, 0.1, 0.16), pos + Vector3(0, 1.15, 0), mats.wood)
 	add_box(parent, Vector3(0.1, 2.15, 0.16), pos + Vector3(-0.58, 0, 0), mats.wood)
 	add_box(parent, Vector3(0.1, 2.15, 0.16), pos + Vector3(0.58, 0, 0), mats.wood)
+
+
+## Frame + leaf swung clear of the doorway so players can walk through.
+static func add_open_door(parent: Node3D, pos: Vector3, mats) -> Node3D:
+	var holder := Node3D.new()
+	holder.name = "OpenDoor"
+	holder.position = pos
+	parent.add_child(holder)
+	add_box(holder, Vector3(1.22, 0.1, 0.16), Vector3(0, 2.15, 0), mats.wood)
+	add_box(holder, Vector3(0.1, 2.15, 0.16), Vector3(-0.58, 1.05, 0), mats.wood)
+	add_box(holder, Vector3(0.1, 2.15, 0.16), Vector3(0.58, 1.05, 0), mats.wood)
+	var leaf: StaticBody3D = add_box(holder, Vector3(0.95, 2.05, 0.06), Vector3(-0.42, 1.02, 0.48), mats.wood, 0)
+	leaf.rotation.y = 1.35
+	leaf.name = "DoorLeaf"
+	return holder
 
 
 static func add_roof_slopes(parent: Node3D, size: Vector3, y: float, mats) -> void:

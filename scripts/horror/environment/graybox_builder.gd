@@ -13,17 +13,139 @@ static func add_room_box(
 	floor: bool = true,
 	ceiling: bool = true,
 ) -> void:
+	add_room_box_open(parent, size, center, mats, floor, ceiling, {})
+
+
+## `doors` keys: plus_z / minus_z / plus_x / minus_x = gap width (0 = sealed).
+## Optional *_off shifts the gap along the wall. `height` is the door cut (m).
+static func add_room_box_open(
+	parent: Node3D,
+	size: Vector3,
+	center: Vector3,
+	mats,
+	floor: bool = true,
+	ceiling: bool = true,
+	doors: Dictionary = {},
+) -> void:
 	var hx := size.x * 0.5
 	var hy := size.y * 0.5
 	var hz := size.z * 0.5
+	var door_h: float = float(doors.get("height", 2.1))
 	if floor:
 		parent.add_child(_GEOM.call("box", Vector3(size.x, 0.2, size.z), center + Vector3(0, -hy + 0.1, 0), mats.floor))
 	if ceiling:
 		parent.add_child(_GEOM.call("box", Vector3(size.x, 0.2, size.z), center + Vector3(0, hy - 0.1, 0), mats.ceiling))
-	parent.add_child(_GEOM.call("box", Vector3(size.x, size.y, 0.25), center + Vector3(0, 0, -hz), mats.wall))
-	parent.add_child(_GEOM.call("box", Vector3(size.x, size.y, 0.25), center + Vector3(0, 0, hz), mats.wall))
-	parent.add_child(_GEOM.call("box", Vector3(0.25, size.y, size.z), center + Vector3(-hx, 0, 0), mats.wall))
-	parent.add_child(_GEOM.call("box", Vector3(0.25, size.y, size.z), center + Vector3(hx, 0, 0), mats.wall))
+	_wall_or_door(
+		parent, center + Vector3(0, 0, hz), size.x, size.y, 0.25, true, mats.wall,
+		float(doors.get("plus_z", 0.0)), door_h, float(doors.get("plus_z_off", 0.0)),
+	)
+	_wall_or_door(
+		parent, center + Vector3(0, 0, -hz), size.x, size.y, 0.25, true, mats.wall,
+		float(doors.get("minus_z", 0.0)), door_h, float(doors.get("minus_z_off", 0.0)),
+	)
+	_wall_or_door(
+		parent, center + Vector3(hx, 0, 0), size.z, size.y, 0.25, false, mats.wall,
+		float(doors.get("plus_x", 0.0)), door_h, float(doors.get("plus_x_off", 0.0)),
+	)
+	_wall_or_door(
+		parent, center + Vector3(-hx, 0, 0), size.z, size.y, 0.25, false, mats.wall,
+		float(doors.get("minus_x", 0.0)), door_h, float(doors.get("minus_x_off", 0.0)),
+	)
+
+
+static func _wall_or_door(
+	parent: Node3D,
+	center: Vector3,
+	length: float,
+	height: float,
+	thick: float,
+	along_x: bool,
+	mat: Material,
+	gap_w: float,
+	gap_h: float,
+	gap_offset: float,
+) -> void:
+	if gap_w <= 0.05:
+		if along_x:
+			parent.add_child(_GEOM.call("box", Vector3(length, height, thick), center, mat))
+		else:
+			parent.add_child(_GEOM.call("box", Vector3(thick, height, length), center, mat))
+		return
+	add_opening_wall(parent, center, length, height, thick, along_x, mat, gap_w, gap_h, gap_offset)
+
+
+static func add_opening_wall(
+	parent: Node3D,
+	center: Vector3,
+	length: float,
+	height: float,
+	thick: float,
+	along_x: bool,
+	mat: Material,
+	gap_w: float,
+	gap_h: float,
+	gap_offset: float = 0.0,
+) -> void:
+	var half := length * 0.5
+	var gap_lo: float = gap_offset - gap_w * 0.5
+	var gap_hi: float = gap_offset + gap_w * 0.5
+	var left_len: float = gap_lo - (-half)
+	var right_len: float = half - gap_hi
+	var lintel_h: float = height - gap_h
+	var lintel_y: float = -height * 0.5 + gap_h + lintel_h * 0.5
+	if along_x:
+		if left_len > 0.12:
+			parent.add_child(_GEOM.call(
+				"box",
+				Vector3(left_len, height, thick),
+				center + Vector3(-half + left_len * 0.5, 0, 0),
+				mat,
+			))
+		if right_len > 0.12:
+			parent.add_child(_GEOM.call(
+				"box",
+				Vector3(right_len, height, thick),
+				center + Vector3(half - right_len * 0.5, 0, 0),
+				mat,
+			))
+		if lintel_h > 0.12:
+			parent.add_child(_GEOM.call(
+				"box",
+				Vector3(gap_w, lintel_h, thick),
+				center + Vector3(gap_offset, lintel_y, 0),
+				mat,
+			))
+	else:
+		if left_len > 0.12:
+			parent.add_child(_GEOM.call(
+				"box",
+				Vector3(thick, height, left_len),
+				center + Vector3(0, 0, -half + left_len * 0.5),
+				mat,
+			))
+		if right_len > 0.12:
+			parent.add_child(_GEOM.call(
+				"box",
+				Vector3(thick, height, right_len),
+				center + Vector3(0, 0, half - right_len * 0.5),
+				mat,
+			))
+		if lintel_h > 0.12:
+			parent.add_child(_GEOM.call(
+				"box",
+				Vector3(thick, lintel_h, gap_w),
+				center + Vector3(0, lintel_y, gap_offset),
+				mat,
+			))
+
+
+static func add_walkable_exit(parent: Node3D, local_pos: Vector3, exit_name: String = "WalkableExit") -> Marker3D:
+	var m := Marker3D.new()
+	m.name = exit_name
+	m.position = local_pos
+	m.add_to_group("walkable_exits")
+	parent.add_child(m)
+	return m
 
 
 static func add_wall_panel(
