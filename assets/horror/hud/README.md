@@ -6,11 +6,12 @@ Kyle-locked HUD meters are the live language:
 
 - **Health over stamina** (top-left stack) — `health_bar_empty.png` (horror vial / ECG etch) and `stamina_bar_empty.png` (yellow track). Fill % is **eng-owned** in Godot (`TextureProgressBar` + generated fill from color refs). Do not ship mid/low `*_fill*.png`.
 - **No fear bar** and **no side chips** on the live HUD.
-- **Phone LED** — yellow smartphone silhouette with LED bloom (camera light only)
-- **Signal** — full (green bars) / weak (yellow bars) / dead (red slash)
+- **Top-right** — `signal_empty` / `signal_full` / `signal_weak` / `signal_dead` widget plus `battery_empty.png` (eng-owned fill %). Signal/battery are **not** rail items.
+- **Right item rail** — five octagon wells (`slot_empty.png`, selected `slot_selected.png` blue bloom). Filled = well + `icon_*.png`. Items/consumables only; not a bottom hotbar.
+- **Phone LED** — yellow smartphone silhouette with LED bloom (camera light only). Stays a device, not a rail well.
 - **Interact** — `key_e.png` prompt badge + pickup / missing-child marks
 
-There is **no classic flashlight / torch glyph**. Light is the phone’s camera LED.
+There is **no classic `flashlight.png` / `torch.png` glyph**. Light is the phone’s camera LED. The rail may show `icon_flashlight.png` as an inventory pictogram only.
 
 Menu / controls kit textures live in `assets/horror/ui/` (banner without an X-stick, 9-slice-feel panels, reticles).
 
