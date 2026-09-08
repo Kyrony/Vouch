@@ -7,16 +7,19 @@ class_name VouchMenuBuilder
 const _T: GDScript = preload("res://scripts/horror/ui/vouch_menu_theme.gd")
 const TITLE_BG := "res://assets/horror/ui/menu_title_bg.png"
 const LOGO := "res://assets/horror/ui/vouch_fiery_logo.png"
-# Left nav is vertically centered on the page; ~237 top centers the 4-item
-# column in the 720-tall viewport.
-const NAV_TOP := 237.0
+# Left nav sits a little above the vertical center of the 720-tall viewport.
+const NAV_TOP := 196.0
 ## Previous plate was 880×260. Keep the same aspect at one-third scale.
 const LOGO_SIZE := Vector2(880.0 / 3.0, 260.0 / 3.0)
 ## Draw order for the interactive menu so it always sits in front of the
 ## decorative logo and background plate ("most forward" when the menu opens).
 const MENU_FRONT_Z := 5
 ## Centered side-box size (opens in the middle of the page on nav click).
-const SIDE_SIZE := Vector2(512, 432)
+## Sized so the mode banner image fills the width and every mode row + START
+## fits; width stays wide enough for the Settings tab content.
+const SIDE_SIZE := Vector2(496, 470)
+## Mode banner aspect (cropped art is 1280x304).
+const THUMB_ASPECT := 1280.0 / 304.0
 
 const NAV := [
 	{"id": "play", "name": "PlayButton", "label": "PLAY"},
@@ -340,23 +343,20 @@ static func _ensure_play_content(side: Control) -> void:
 	play.offset_top = 14
 	play.offset_right = -14
 	play.offset_bottom = -14
-	var heading := play.get_node_or_null("Heading") as Label
-	if heading == null:
-		heading = Label.new()
-		heading.name = "Heading"
-		play.add_child(heading)
-	heading.text = "PLAY"
-	heading.position = Vector2(0, 0)
-	heading.size = Vector2(400, 28)
-	_T.apply_label(heading, "ui")
+	# No "PLAY" heading — the banner art speaks for itself. Drop any old one.
+	var old_heading := play.get_node_or_null("Heading")
+	if old_heading:
+		old_heading.free()
+	var content_w := SIDE_SIZE.x - 28.0  # PlayContent inner width
+	var thumb_h := roundf(content_w / THUMB_ASPECT)
 	var thumb := play.get_node_or_null("ModeThumb") as Panel
 	if thumb == null:
 		thumb = Panel.new()
 		thumb.name = "ModeThumb"
 		play.add_child(thumb)
 	thumb.add_theme_stylebox_override("panel", _T.box(_T.GOLD_DIM, Color(0.05, 0.010, 0.014, 1), 1))
-	thumb.position = Vector2(0, 36)
-	thumb.size = Vector2(388, 92)
+	thumb.position = Vector2(0, 0)
+	thumb.size = Vector2(content_w, thumb_h)
 	thumb.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	var tex := thumb.get_node_or_null("Texture") as TextureRect
 	if tex == null:
@@ -379,8 +379,8 @@ static func _ensure_play_content(side: Control) -> void:
 		modes = VBoxContainer.new()
 		modes.name = "ModeList"
 		play.add_child(modes)
-	modes.position = Vector2(0, 138)
-	modes.size = Vector2(388, 300)
+	modes.position = Vector2(0, thumb_h + 12.0)
+	modes.size = Vector2(content_w, 300)
 	modes.add_theme_constant_override("separation", 6)
 	for mode_id in MODE_ORDER:
 		var node_name: String = MODE_NODE[mode_id]
@@ -408,7 +408,7 @@ static func _make_mode_button(mode_id: String, node_name: String) -> Button:
 	var btn := Button.new()
 	btn.name = node_name
 	btn.text = ""
-	btn.custom_minimum_size = Vector2(0, 52)
+	btn.custom_minimum_size = Vector2(0, 48)
 	btn.tooltip_text = spec["desc"]
 	var col := VBoxContainer.new()
 	col.name = "Col"
