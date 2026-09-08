@@ -113,7 +113,7 @@ func get_family_spawn_transform(family_index: int) -> Transform3D:
 
 func get_pm_spawn_transform() -> Transform3D:
 	if _pm_spawn == null:
-		return Transform3D(Basis.IDENTITY, Vector3(40.0, 0.2, 10.0))
+		return Transform3D(Basis.IDENTITY, Vector3(22.0, 3.6, 1.0))
 	return _pm_spawn.global_transform
 
 

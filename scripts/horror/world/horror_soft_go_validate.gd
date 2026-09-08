@@ -161,9 +161,9 @@ static func validate_l2_pin_homes(world: Node3D) -> String:
 		return "under_porch_crawl must be pin 9 — do not collapse onto basement"
 	if basement.global_position.distance_to(crawl.global_position) < 12.0:
 		return "basement and under_porch_crawl markers collapsed — place by eng id, not art pin 4"
-	## QA v2: pin 9 sits on the SE road bend, not the old House A porch.
+	## Kyle greybox: pin 9 sits on the SE road toward the east cliff, not House A porch.
 	if crawl.global_position.x < 20.0 or crawl.global_position.z < 8.0:
-		return "under_porch_crawl is not on the QA v2 SE road bend (xz=%.1f,%.1f)" % [
+		return "under_porch_crawl is not on the Kyle SE road (xz=%.1f,%.1f)" % [
 			crawl.global_position.x, crawl.global_position.z,
 		]
 	return ""
@@ -342,7 +342,7 @@ static func validate_v05_layout(world: Node3D) -> String:
 	if world.get_node_or_null("Outdoor/Roads") == null:
 		return "Outdoor/Roads (farm lanes / curbs) missing"
 	if world.get_node_or_null("Outdoor/Fields") == null:
-		return "Outdoor/Fields (L1b footprint) missing"
+		return "Outdoor/Fields (Kyle greybox footprint) missing"
 	var escape := world.get_node_or_null("Outdoor/HorrorEscapeZone")
 	if escape == null:
 		return "soft-gated HorrorEscapeZone missing"
@@ -371,7 +371,7 @@ static func validate_v05_layout(world: Node3D) -> String:
 	var span_x: float = max_x - min_x
 	var span_z: float = max_z - min_z
 	if span_x < 56.0 or span_x > 150.0 or span_z < 40.0 or span_z > 130.0:
-		return "L2 footprint span %.1fx%.1f not L1b farm (~80m+)" % [span_x, span_z]
+		return "L2 footprint span %.1fx%.1f not Kyle farm (~80m+)" % [span_x, span_z]
 	return ""
 
 
@@ -381,9 +381,25 @@ static func validate_outdoor_terrain(world: Node3D) -> String:
 		return "Outdoor missing"
 	var terrain := outdoor.get_node_or_null("Terrain")
 	if terrain == null:
-		return "Outdoor/Terrain missing (L1b farm heightfield)"
-	if terrain.get_node_or_null("CollisionShape3D") == null:
+		return "Outdoor/Terrain missing (Kyle T0 heightfield)"
+	if not FileAccess.file_exists("res://assets/horror/farm/kyle_T0_height_97x81.exr"):
+		return "Kyle T0 height EXR missing (kyle_T0_height_97x81.exr)"
+	if FileAccess.file_exists("res://assets/horror/farm/kyle_height_preview_NOISY_do_not_import.png"):
+		return "noisy height preview must not be imported"
+	var pads := outdoor.get_node_or_null("Pads")
+	if pads == null:
+		return "Outdoor/Pads missing — Kyle greybox pads"
+	for pad_name in ["Pad_FamilyA", "Pad_FamilyB", "Pad_FamilyC", "Pad_FamilyD", "Pad_Uncle", "Pad_UncleGarage"]:
+		if pads.get_node_or_null(pad_name) == null:
+			return "Kyle greybox pad missing: Outdoor/Pads/%s" % pad_name
+	var cs := terrain.get_node_or_null("CollisionShape3D") as CollisionShape3D
+	if cs == null or cs.shape == null:
 		return "Outdoor/Terrain missing collision"
+	var hm := cs.shape as HeightMapShape3D
+	if hm == null:
+		return "Outdoor/Terrain collision is not HeightMapShape3D"
+	if hm.map_width != 97 or hm.map_depth != 81:
+		return "Kyle T0 HeightMapShape3D must be 97x81, got %dx%d" % [hm.map_width, hm.map_depth]
 	var span_x: float = float(terrain.get_meta("span_x", 0.0))
 	var span_z: float = float(terrain.get_meta("span_z", 0.0))
 	if span_x < 80.0 or span_z < 64.0:
@@ -434,8 +450,8 @@ static func validate_hilltop_main_house(world: Node3D) -> String:
 		return "MainHouse missing on_hilltop meta"
 	if house.global_position.y < 3.5:
 		return "MainHouse is not on a hill (y=%.2f)" % house.global_position.y
-	if house.global_position.x < 28.0 or house.global_position.x > 52.0:
-		return "MainHouse xz is not on the L1b east house cluster"
+	if house.global_position.x < 14.0 or house.global_position.x > 40.0:
+		return "MainHouse xz is not on the Kyle hilltop"
 	if house.get_node_or_null("Core") == null:
 		return "MainHouse missing graybox Core"
 	return ""

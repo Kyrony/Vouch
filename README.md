@@ -86,17 +86,17 @@ field as a placeholder — session codes are post-MVP.
 | Puppet Master | Life steal aura (radius, then cooldown) | `E` |
 | All | Pause / release mouse | `Esc` |
 
-**Goal:** Host Match drops families on **outdoor farm pads** (west parcels) and the Puppet Master on the **east loop courtyard pad**. Walk rolling hills and asphalt lanes. One missing child is hidden at a random location among **11 alive-only spawn pins** (Leonardo L2 SoT ids — labeled **Spawn Point** boxes). Find the child marker, then reach the **soft-gated field exit** (west field, unmarked — master sheet has no escape routes). Phone LED is the only flashlight. PM wins if all survivors are drained before families escape with the child.
+**Goal:** Host Match drops families on **outdoor farm pads** (lower-west Family A–D) and the Puppet Master on the **hilltop mansion courtyard**. Walk rolling hills and asphalt lanes. One missing child is hidden at a random location among **11 alive-only spawn pins** (Leonardo L2 SoT ids — labeled **Spawn Point** boxes). Find the child marker, then reach the **soft-gated field exit** (west field, unmarked — master sheet has no escape routes). Phone LED is the only flashlight. PM wins if all survivors are drained before families escape with the child.
 
-### L1b farm country (terrain + roads + markers)
+### Kyle greybox farm (terrain + roads + markers)
 
-Layout SoT is Leonardo’s **farm-country** plates plus the QA **v2** sheet. Live Start Match instantiates the authored packed scene `scenes/Horror/HorrorWorld.tscn` — **no runtime terrain/road/neighborhood builder**. The farm is a **baked hilly heightfield** with one **hilltop main house** on the east cluster. No extra houses, bunkers, or masts. `NeighborhoodV05.OUTDOOR_ONLY` is **on**. L2 eng short ids stay 1:1 (CSV wins over plate typos). Pin 9 `under_porch_crawl` is on the SE road bend. Hold **Shift** to sprint at **1.4×** walk speed.
+Layout SoT is Kyle’s **greybox** plate (`kyle_greybox_layout`) plus height `kyle_T0_height_97x81.exr` (97×81 @ 1.5 m). Never import `kyle_height_preview_NOISY_do_not_import.png`. Live Start Match instantiates the authored packed scene `scenes/Horror/HorrorWorld.tscn` — **no runtime terrain/road/neighborhood builder**. The farm is a **solid HeightMapShape3D** with Family A–D west, Uncle+garage north of the hill, PM mansion on the hill, and an east cliff. No extra houses, bunkers, or masts. `NeighborhoodV05.OUTDOOR_ONLY` is **on**. L2 eng short ids stay 1:1 (CSV wins over plate typos). Pin 9 `under_porch_crawl` is on the SE road toward the cliff. Hold **Shift** to sprint at **1.4×** walk speed.
 
 **In-editor check (Kyle):**
 
 1. Open `project.godot` in Godot 4.3+, let it import, press **F5**.
 2. Home → **Play** → **Host Match** → **Start Match** (one player is enough).
-3. You should stand on **open farm terrain** (not inside a house or bunker). See rolling hills, farm lanes / the east road loop, and **11 labeled Spawn Point boxes**. The old `World/Outside` courtyard / mountain graybox stays hidden.
+3. You should stand on **open farm terrain** (not inside a house or bunker). See rolling hills, greybox pads / connecting roads, and **11 labeled Spawn Point boxes**. The old `World/Outside` courtyard / mountain graybox stays hidden.
 4. No house frames, CRAWL labels, utility poles, or radio masts. Phone LED is the only flashlight (`R` while holding the phone).
 5. Optional second instance: **Play → Join** (blank IP) — host-authoritative outdoor pads should match for the joiner.
 
