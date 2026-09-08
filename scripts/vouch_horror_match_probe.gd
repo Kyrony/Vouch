@@ -141,6 +141,7 @@ func _probe() -> String:
 	player.position = world.call("get_family_spawn_transform", 0).origin + Vector3(0, 1, 0)
 	player.set_multiplayer_authority(1)
 	match_node.get_node("PlayersContainer").add_child(player)
+	var horror_script: GDScript = load("res://scripts/horror/match_horror.gd") as GDScript
 	horror_script.call("attach_pm_controller", player)
 	horror_script.call("attach_pm_controller", player)
 	await physics_frame
