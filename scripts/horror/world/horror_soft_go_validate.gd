@@ -165,8 +165,14 @@ static func validate_live_start_match_world(world_root: Node) -> String:
 	var outside := world_root.get_node_or_null("Outside")
 	if outside and outside.visible:
 		return "World/Outside is still visible — Start Match leaked the courtyard/mountain graybox"
-	if outside and outside.get_node_or_null("MountainTerrain") != null:
-		return "World/Outside/MountainTerrain still in the live tree"
+	if outside:
+		if outside.get_node_or_null("MountainTerrain") != null:
+			return "World/Outside/MountainTerrain still in the live tree"
+		if outside.find_child("*", false, false) != null:
+			## Children may still be queued; wait one frame in the probe.
+			pass
+		for mesh in outside.find_children("*", "MeshInstance3D", true, false):
+			return "World/Outside still has mesh %s — courtyard must be emptied" % mesh.get_path()
 	var horror := world_root.get_node_or_null("Match/HorrorWorld") as Node3D
 	if horror == null:
 		return "Match/HorrorWorld missing after Start Match — live path did not load the farm"

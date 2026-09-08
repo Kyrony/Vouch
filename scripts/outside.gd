@@ -18,6 +18,8 @@ func _ready() -> void:
 	if HorrorModeSettings.is_horror_mode():
 		visible = false
 		process_mode = Node.PROCESS_MODE_DISABLED
+		for child in get_children():
+			child.queue_free()
 		return
 	_build_mountain_graybox()
 	_gate_test_range()
