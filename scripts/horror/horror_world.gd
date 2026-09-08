@@ -15,6 +15,9 @@ func _ready() -> void:
 	_suppress_parallel_worlds()
 	_bind_authored_spawns()
 	_ensure_placeholder_gun()
+	var clock := get_node_or_null("/root/MatchClock")
+	if clock and clock.has_method("apply_to_world"):
+		clock.call("apply_to_world", self)
 	print("[HorrorWorld] loaded authored farm scene family_pads=%d l2_markers=%d" % [
 		_family_spawns.size(), get_tree().get_nodes_in_group("child_spawn_points").size(),
 	])

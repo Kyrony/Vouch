@@ -19,6 +19,7 @@ config/icon="res://assets/brand/vouch_icon_128.png"
 [autoload]
 
 GameState="*res://scripts/autoload/game_state.gd"
+MatchClock="*res://scripts/autoload/match_clock.gd"
 FactionData="*res://scripts/autoload/faction_data.gd"
 NetworkManager="*res://scripts/autoload/network_manager.gd"
 ContactBook="*res://scripts/autoload/contact_book.gd"

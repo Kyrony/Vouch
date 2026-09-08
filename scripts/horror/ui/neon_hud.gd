@@ -53,6 +53,7 @@ var _tex_ability: Texture2D
 var _tex_key: Texture2D
 var _tex_child: Texture2D
 var _tex_reticle: Texture2D
+var _clock_label: Label
 
 
 func _ready() -> void:
@@ -66,6 +67,11 @@ func _ready() -> void:
 	_load_textures()
 	_build()
 	_refresh()
+	var clock := get_node_or_null("/root/MatchClock")
+	if clock and clock.has_signal("clock_updated") and not clock.clock_updated.is_connected(_on_match_clock):
+		clock.clock_updated.connect(_on_match_clock)
+		if clock.has_method("format_clock"):
+			_on_match_clock(float(clock.call("progress")), str(clock.call("format_clock")))
 
 
 func _process(_delta: float) -> void:
@@ -153,6 +159,7 @@ func _build() -> void:
 		return
 	_built = true
 	_build_objective()
+	_build_clock()
 	_build_vitals()
 	_build_prompt()
 	_build_devices()
@@ -207,6 +214,27 @@ func _build_objective() -> void:
 	sub.add_theme_color_override("font_color", _KIT.WHITE)
 	sub.add_theme_font_size_override("font_size", 12)
 	row.add_child(sub)
+
+
+func _on_match_clock(_progress: float, label: String) -> void:
+	if _clock_label:
+		_clock_label.text = label
+
+
+func _build_clock() -> void:
+	_clock_label = Label.new()
+	_clock_label.name = "MatchClockLabel"
+	_clock_label.text = "6:00 PM"
+	_clock_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+	_clock_label.set_anchors_preset(PRESET_TOP_RIGHT)
+	_clock_label.offset_left = -220
+	_clock_label.offset_top = 16
+	_clock_label.offset_right = -18
+	_clock_label.offset_bottom = 44
+	_clock_label.mouse_filter = MOUSE_FILTER_IGNORE
+	_clock_label.add_theme_font_size_override("font_size", 18)
+	_clock_label.add_theme_color_override("font_color", _KIT.YELLOW)
+	add_child(_clock_label)
 
 
 func _build_vitals() -> void:
