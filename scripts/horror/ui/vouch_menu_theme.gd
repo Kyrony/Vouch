@@ -4,14 +4,16 @@ class_name VouchMenuTheme
 ## Title art lives on MenuAtmosphere (menu_title_bg.png). Fiery VOUCH is MenuLogo.
 ## Does not load mansion-bg.png or modes/*.png.
 
-const BASE := Color(0.0196078, 0.0078431, 0.0117647, 1.0) ## #050203
+const BASE := Color(0.031372, 0.005882, 0.009803, 1.0) ## #080203 — darker, redder near-black
 const GOLD := Color(0.941176, 0.768627, 0.227451, 1.0) ## #f0c43a
 const GOLD_DIM := Color(0.788235, 0.635294, 0.152941, 1.0) ## #c9a227
 const BLOOD := Color(0.760784, 0.0941176, 0.0941176, 1.0) ## #c21818
 const BLOOD_DIM := Color(0.478431, 0.0588235, 0.0588235, 1.0) ## #7a0f0f
 const STONE := Color(0.78, 0.74, 0.68, 1.0)
 const STONE_DIM := Color(0.52, 0.48, 0.44, 1.0)
-const PANEL := Color(0.035, 0.016, 0.02, 0.94)
+const PANEL := Color(0.055, 0.011, 0.015, 0.96) ## dark blood-red panel fill
+## Faint warm-yellow bloom used for the menu chrome glow.
+const GLOW := Color(1.0, 0.84, 0.32, 1.0)
 const PLACEHOLDER := Color(0.0196078, 0.0078431, 0.0117647, 1.0) ## same as BASE — blank field
 const WHITE := Color(0.92, 0.90, 0.86, 1.0)
 
@@ -86,8 +88,10 @@ static func box(border: Color, fill: Color, border_w: int = 1, radius: int = 2, 
 	s.content_margin_top = 8
 	s.content_margin_bottom = 8
 	if glow:
-		s.shadow_color = Color(border.r, border.g, border.b, 0.55)
-		s.shadow_size = 12
+		# Faint warm-yellow bloom around the menu chrome (independent of the
+		# border ink so gold and blood panels share the same soft glow).
+		s.shadow_color = Color(GLOW.r, GLOW.g, GLOW.b, 0.30)
+		s.shadow_size = 16
 	return s
 
 
@@ -128,7 +132,7 @@ static func apply_nav_button(button: Button, selected: bool) -> void:
 
 
 static func apply_mode_button(button: Button, selected: bool) -> void:
-	var idle := box(Color(GOLD.r, GOLD.g, GOLD.b, 0.15), Color(0.03, 0.015, 0.018, 0.55), 1)
+	var idle := box(Color(GOLD.r, GOLD.g, GOLD.b, 0.15), Color(0.05, 0.010, 0.014, 0.6), 1)
 	var active := box(GOLD, Color(GOLD.r, GOLD.g, GOLD.b, 0.12), 2, 2, true)
 	button.flat = true
 	button.focus_mode = Control.FOCUS_ALL
@@ -151,7 +155,7 @@ static func apply_mode_button(button: Button, selected: bool) -> void:
 
 static func apply_action_button(button: Button, kind: String = "gold") -> void:
 	var border := GOLD if kind != "blood" else BLOOD
-	var fill := Color(0.06, 0.03, 0.02, 0.95)
+	var fill := Color(0.075, 0.016, 0.02, 0.96)
 	button.add_theme_stylebox_override("normal", box(border, fill, 2, 2, true))
 	button.add_theme_stylebox_override("hover", box(GOLD, Color(GOLD.r, GOLD.g, GOLD.b, 0.16), 2, 2, true))
 	button.add_theme_stylebox_override("pressed", box(BLOOD, Color(BLOOD.r, BLOOD.g, BLOOD.b, 0.18), 2, 2, true))

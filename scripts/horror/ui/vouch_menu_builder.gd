@@ -8,8 +8,13 @@ const _T: GDScript = preload("res://scripts/horror/ui/vouch_menu_theme.gd")
 const _GLYPH: GDScript = preload("res://scripts/horror/ui/nav_glyph.gd")
 const TITLE_BG := "res://assets/horror/ui/menu_title_bg.png"
 const LOGO := "res://assets/horror/ui/vouch_fiery_logo.png"
-const NAV_TOP := 320.0
-const LOGO_SIZE := Vector2(880, 260)
+const NAV_TOP := 168.0
+## Fiery VOUCH wordmark, shrunk well down from the old 880x260 plate so the
+## home page reads as a menu first and the art doesn't crowd the nav/side panel.
+const LOGO_SIZE := Vector2(317, 94)
+## Draw order for the interactive menu so it always sits in front of the
+## decorative logo and background plate ("most forward" when the menu opens).
+const MENU_FRONT_Z := 5
 
 const NAV := [
 	{"id": "play", "name": "PlayButton", "label": "PLAY", "glyph": "play"},
@@ -116,8 +121,9 @@ static func _ensure_vignette(lobby: Control) -> void:
 	dim.grow_horizontal = Control.GROW_DIRECTION_BOTH
 	dim.grow_vertical = Control.GROW_DIRECTION_BOTH
 	dim.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	# Light dim only — 38% black was swallowing Kyle's village plate.
-	dim.color = Color(0.012, 0.004, 0.01, 0.14)
+	# Deeper, red-tinted vignette for a darker mood (kept well under the 38%
+	# black that used to swallow Kyle's village plate).
+	dim.color = Color(0.02, 0.004, 0.008, 0.22)
 	var atmo := lobby.get_node_or_null("MenuAtmosphere")
 	if atmo:
 		lobby.move_child(dim, atmo.get_index() + 1)
@@ -223,6 +229,7 @@ static func _ensure_nav(home: Control) -> void:
 	nav.size = Vector2(300, 280)
 	nav.add_theme_constant_override("separation", 10)
 	nav.mouse_filter = Control.MOUSE_FILTER_STOP
+	nav.z_index = MENU_FRONT_Z
 	for spec in NAV:
 		var btn := nav.get_node_or_null(spec["name"]) as Button
 		if btn == null:
@@ -277,6 +284,7 @@ static func _ensure_side(home: Control) -> void:
 	side.offset_right = 860
 	side.offset_bottom = -48
 	side.mouse_filter = Control.MOUSE_FILTER_STOP
+	side.z_index = MENU_FRONT_Z
 	side.add_theme_stylebox_override("panel", _T.box(_T.GOLD, _T.PANEL, 1, 2, true))
 	_ensure_play_content(side)
 	_ensure_friends_content(side)
@@ -308,7 +316,7 @@ static func _ensure_play_content(side: Control) -> void:
 		thumb = Panel.new()
 		thumb.name = "ModeThumb"
 		play.add_child(thumb)
-	thumb.add_theme_stylebox_override("panel", _T.box(_T.GOLD_DIM, Color(0.03, 0.015, 0.02, 1), 1))
+	thumb.add_theme_stylebox_override("panel", _T.box(_T.GOLD_DIM, Color(0.05, 0.010, 0.014, 1), 1))
 	thumb.position = Vector2(0, 36)
 	thumb.size = Vector2(388, 92)
 	thumb.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -448,6 +456,7 @@ static func _ensure_toast(home: Control) -> void:
 		toast.name = "ToastLabel"
 		home.add_child(toast)
 	toast.visible = false
+	toast.z_index = MENU_FRONT_Z + 5
 	toast.set_anchors_preset(Control.PRESET_BOTTOM_WIDE)
 	toast.offset_left = 24
 	toast.offset_top = -40
