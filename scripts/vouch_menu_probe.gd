@@ -60,5 +60,22 @@ func _run() -> void:
 		push_error("VOUCH MENU PROBE FAILED: Settings panel hidden")
 		quit(1)
 		return
+	var settings := lobby.get_node("HomePanel/SidePanel/SettingsContent") as Control
+	for tab_name in ["KeybindsButton", "AudioButton", "VisualButton", "ControlsButton"]:
+		if settings.get_node_or_null("TabNav/%s" % tab_name) == null:
+			push_error("VOUCH MENU PROBE FAILED: settings tab missing %s" % tab_name)
+			quit(1)
+			return
+	var box: GDScript = load("res://scripts/horror/ui/settings_sidebox.gd")
+	box.call("set_tab", settings, "audio")
+	if not settings.get_node("MasterVolumeRow").visible:
+		push_error("VOUCH MENU PROBE FAILED: Audio tab did not show master volume")
+		quit(1)
+		return
+	box.call("set_tab", settings, "keybinds")
+	if not settings.get_node("KeybindsPanel").visible:
+		push_error("VOUCH MENU PROBE FAILED: Keybinds tab hidden")
+		quit(1)
+		return
 	print("VOUCH MENU PROBE OK")
 	quit(0)
