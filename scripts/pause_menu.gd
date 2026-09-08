@@ -63,7 +63,7 @@ func show_settings() -> void:
 		_settings_dock.visible = true
 	if _settings_root:
 		_SETTINGS.call("wire", _settings_root)
-		_SETTINGS.call("set_tab", _settings_root, "keybinds")
+		_SETTINGS.call("set_tab", _settings_root, "controls")
 	Input.mouse_mode = Input.MOUSE_MODE_VISIBLE
 
 
@@ -82,7 +82,7 @@ func _show_pause_buttons() -> void:
 func _style_pause_panel() -> void:
 	var kit: GDScript = load("res://scripts/horror/ui/ui_kit.gd")
 	if kit:
-		kit.call("apply_buttons", self, ["KeybindsButton", "AudioButton", "VisualButton", "ControlsButton", "SaveButton"])
+		kit.call("apply_buttons", self, ["ControlsButton", "VisualButton", "AudioButton", "KeybindsButton", "SaveButton"])
 	var panel := get_node_or_null("Panel") as PanelContainer
 	if panel:
 		panel.add_theme_stylebox_override("panel", _T.box(_T.GOLD, _T.PANEL, 1, 2, true))

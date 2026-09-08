@@ -1,15 +1,16 @@
 extends RefCounted
 class_name SettingsSidebox
-## Tabbed Keybinds / Audio / Visual / Controls panel for the VouchMenu
+## Tabbed Controls / Visual / Audio / Keybinds panel for the VouchMenu
 ## sidebox and the in-match pause menu. Same gold-blood nav look.
 
 const _T: GDScript = preload("res://scripts/horror/ui/vouch_menu_theme.gd")
+const DEFAULT_TAB := "controls"
 
 const TABS: Array[Dictionary] = [
-	{"id": "keybinds", "name": "KeybindsButton", "label": "KEYBINDS"},
-	{"id": "audio", "name": "AudioButton", "label": "AUDIO"},
-	{"id": "visual", "name": "VisualButton", "label": "VISUAL"},
 	{"id": "controls", "name": "ControlsButton", "label": "CONTROLS"},
+	{"id": "visual", "name": "VisualButton", "label": "VISUAL"},
+	{"id": "audio", "name": "AudioButton", "label": "AUDIO"},
+	{"id": "keybinds", "name": "KeybindsButton", "label": "KEYBINDS"},
 ]
 
 const TAB_NODES := {
@@ -71,7 +72,7 @@ static func ensure(root: Control) -> void:
 	_T.apply_action_button(save, "gold")
 	_layout_tab_bodies(root)
 	if not root.has_meta("settings_tab"):
-		set_tab(root, "keybinds")
+		set_tab(root, DEFAULT_TAB)
 	else:
 		set_tab(root, str(root.get_meta("settings_tab")))
 
@@ -113,7 +114,7 @@ static func set_tab(root: Control, tab_id: String) -> void:
 	if root == null:
 		return
 	if not TAB_NODES.has(tab_id):
-		tab_id = "keybinds"
+		tab_id = DEFAULT_TAB
 	root.set_meta("settings_tab", tab_id)
 	var visible_names: Array = TAB_NODES[tab_id]
 	var all_names: Array[String] = []
@@ -158,7 +159,7 @@ static func refresh(root: Control) -> void:
 	if full:
 		full.set_pressed_no_signal(SettingsManager.fullscreen)
 	_refresh_keybinds(root)
-	set_tab(root, str(root.get_meta("settings_tab", "keybinds")))
+	set_tab(root, str(root.get_meta("settings_tab", DEFAULT_TAB)))
 
 
 static func _ensure_tab_nav(root: Control) -> void:
@@ -171,12 +172,15 @@ static func _ensure_tab_nav(root: Control) -> void:
 	nav.size = Vector2(460, 40)
 	nav.add_theme_constant_override("separation", 4)
 	nav.mouse_filter = Control.MOUSE_FILTER_STOP
+	var tab_index := 0
 	for spec in TABS:
 		var btn := nav.get_node_or_null(spec["name"]) as Button
 		if btn == null:
 			btn = Button.new()
 			btn.name = spec["name"]
 			nav.add_child(btn)
+		nav.move_child(btn, tab_index)
+		tab_index += 1
 		btn.text = ""
 		btn.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		btn.custom_minimum_size = Vector2(0, 36)
@@ -200,7 +204,7 @@ static func _ensure_tab_nav(root: Control) -> void:
 		caption.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		caption.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 		caption.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-		_T.apply_nav_button(btn, spec["id"] == "keybinds")
+		_T.apply_nav_button(btn, spec["id"] == DEFAULT_TAB)
 		_shrink_tab_caption(btn)
 
 
