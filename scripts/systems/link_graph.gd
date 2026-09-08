@@ -1,29 +1,10 @@
 extends Node
-## LinkGraph
+## LinkGraph — server-only "mystery control" backbone.
 ##
-## The "mystery control" backbone. A control (light switch, water valve,
-## ...) in one player's room is secretly wired to an effect (a light, a
-## broken pipe, ...) in a DIFFERENT player's room. Nobody is ever told the
-## wiring:
-##   - The activator only gets ambiguous LOCAL feedback (a tick/buzz) that
-##     something happened - not what, not who.
-##   - The affected player only gets a clear LOCAL event at their own prop -
-##     they feel the effect, but don't know who caused it.
-##
-## Controls/effects are grouped into "channels" (e.g. "light", "flood") -
-## a control only ever links to an effect in the SAME channel, so a light
-## switch never accidentally "controls" a broken pipe. Within each
-## channel, pairing uses a guaranteed derangement (rotate-by-one over a
-## shuffled room order) so **no control ever links to its own room's
-## effect** - this isn't just "usually avoided", it's mathematically
-## guaranteed whenever a channel has 2+ rooms, which is exactly what the
-## Puppet Master rule ("his controls must never affect his own room")
-## needs, and it's a nicer guarantee for everyone else too.
-##
-## This keeps the server as the only place that ever knows the full graph,
-## which is exactly what a "mystery" system requires.
-##
-## TODO(post-MVP): multi-hop chains, per-round graph reshuffles.
+## Secretly wires a control (switch/valve) in one room to an effect in a
+## DIFFERENT room within the same channel ("light", "flood"). A guaranteed
+## derangement ensures no control ever links to its own room (the Puppet
+## Master rule). Only the server ever knows the full graph.
 
 ## control_id -> {"node": Node, "room_index": int, "channel": String}. Server-only.
 var _control_nodes: Dictionary = {}

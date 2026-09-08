@@ -1,17 +1,10 @@
 extends Node
 ## RoomUtilities
 ##
-## Per-room utility state: Power, Water, Gas, and Communication. Each
-## room starts with all four ON at match start. Mystery controls, the
-## electrical-box puzzle, and sabotage can flip individual utilities OFF
-## in target rooms. Existing systems hook in here:
-##   - light  channel -> power
-##   - flood  channel -> water
-##   - gas    channel -> gas (stub effect: toast only for now)
-##   - comms  channel -> communication (blocks phone when off)
-##
-## State is replicated to every peer so local UI/feedback works without
-## leaking who caused what.
+## Per-room Power/Water/Gas/Communication state, all ON at match start.
+## Mystery controls, the electrical-box puzzle, and sabotage flip them OFF
+## per room (light->power, flood->water, gas->gas, comms->communication).
+## State is replicated to every peer without leaking who caused what.
 
 signal utility_changed(room_index: int, utility: String, enabled: bool)
 

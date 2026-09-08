@@ -4,15 +4,14 @@ extends Node
 ## Towers + phones are the horror trust tools (limited radii). Soft-go stub:
 ## a short scratch on the slate, never a voice or SMS claim.
 
-const ACTIVE_COUNT: int = 3
+# ── TUNABLES — tweak these to balance gameplay ──
+const ACTIVE_COUNT: int = 3  # active masts per match
 ## L3 phone/mast bands. Service = full scratch, weak = degraded, dead = none.
-const SERVICE_RADIUS: float = 7.0
-const WEAK_RADIUS: float = 14.0
-const TOWER_RADIUS: float = WEAK_RADIUS
-const PHONE_SERVICE_RADIUS: float = 4.0
-const PHONE_WEAK_RADIUS: float = 8.0
-const PHONE_RADIUS: float = PHONE_WEAK_RADIUS
-const NEAR_PM_MAX: float = 20.0
+const SERVICE_RADIUS: float = 7.0  # mast full-service reach (m)
+const WEAK_RADIUS: float = 14.0  # mast degraded reach (m)
+const PHONE_SERVICE_RADIUS: float = 4.0  # phone full-service reach (m)
+const PHONE_WEAK_RADIUS: float = 8.0  # phone degraded reach (m)
+const NEAR_PM_MAX: float = 20.0  # forced-mast search radius (m)
 
 var _active_ids: Array[String] = []
 var _forced_id: String = ""

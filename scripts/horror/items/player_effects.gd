@@ -10,12 +10,12 @@ signal meters_changed(peer_id: int, health: float, stamina: float, fear: float)
 signal local_meters_changed(health: float, stamina: float, fear: float)
 signal local_effect_state(effect_id: String, time_left: float, cooldown_left: float, duration: float, cooldown: float)
 
-const DEFAULT_MAX: float = 100.0
+# ── TUNABLES — tweak these to balance gameplay ──
+const DEFAULT_MAX: float = 100.0  # starting cap for meters
 ## Sprint drain / walk-idle regen. Full bar lasts 5s of sprint; refill ~10s.
 const STAMINA_DRAIN_PER_SEC: float = 20.0
 const STAMINA_REGEN_PER_SEC: float = 10.0
-const STAMINA_REGEN: float = STAMINA_REGEN_PER_SEC
-const FEAR_DECAY: float = 3.0
+const FEAR_DECAY: float = 3.0  # fear points shed per second
 
 var _health: Dictionary = {}
 var _stamina: Dictionary = {}

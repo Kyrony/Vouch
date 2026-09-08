@@ -20,22 +20,20 @@ class_name Player
 
 enum Modal { NONE, PHONE, KEYPAD, BINARY, WALKIE, PAUSE }
 
-const SPEED: float = 4.5
-const SPRINT_MULTIPLIER: float = 1.4
+# ── TUNABLES — tweak these to balance gameplay ──
+const SPEED: float = 4.5  # base walk speed (m/s)
+const SPRINT_MULTIPLIER: float = 1.4  # sprint = SPEED * this
 const STAMINA_EMPTY: float = 0.5
 const STAMINA_RESUME: float = 12.0
-const JUMP_VELOCITY: float = 3.2
-const MOUSE_SENSITIVITY: float = 0.0025
+const JUMP_VELOCITY: float = 3.2  # initial jump impulse
+const MOUSE_SENSITIVITY: float = 0.0025  # radians per pixel
 const TOAST_DURATION: float = 4.5
-const CLIMB_SPEED: float = 3.0
-const DESTROY_HOLD_DURATION: float = 1.2
+const CLIMB_SPEED: float = 3.0  # ladder climb speed (m/s)
+const DESTROY_HOLD_DURATION: float = 1.2  # hold-to-destroy seconds
 const PAPER_REVEAL_RADIUS: float = 2.0
 const PAPER_BURN_RADIUS: float = 0.7
 const PAPER_REVEAL_TIME: float = 1.5
 const PAPER_BURN_TIME: float = 1.2
-## *** TEST-ONLY - REMOVE BEFORE FULL RELEASE. *** Range of the pickup
-## test gun's raycast - see Gun.gd/DummyTarget.gd.
-const FIRE_RANGE: float = 60.0
 
 const _PATHS: GDScript = preload("res://scripts/interactable_script_paths.gd")
 const _TEST_PROJECTILE_SCRIPT: Script = preload("res://scripts/interactables/test_projectile.gd")
@@ -91,7 +89,6 @@ var _paper_revealed: bool = false
 var has_gun: bool = false
 
 var _binary_terminal: Node = null
-var _binary_bit_labels: Array[Label] = []
 var _binary_panel: Panel
 var _binary_target_label: Label
 var _binary_bits_label: Label

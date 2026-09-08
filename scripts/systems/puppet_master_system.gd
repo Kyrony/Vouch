@@ -1,39 +1,17 @@
 extends Node
 ## PuppetMasterSystem
 ##
-## The Puppet Master is a fifth, independent role - not part of any of the
-## rival factions. Their room has no escape. Their goal is to eliminate
-## every other player before any faction fully escapes.
-##
-## Win/lose rule (see docs/MVP_GDD.md "Puppet Master" for the full writeup):
-##   - Puppet Master WINS if every other player is eliminated before any
-##     faction fully escapes.
-##   - Otherwise, the first faction to fully escape wins as normal, and
-##     the Puppet Master loses.
-## Whichever happens first ends the match (`GameState.phase` flips to
-## MATCH_OVER exactly once).
-##
-## At match start the PM is granted:
-##   - a small "camera + sabotage" set (`_granted_targets`, a handful of
-##     rooms) - camera access is a client-side rendering trick (see
-##     Player.gd's camera-feed panel), sabotage reuses LinkGraph's
-##     per-room effect nodes (e.g. flicking a light).
-##   - the FULL list of every other room (`_eliminable_targets`) - the
-##     "kill everyone" goal would be impossible if elimination were
-##     limited to the same small camera set, so elimination is only
-##     gated by "is this actually a live, non-PM room", not by camera
-##     access. Narratively: the PM can see/sabotage only a few rooms
-##     directly, but can still act on anyone once they're sure who's who.
-## None of this is sent to anyone but the PM.
-##
-## TODO(post-MVP): more sabotage verbs beyond "toggle the room light",
-## a real elimination limitation (cooldowns, proximity, requiring some
-## other clue first, etc.), and Puppet Master-specific UI polish.
+## A fifth, independent role with no escape. The PM WINS by eliminating
+## every other player before any faction fully escapes; otherwise the first
+## faction to escape wins. Whichever happens first flips GameState.phase to
+## MATCH_OVER once. PM state (camera+sabotage set, eliminable rooms) is sent
+## only to the PM.
 
 signal you_are_puppet_master(camera_targets: Array, eliminable_targets: Array)
 signal sabotage_result(room_index: int, success: bool)
 signal you_were_eliminated
 
+# ── TUNABLES — tweak these to balance gameplay ──
 ## The Puppet Master can only ever be in play with at least this many
 ## players - below that, a solo "hunt everyone" role doesn't make sense.
 const MIN_PLAYERS_FOR_PUPPET_MASTER: int = 4

@@ -1,19 +1,10 @@
 extends Node
 ## GameState
 ##
-## Match-wide state, kept host-authoritative. The full `players` roster
-## (faction, room, escape/elimination status, ...) only ever holds
-## complete data on the host/server. Clients are deliberately NOT sent the
-## full roster - each client only ever learns its own faction id (see
-## `local_faction_id`) so a player can never see a teammate list mid-round,
-## per the design lock. The one exception is the pre-match LOBBY roster
-## (name + connected slot only, no faction/role info) which IS broadcast to
-## everyone so players can see who's joined before the host starts -
-## see `NetworkManager.lobby_roster`.
-##
-## TODO(post-MVP): replace the plain Dictionary roster with a proper
-## replicated resource once lobby settings (faction count, room count,
-## timers) need to be synced too.
+## Host-authoritative match state. The full `players` roster is complete
+## only on the host; clients learn just their own faction id (see
+## `local_faction_id`), never a teammate list mid-round. The one exception
+## is the pre-match LOBBY roster (name + slot only), broadcast to everyone.
 
 # Emitted from other classes (network_manager, escape_system, player_health,
 # puppet_master_system), so GDScript's same-class check flags them as unused.

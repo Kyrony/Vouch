@@ -1,22 +1,10 @@
 extends Node
 ## PhoneSystem
 ##
-## Bunker phones are unknown/random lines: a caller cannot pick who they're
-## calling. MVP only implements the text-first flow (dial -> send a short
-## text -> server randomly routes it to some other living, non-escaped,
-## non-eliminated player). Voice and player-chosen targeting are
-## explicitly out of scope for MVP (see docs/MVP_GDD.md).
-##
-## Every peer is given an opaque, per-match "line_id" (e.g. "Line 07") -
-## NOT their peer_id - and incoming texts are tagged with the SENDER's
-## line_id instead of a generic "Unknown Line" literal. This still tells
-## the recipient nothing about who's calling, but it lets them tell
-## multiple different anonymous callers apart across a match, which is
-## what makes ContactBook's local rename-a-line feature meaningful
-## ("I think Line 07 is Sam, Line 12 is someone else").
-##
-## TODO(post-MVP): voice lines, line "busy"/cooldown state, PA/window/note
-## comms reusing this same routing core.
+## Text-only anonymous comms: dial -> send a text -> server routes it to a
+## random living, non-escaped player (no target picking). Each peer gets an
+## opaque per-match "line_id" (not peer_id); texts are tagged with the
+## sender's line_id so recipients can tell callers apart and rename them.
 
 signal text_received(from_label: String, message: String)
 signal text_sent_confirmation()
