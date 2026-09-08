@@ -307,29 +307,10 @@ static func _ensure_side(home: Control) -> void:
 	_ensure_play_content(side)
 	_ensure_friends_content(side)
 	_ensure_settings_content(side)
-	_ensure_close_button(side)
-
-
-## Small ✕ in the top-right corner that closes the centered side box.
-static func _ensure_close_button(side: Control) -> void:
-	var close := side.get_node_or_null("CloseButton") as Button
-	if close == null:
-		close = Button.new()
-		close.name = "CloseButton"
-		side.add_child(close)
-	side.move_child(close, side.get_child_count() - 1)
-	close.text = "✕"
-	close.focus_mode = Control.FOCUS_NONE
-	close.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
-	close.mouse_filter = Control.MOUSE_FILTER_STOP
-	close.z_index = MENU_FRONT_Z + 1
-	close.set_anchors_preset(Control.PRESET_TOP_RIGHT)
-	close.offset_left = -40
-	close.offset_top = 6
-	close.offset_right = -8
-	close.offset_bottom = 38
-	_T.apply_action_button(close, "blood")
-	close.add_theme_font_size_override("font_size", 16)
+	# Close via Esc or clicking outside the box — no ✕ button.
+	var old_close := side.get_node_or_null("CloseButton")
+	if old_close:
+		old_close.free()
 
 
 static func _ensure_play_content(side: Control) -> void:
