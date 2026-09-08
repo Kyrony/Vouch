@@ -22,6 +22,8 @@ enum Modal { NONE, PHONE, KEYPAD, BINARY, WALKIE, PAUSE }
 
 const SPEED: float = 4.5
 const SPRINT_MULTIPLIER: float = 1.4
+const STAMINA_EMPTY: float = 0.5
+const STAMINA_RESUME: float = 12.0
 const JUMP_VELOCITY: float = 3.2
 const MOUSE_SENSITIVITY: float = 0.0025
 const TOAST_DURATION: float = 4.5
@@ -69,6 +71,7 @@ const _TEST_PROJECTILE_SCRIPT: Script = preload("res://scripts/interactables/tes
 var _gravity: float = ProjectSettings.get_setting("physics/3d/default_gravity")
 var _active_modal: Modal = Modal.NONE
 var _eliminated: bool = false
+var _spectating: bool = false
 var _keypad_room_index: int = -1
 var _keypad_digits: String = ""
 var _renaming_line_id: String = ""
@@ -120,6 +123,11 @@ var _neon_hud: Control = null
 var _local_health: float = 100.0
 var _local_stamina: float = 100.0
 var _local_max_health: float = 100.0
+var _is_sprinting: bool = false
+var _stamina_exhausted: bool = false
+var _stamina_sync_accum: float = 0.0
+var _last_synced_stamina: float = 100.0
+var _last_synced_sprinting: bool = false
 var _inventory_slots: Array = []
 var _inventory_selected: int = 0
 var _phone_rig: Node3D = null
@@ -172,6 +180,7 @@ func _ready() -> void:
 			PlayerEffects.local_meters_changed.connect(_on_local_meters_changed)
 			PhoneDevice.local_phone_state.connect(_on_local_phone_state)
 		_pause_menu = get_node_or_null("/root/Main/PauseMenu")
+		_wire_lose_overlay()
 	else:
 		camera.current = false
 		hud.visible = false
@@ -180,7 +189,10 @@ func _ready() -> void:
 
 
 func _unhandled_input(event: InputEvent) -> void:
-	if not is_multiplayer_authority() or _eliminated:
+	if not is_multiplayer_authority():
+		return
+	if _eliminated:
+		_handle_eliminated_input(event)
 		return
 
 	if event.is_action_pressed("ui_cancel"):
@@ -243,9 +255,12 @@ func _physics_process(delta: float) -> void:
 	if not _eliminated:
 		_update_crouch_state()
 		if _on_ladder and not locked:
+			_is_sprinting = false
 			_apply_ladder_velocity()
 		else:
 			_apply_ground_velocity(delta, locked)
+
+		_tick_authority_stamina(delta)
 
 		if horror_mode and is_horror_puppet_master:
 			_pm_controller = get_node_or_null("PuppetMasterController")
@@ -280,8 +295,9 @@ func _apply_ground_velocity(delta: float, locked: bool) -> void:
 	var current_room: int = WorldScale.world_position_to_room_index(global_position)
 	var water_level: float = GameState.room_water_levels.get(current_room, 0.0)
 	var want_sprint := (not locked) and (not _crouching) and Input.is_action_pressed("sprint") and direction != Vector3.ZERO
-	if horror_mode and _local_stamina <= 0.5:
+	if horror_mode and not sprint_allowed(_local_stamina, _stamina_exhausted):
 		want_sprint = false
+	_is_sprinting = want_sprint
 	var effective_speed := move_speed_for(want_sprint, _crouching, water_level)
 
 	if direction:
@@ -299,6 +315,58 @@ static func move_speed_for(sprinting: bool, crouching: bool = false, water_level
 	if sprinting:
 		return speed * SPRINT_MULTIPLIER
 	return speed
+
+
+static func sprint_allowed(stamina: float, exhausted: bool = false) -> bool:
+	if exhausted:
+		return stamina >= STAMINA_RESUME
+	return stamina > STAMINA_EMPTY
+
+
+func _tick_authority_stamina(delta: float) -> void:
+	if not is_multiplayer_authority() or _eliminated or not horror_mode:
+		return
+	var was_sprinting := _is_sprinting
+	_local_stamina = PlayerEffects.tick_stamina(_local_stamina, _is_sprinting, delta)
+	if _is_sprinting and _local_stamina <= STAMINA_EMPTY:
+		_stamina_exhausted = true
+		_is_sprinting = false
+	elif _local_stamina >= STAMINA_RESUME:
+		_stamina_exhausted = false
+	if was_sprinting and not sprint_allowed(_local_stamina, _stamina_exhausted):
+		# Empty bar cannot keep the 1.4× bonus for the rest of this frame.
+		var water_level: float = GameState.room_water_levels.get(WorldScale.world_position_to_room_index(global_position), 0.0)
+		var walk := move_speed_for(false, _crouching, water_level)
+		if Vector2(velocity.x, velocity.z).length() > walk + 0.01:
+			var planar := Vector3(velocity.x, 0.0, velocity.z)
+			if planar.length() > 0.001:
+				planar = planar.normalized() * walk
+				velocity.x = planar.x
+				velocity.z = planar.z
+	_refresh_vital_meters()
+	_replicate_stamina(delta)
+
+
+func _refresh_vital_meters() -> void:
+	if _neon_hud:
+		_neon_hud.set_meters(_local_health, _local_max_health, _local_stamina, _local_fear)
+
+
+func _replicate_stamina(delta: float) -> void:
+	if not horror_mode:
+		return
+	if multiplayer.is_server():
+		PlayerEffects.server_set_sprinting(multiplayer.get_unique_id(), _is_sprinting)
+		PlayerEffects.server_set_stamina(multiplayer.get_unique_id(), _local_stamina, false)
+		return
+	_stamina_sync_accum += delta
+	var changed := absf(_local_stamina - _last_synced_stamina) >= 1.0 or _is_sprinting != _last_synced_sprinting
+	if _stamina_sync_accum < 0.1 and not changed:
+		return
+	_stamina_sync_accum = 0.0
+	_last_synced_stamina = _local_stamina
+	_last_synced_sprinting = _is_sprinting
+	PlayerEffects.request_set_stamina.rpc_id(1, _local_stamina, _is_sprinting)
 
 
 func _apply_ladder_velocity() -> void:
@@ -1057,7 +1125,10 @@ func apply_eliminated_visual() -> void:
 	if _eliminated:
 		return
 	_eliminated = true
-	visible = false
+	_spectating = false
+	var mesh := get_node_or_null("MeshInstance3D")
+	if mesh:
+		mesh.visible = false
 	for child in get_children():
 		if child is CollisionShape3D:
 			child.disabled = true
@@ -1068,7 +1139,113 @@ func apply_eliminated_visual() -> void:
 		keypad_panel.visible = false
 		_set_interact_prompt(false)
 		destroy_progress_bar.visible = false
-		eliminated_overlay.visible = true
+		if is_instance_valid(_pause_menu) and _pause_menu.visible:
+			if _pause_menu.has_method("dismiss_for_exit"):
+				_pause_menu.dismiss_for_exit()
+			else:
+				_pause_menu.visible = false
+				get_tree().paused = false
+		_show_lose_overlay()
+
+
+func _wire_lose_overlay() -> void:
+	if eliminated_overlay == null:
+		return
+	_ensure_lose_buttons()
+	var exit_btn := eliminated_overlay.get_node_or_null("ButtonRow/ExitButton") as Button
+	var spec_btn := eliminated_overlay.get_node_or_null("ButtonRow/SpectateButton") as Button
+	if exit_btn and not exit_btn.pressed.is_connected(_on_lose_exit_pressed):
+		exit_btn.pressed.connect(_on_lose_exit_pressed)
+	if spec_btn and not spec_btn.pressed.is_connected(_on_lose_spectate_pressed):
+		spec_btn.pressed.connect(_on_lose_spectate_pressed)
+
+
+func _ensure_lose_buttons() -> void:
+	if eliminated_overlay == null:
+		return
+	var title := eliminated_overlay.get_node_or_null("Label") as Label
+	if title:
+		title.text = "YOU LOST"
+		title.offset_top = -90
+		title.offset_bottom = -30
+	var sub := eliminated_overlay.get_node_or_null("SubLabel") as Label
+	if sub == null:
+		sub = Label.new()
+		sub.name = "SubLabel"
+		eliminated_overlay.add_child(sub)
+		sub.set_anchors_preset(Control.PRESET_CENTER)
+		sub.offset_left = -240
+		sub.offset_top = -24
+		sub.offset_right = 240
+		sub.offset_bottom = 16
+	sub.text = "The neighborhood keeps moving without you."
+	sub.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	sub.add_theme_font_size_override("font_size", 16)
+	sub.add_theme_color_override("font_color", Color(0.78, 0.74, 0.68, 1))
+	var row := eliminated_overlay.get_node_or_null("ButtonRow") as HBoxContainer
+	if row == null:
+		row = HBoxContainer.new()
+		row.name = "ButtonRow"
+		eliminated_overlay.add_child(row)
+		row.set_anchors_preset(Control.PRESET_CENTER)
+		row.offset_left = -200
+		row.offset_top = 36
+		row.offset_right = 200
+		row.offset_bottom = 88
+		row.add_theme_constant_override("separation", 16)
+		row.alignment = BoxContainer.ALIGNMENT_CENTER
+	var exit_btn := row.get_node_or_null("ExitButton") as Button
+	if exit_btn == null:
+		exit_btn = Button.new()
+		exit_btn.name = "ExitButton"
+		row.add_child(exit_btn)
+	exit_btn.text = "EXIT"
+	exit_btn.custom_minimum_size = Vector2(180, 46)
+	var spec_btn := row.get_node_or_null("SpectateButton") as Button
+	if spec_btn == null:
+		spec_btn = Button.new()
+		spec_btn.name = "SpectateButton"
+		row.add_child(spec_btn)
+	spec_btn.text = "SPECTATE"
+	spec_btn.custom_minimum_size = Vector2(180, 46)
+	var theme: GDScript = load("res://scripts/horror/ui/vouch_menu_theme.gd")
+	if theme:
+		theme.call("apply_action_button", exit_btn, "blood")
+		theme.call("apply_action_button", spec_btn, "gold")
+
+
+func _show_lose_overlay() -> void:
+	_ensure_lose_buttons()
+	eliminated_overlay.visible = true
+	Input.mouse_mode = Input.MOUSE_MODE_VISIBLE
+
+
+func _handle_eliminated_input(event: InputEvent) -> void:
+	if event.is_action_pressed("ui_cancel"):
+		if _spectating:
+			_spectating = false
+			_show_lose_overlay()
+		return
+	if not _spectating:
+		return
+	if event is InputEventMouseMotion and Input.mouse_mode == Input.MOUSE_MODE_CAPTURED:
+		var sensitivity := MOUSE_SENSITIVITY * SettingsManager.mouse_sensitivity
+		rotate_y(-event.relative.x * sensitivity)
+		head.rotate_x(-event.relative.y * sensitivity)
+		head.rotation.x = clamp(head.rotation.x, -1.3, 1.3)
+
+
+func _on_lose_exit_pressed() -> void:
+	Input.mouse_mode = Input.MOUSE_MODE_VISIBLE
+	get_tree().paused = false
+	GameState.request_return_to_lobby()
+
+
+func _on_lose_spectate_pressed() -> void:
+	_spectating = true
+	eliminated_overlay.visible = false
+	Input.mouse_mode = Input.MOUSE_MODE_CAPTURED
+	_show_toast("Spectating — Esc returns to the end screen.")
 
 
 # --- Toast (brief on-screen text for clue reveals, lock feedback, ...) --
@@ -1127,16 +1304,18 @@ func _style_horror_phone_panel() -> void:
 func _on_local_health_changed(hp: float, cap: float) -> void:
 	_local_health = hp
 	_local_max_health = cap
-	if _neon_hud:
-		_neon_hud.set_meters(hp, cap, _stamina_bar.value if _stamina_bar else 100.0, _fear_bar.value if _fear_bar else 0.0)
+	_refresh_vital_meters()
 
 
 func _on_local_meters_changed(hp: float, stamina: float, fear: float) -> void:
 	_local_health = hp
-	_local_stamina = stamina
 	_local_fear = fear
+	# Owning peer already ticks sprint drain/regen; don't let the 10 Hz
+	# PlayerEffects broadcast rewind the live yellow bar.
+	if not is_multiplayer_authority():
+		_local_stamina = stamina
+	_refresh_vital_meters()
 	if _neon_hud:
-		_neon_hud.set_meters(hp, _local_max_health, stamina, fear)
 		_sync_horror_hud_signal()
 
 

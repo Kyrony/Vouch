@@ -16,13 +16,17 @@ const EXPECTED_SLOT_COUNT: int = 16
 @onready var pause_menu: Node = $PauseMenu
 @onready var debug_gui: Node = $DebugGui
 
+var _returning_to_lobby: bool = false
+
 
 func _ready() -> void:
 	world.visible = false
 	GameState.match_started.connect(_on_match_started)
+	GameState.return_to_lobby_requested.connect(_return_to_lobby)
 	pause_menu.exit_requested.connect(_on_pause_exit)
 	pause_menu.settings_requested.connect(_on_pause_settings)
 	pause_menu.debug_gui_requested.connect(_on_pause_debug)
+	NetworkManager.disconnected_from_server.connect(_on_disconnected_from_server)
 	if OS.get_environment("VOUCH_PLAYABLE_LOOP_TEST") == "1":
 		call_deferred("_run_playable_loop_test")
 	elif OS.get_environment("VOUCH_HORROR_MATCH_TEST") == "1":
@@ -125,6 +129,10 @@ func _probe_horror_match() -> String:
 	if not InputMap.has_action("sprint") or absf(sprint_speed / walk_speed - 1.4) > 0.001:
 		NetworkManager.leave_game()
 		return "sprint is missing or not 1.4x walk"
+	var stamina_err: String = _CHECK.call("validate_sprint_stamina")
+	if not stamina_err.is_empty():
+		NetworkManager.leave_game()
+		return stamina_err
 	print("  horror spawns=%d pickups=%d child_points=%d towers=%d house=%s sprint=%.2fx pins=%s" % [
 		spawn_count, pickups.get_child_count(), child_points.size(), TowerRules.get_active_ids().size(),
 		world_node.get_node("Outdoor/MainHouse").global_position,
@@ -532,21 +540,45 @@ func _on_match_started() -> void:
 
 
 func _on_pause_exit() -> void:
-	get_tree().paused = false
-	var match_node: Node = world.get_node_or_null("Match")
-	if match_node and match_node.has_method("teardown_match_geometry"):
-		match_node.teardown_match_geometry()
-	GameState.phase = GameState.Phase.LOBBY
-	world.visible = false
-	lobby.visible = true
+	_return_to_lobby()
 
 
 func _on_pause_settings() -> void:
-	if is_instance_valid(GameState.local_player_node) and GameState.local_player_node.has_method("_show_toast"):
-		GameState.local_player_node._show_toast("Open Home → Settings before your next match.")
+	if is_instance_valid(pause_menu) and pause_menu.has_method("show_settings"):
+		pause_menu.show_settings()
 
 
 func _on_pause_debug() -> void:
 	pause_menu.hide_menu()
 	if debug_gui.has_method("_toggle"):
 		debug_gui._toggle()
+
+
+func _on_disconnected_from_server() -> void:
+	if world.visible or GameState.phase != GameState.Phase.LOBBY:
+		_return_to_lobby()
+
+
+func _return_to_lobby() -> void:
+	if _returning_to_lobby:
+		return
+	_returning_to_lobby = true
+	GameState.restore_menu_input()
+	if is_instance_valid(pause_menu):
+		if pause_menu.has_method("dismiss_for_exit"):
+			pause_menu.dismiss_for_exit()
+		else:
+			pause_menu.visible = false
+	var match_node: Node = world.get_node_or_null("Match")
+	if match_node and match_node.has_method("teardown_match_geometry"):
+		match_node.teardown_match_geometry()
+	if NetworkManager.has_method("leave_game"):
+		NetworkManager.leave_game()
+	GameState.phase = GameState.Phase.LOBBY
+	world.visible = false
+	lobby.visible = true
+	if lobby.has_method("show_after_match"):
+		lobby.show_after_match()
+	Input.mouse_mode = Input.MOUSE_MODE_VISIBLE
+	get_tree().paused = false
+	_returning_to_lobby = false

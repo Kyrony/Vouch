@@ -121,6 +121,10 @@ func _probe() -> String:
 	if absf(sprint_speed / walk_speed - 1.4) > 0.001:
 		main.queue_free()
 		return "sprint is %.3fx walk, want 1.4" % (sprint_speed / walk_speed)
+	var stamina_err: String = ui_check.call("validate_sprint_stamina")
+	if not stamina_err.is_empty():
+		main.queue_free()
+		return stamina_err
 
 	var pickups := world.get_node_or_null("Pickups")
 	if pickups == null or pickups.get_child_count() < 1:
@@ -182,6 +186,20 @@ func _probe() -> String:
 		player.free()
 		main.queue_free()
 		return phone_err
+	player.set("_is_sprinting", true)
+	var stamina_before: float = float(player.get("_local_stamina"))
+	player.call("_tick_authority_stamina", 1.0)
+	var stamina_after: float = float(player.get("_local_stamina"))
+	if stamina_after >= stamina_before:
+		player.free()
+		main.queue_free()
+		return "authority sprint tick did not drain stamina (%.2f -> %.2f)" % [stamina_before, stamina_after]
+	var neon: Control = player.get_node_or_null("HUD/NeonHud") as Control
+	var hud_err: String = _CHECK.call("validate_stamina_hud_fill", neon, stamina_after)
+	if not hud_err.is_empty():
+		player.free()
+		main.queue_free()
+		return hud_err
 	var pm_count := 0
 	for child in player.get_children():
 		if str(child.name).begins_with("PuppetMasterController"):

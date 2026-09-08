@@ -83,6 +83,7 @@ func leave_game() -> void:
 	is_hosting = false
 	lobby_roster = []
 	GameState.reset_for_new_match()
+	GameState.restore_menu_input()
 
 
 func is_server() -> bool:
@@ -163,6 +164,7 @@ func _on_connection_failed() -> void:
 
 func _on_server_disconnected() -> void:
 	is_hosting = false
+	GameState.restore_menu_input()
 	disconnected_from_server.emit()
 
 

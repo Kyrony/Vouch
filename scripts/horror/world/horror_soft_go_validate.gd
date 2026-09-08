@@ -161,9 +161,9 @@ static func validate_l2_pin_homes(world: Node3D) -> String:
 		return "under_porch_crawl must be pin 9 — do not collapse onto basement"
 	if basement.global_position.distance_to(crawl.global_position) < 12.0:
 		return "basement and under_porch_crawl markers collapsed — place by eng id, not art pin 4"
-	## QA v2: pin 9 sits on the SE road bend, not the old House A porch.
+	## Kyle greybox: pin 9 sits on the SE road toward the east cliff, not House A porch.
 	if crawl.global_position.x < 20.0 or crawl.global_position.z < 8.0:
-		return "under_porch_crawl is not on the QA v2 SE road bend (xz=%.1f,%.1f)" % [
+		return "under_porch_crawl is not on the Kyle SE road (xz=%.1f,%.1f)" % [
 			crawl.global_position.x, crawl.global_position.z,
 		]
 	return ""
@@ -227,6 +227,8 @@ static func validate_live_start_match_world(world_root: Node) -> String:
 	var shell_err := validate_no_building_shells(horror)
 	if not shell_err.is_empty():
 		return shell_err
+	if horror.get_node_or_null("PlaceholderGun") == null:
+		return "PlaceholderGun missing near outdoor spawn"
 	return validate_world(horror)
 
 
@@ -340,7 +342,7 @@ static func validate_v05_layout(world: Node3D) -> String:
 	if world.get_node_or_null("Outdoor/Roads") == null:
 		return "Outdoor/Roads (farm lanes / curbs) missing"
 	if world.get_node_or_null("Outdoor/Fields") == null:
-		return "Outdoor/Fields (L1b footprint) missing"
+		return "Outdoor/Fields (Kyle greybox footprint) missing"
 	var escape := world.get_node_or_null("Outdoor/HorrorEscapeZone")
 	if escape == null:
 		return "soft-gated HorrorEscapeZone missing"
@@ -369,7 +371,7 @@ static func validate_v05_layout(world: Node3D) -> String:
 	var span_x: float = max_x - min_x
 	var span_z: float = max_z - min_z
 	if span_x < 56.0 or span_x > 150.0 or span_z < 40.0 or span_z > 130.0:
-		return "L2 footprint span %.1fx%.1f not L1b farm (~80m+)" % [span_x, span_z]
+		return "L2 footprint span %.1fx%.1f not Kyle farm (~80m+)" % [span_x, span_z]
 	return ""
 
 
@@ -379,9 +381,25 @@ static func validate_outdoor_terrain(world: Node3D) -> String:
 		return "Outdoor missing"
 	var terrain := outdoor.get_node_or_null("Terrain")
 	if terrain == null:
-		return "Outdoor/Terrain missing (L1b farm heightfield)"
-	if terrain.get_node_or_null("CollisionShape3D") == null:
+		return "Outdoor/Terrain missing (Kyle T0 heightfield)"
+	if not FileAccess.file_exists("res://assets/horror/farm/kyle_T0_height_97x81.exr"):
+		return "Kyle T0 height EXR missing (kyle_T0_height_97x81.exr)"
+	if FileAccess.file_exists("res://assets/horror/farm/kyle_height_preview_NOISY_do_not_import.png"):
+		return "noisy height preview must not be imported"
+	var pads := outdoor.get_node_or_null("Pads")
+	if pads == null:
+		return "Outdoor/Pads missing — Kyle greybox pads"
+	for pad_name in ["Pad_FamilyA", "Pad_FamilyB", "Pad_FamilyC", "Pad_FamilyD", "Pad_Uncle", "Pad_UncleGarage"]:
+		if pads.get_node_or_null(pad_name) == null:
+			return "Kyle greybox pad missing: Outdoor/Pads/%s" % pad_name
+	var cs := terrain.get_node_or_null("CollisionShape3D") as CollisionShape3D
+	if cs == null or cs.shape == null:
 		return "Outdoor/Terrain missing collision"
+	var hm := cs.shape as HeightMapShape3D
+	if hm == null:
+		return "Outdoor/Terrain collision is not HeightMapShape3D"
+	if hm.map_width != 97 or hm.map_depth != 81:
+		return "Kyle T0 HeightMapShape3D must be 97x81, got %dx%d" % [hm.map_width, hm.map_depth]
 	var span_x: float = float(terrain.get_meta("span_x", 0.0))
 	var span_z: float = float(terrain.get_meta("span_z", 0.0))
 	if span_x < 80.0 or span_z < 64.0:
@@ -432,8 +450,8 @@ static func validate_hilltop_main_house(world: Node3D) -> String:
 		return "MainHouse missing on_hilltop meta"
 	if house.global_position.y < 3.5:
 		return "MainHouse is not on a hill (y=%.2f)" % house.global_position.y
-	if house.global_position.x < 28.0 or house.global_position.x > 52.0:
-		return "MainHouse xz is not on the L1b east house cluster"
+	if house.global_position.x < 14.0 or house.global_position.x > 40.0:
+		return "MainHouse xz is not on the Kyle hilltop"
 	if house.get_node_or_null("Core") == null:
 		return "MainHouse missing graybox Core"
 	return ""
@@ -532,4 +550,50 @@ static func validate_life_steal() -> String:
 		return "edge drain %.2f HP/s too close to point-blank %.2f" % [edge, close]
 	if 100.0 / maxf(close, 0.01) < 6.0:
 		return "close TTK %.1fs is faster than several seconds" % (100.0 / close)
+	return ""
+
+
+static func validate_sprint_stamina() -> String:
+	var fx: GDScript = load("res://scripts/horror/items/player_effects.gd")
+	var player_script: GDScript = load("res://scripts/player.gd")
+	if fx == null or player_script == null:
+		return "stamina scripts failed to load"
+	var drain: float = float(fx.STAMINA_DRAIN_PER_SEC)
+	var regen: float = float(fx.STAMINA_REGEN_PER_SEC)
+	if drain < 15.0 or drain > 25.0:
+		return "sprint drain %.1f%%/s not in 15-25 band" % drain
+	if regen < 8.0 or regen > 15.0:
+		return "stamina regen %.1f%%/s not a walk/idle refill" % regen
+	var after_sprint: float = float(fx.call("simulate_stamina", 100.0, true, 1.0))
+	if after_sprint >= 100.0 or absf(after_sprint - (100.0 - drain)) > 0.6:
+		return "1s sprint did not drain ~%.0f (got %.2f)" % [drain, after_sprint]
+	var empty: float = float(fx.call("simulate_stamina", 100.0, true, 6.0))
+	if empty > 0.01:
+		return "full sprint should empty the bar in a few seconds, leftover=%.2f" % empty
+	var recovered: float = float(fx.call("simulate_stamina", 0.0, false, 1.0))
+	if absf(recovered - regen) > 0.6:
+		return "1s idle regen expected ~%.0f got %.2f" % [regen, recovered]
+	if bool(player_script.call("sprint_allowed", 0.0)):
+		return "empty stamina still allows sprint"
+	if bool(player_script.call("sprint_allowed", 0.4)):
+		return "near-empty stamina still allows sprint"
+	var walk: float = float(player_script.move_speed_for(false))
+	var gated: float = float(player_script.move_speed_for(bool(player_script.call("sprint_allowed", 0.0))))
+	if absf(gated - walk) > 0.001:
+		return "empty stamina still applies 1.4x (%.3f vs walk %.3f)" % [gated, walk]
+	return ""
+
+
+static func validate_stamina_hud_fill(hud: Control, stamina: float) -> String:
+	if hud == null or not hud.has_method("set_meters"):
+		return "NeonHud missing set_meters"
+	hud.call("set_meters", 100.0, 100.0, stamina, 0.0)
+	var bar := hud.get_node_or_null("Vitals/MeterColumn/StaminaRow/StaminaBar") as TextureProgressBar
+	if bar == null:
+		return "HUD stamina TextureProgressBar missing"
+	var expected := clampf(stamina / 100.0, 0.0, 1.0)
+	if absf(float(bar.value) - expected) > 0.002:
+		return "HUD stamina fill %.3f != live %.3f" % [float(bar.value), expected]
+	if absf(float(hud.get("stamina_ratio")) - expected) > 0.002:
+		return "HUD stamina_ratio %.3f != live %.3f" % [float(hud.get("stamina_ratio")), expected]
 	return ""

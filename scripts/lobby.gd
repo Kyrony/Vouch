@@ -5,6 +5,7 @@ extends Control
 const _T: GDScript = preload("res://scripts/horror/ui/vouch_menu_theme.gd")
 const _BUILD: GDScript = preload("res://scripts/horror/ui/vouch_menu_builder.gd")
 const _NEON: GDScript = preload("res://scripts/horror/ui/neon_menu.gd")
+const _SETTINGS: GDScript = preload("res://scripts/horror/ui/settings_sidebox.gd")
 
 var home_panel: Control
 var play_panel: Control
@@ -50,8 +51,8 @@ var _toast_tween: Tween
 func _ready() -> void:
 	_BUILD.call("ensure", self)
 	_cache_nodes()
+	_SETTINGS.call("wire", settings_content, _toast)
 	_connect_signals()
-	_load_settings_widgets()
 	_NEON.call("apply", self)
 	set_process_unhandled_input(true)
 	_show_home()
@@ -112,8 +113,6 @@ func _connect_signals() -> void:
 	start_button.pressed.connect(_on_start_mode)
 	friends_join_button.pressed.connect(_on_friends_join)
 	lobby_code_input.text_changed.connect(_on_lobby_code_changed)
-	save_button.pressed.connect(_on_save_settings)
-	fullscreen_toggle.toggled.connect(_on_fullscreen_toggled)
 	play_back_button.pressed.connect(_close_host)
 	host_button.pressed.connect(_on_host_pressed)
 	join_button.pressed.connect(_on_join_pressed)
@@ -125,10 +124,11 @@ func _connect_signals() -> void:
 	NetworkManager.lobby_roster_updated.connect(_on_roster_updated)
 
 
-func _load_settings_widgets() -> void:
-	master_volume_slider.value = SettingsManager.master_volume
-	sfx_volume_slider.value = SettingsManager.sfx_volume
-	fullscreen_toggle.button_pressed = SettingsManager.fullscreen
+func show_after_match() -> void:
+	visible = true
+	_show_home()
+	_set_nav("play")
+	Input.mouse_mode = Input.MOUSE_MODE_VISIBLE
 
 
 func _show_home() -> void:
@@ -167,6 +167,8 @@ func _set_nav(nav_id: String) -> void:
 		friends_content.visible = nav_id == "friends"
 	if settings_content:
 		settings_content.visible = nav_id == "settings"
+		if nav_id == "settings":
+			_SETTINGS.call("refresh", settings_content)
 	_T.apply_nav_button(play_button, nav_id == "play")
 	_T.apply_nav_button(join_friends_button, nav_id == "friends")
 	_T.apply_nav_button(settings_button, nav_id == "settings")
@@ -222,17 +224,6 @@ func _on_lobby_code_changed(text: String) -> void:
 	if next != text:
 		lobby_code_input.text = next
 		lobby_code_input.caret_column = caret
-
-
-func _on_fullscreen_toggled(pressed: bool) -> void:
-	SettingsManager.set_fullscreen(pressed)
-
-
-func _on_save_settings() -> void:
-	SettingsManager.set_master_volume(master_volume_slider.value)
-	SettingsManager.set_sfx_volume(sfx_volume_slider.value)
-	SettingsManager.set_fullscreen(fullscreen_toggle.button_pressed)
-	_toast("Settings saved.")
 
 
 func _on_exit_pressed() -> void:
