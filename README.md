@@ -265,11 +265,11 @@ See [`docs/blueprints/v0.5/`](docs/blueprints/v0.5/) for Leonardo v0.5 sheets.
 
 **Towers (soft-go):** many candidate masts; **3 active per match**; **1 forced near the PM**. Phone + mast use **service / weak / dead** radii. Scratch on the slate only (not a voice or SMS line).
 
-**HUD + smartphone (soft-go):** Leonardo’s approved UI pack is wired in `scripts/horror/ui/` and `assets/horror/ui/` + `assets/horror/hud/`. Home is Kyle’s React **VouchMenu** port: Control layout over the puppet-village `menu_title_bg` title plate (Keep Aspect Covered), fiery `vouch_fiery_logo.png` **MenuLogo** top-left, nav/sidebox lowered so they miss the wordmark, gold/blood chrome, no SIGNAL bars, and a Play-selected modes panel on boot. Horror matches run a host-owned dusk→morning clock (6:00 PM → 6:00 AM in 24 real minutes); FarmSky / SunMoon lighting shifts and 6:00 AM ends the match. Mode thumbs stay blank placeholders (no `mansion-bg.png`). **Classic → START** is the live outdoor Host Match path; other modes toast stubs. Friends is a lobby-code stub. Settings is a Keybinds / Audio / Visual / Controls sidebox (master/SFX/fullscreen/sensitivity wired). Quit exits the process. In-match Esc pauses with the same settings and Exit to Home; lose offers Exit / Spectate. In-match HUD v3: MISSING CHILD / ALIVE ONLY banner, shared empty neon-rim health/stamina/fear tracks (eng-owned fill %), phone LED + signal, PM ability cooldown, center **E INTERACT**. Phone light is the camera LED only — no torch glyph. Drain/TTK stay eng-owned. HUD textures are wiring refs; Leonardo may redraw them before Steam.
+**HUD + smartphone (soft-go):** Leonardo’s approved UI pack is wired in `scripts/horror/ui/` and `assets/horror/ui/` + `assets/horror/hud/`. Home is Kyle’s React **VouchMenu** port: Control layout over the original creepy `menu_atmosphere` night-yard, gold/blood chrome, no VOUCH wordmark, no SIGNAL bars, and a Play-selected modes panel on boot. Mode thumbs stay blank placeholders (no plate, no `mansion-bg.png`). **Classic → START** is the live outdoor Host Match path; other modes toast stubs. Friends is a lobby-code stub. Settings saves master/SFX/fullscreen. Quit exits the process. In-match HUD: MISSING CHILD / ALIVE ONLY banner, stacked empty health-over-stamina tracks (eng-owned fill %), top-right signal + battery, right 5-slot item rail, PM ability cooldown, center **E INTERACT**. Phone light is the camera LED only — no torch glyph. Drain/TTK stay eng-owned. HUD textures are wiring refs; Leonardo may redraw them before Steam.
 
-**HUD + smartphone (soft-go):** Leonardo’s approved UI pack is wired in `scripts/horror/ui/` and `assets/horror/ui/` + `assets/horror/hud/`. Home is a **hybrid plate**: `menu_leonardo_locked.png` is the full visual (neon **V** + strung **OUCH**, no X-stick); Godot only adds invisible hitboxes. **Classic** is the live outdoor Host Match path; other painted modes are soft stubs. In-match HUD: MISSING CHILD / ALIVE ONLY banner, stacked empty health-over-stamina tracks (eng-owned fill %), phone LED + signal, PM ability cooldown, center **E INTERACT**. Phone light is the camera LED only — no torch glyph. Drain/TTK stay eng-owned. Textures are wiring refs; Leonardo may redraw them before Steam.
+**HUD + smartphone (soft-go):** Leonardo’s approved UI pack is wired in `scripts/horror/ui/` and `assets/horror/ui/` + `assets/horror/hud/`. Home is a **hybrid plate**: `menu_leonardo_locked.png` is the full visual (neon **V** + strung **OUCH**, no X-stick); Godot only adds invisible hitboxes. **Classic** is the live outdoor Host Match path; other painted modes are soft stubs. In-match HUD: MISSING CHILD / ALIVE ONLY banner, stacked empty health-over-stamina tracks (eng-owned fill %), top-right signal + battery, right 5-slot item rail, PM ability cooldown, center **E INTERACT**. Phone light is the camera LED only — no torch glyph. Drain/TTK stay eng-owned. Textures are wiring refs; Leonardo may redraw them before Steam.
 
-**HUD:** stacked horror-vial health over yellow stamina (empty tracks, eng fill %), phone LED, and signal. No fear bar.
+**HUD:** stacked horror-vial health over yellow stamina (empty tracks, eng fill %), top-right signal + battery widgets, and a right-edge 5-slot item rail (octagon wells, blue select bloom). No fear bar, no bottom hotbar.
 
 ## Friends-ready playtest (James checklist)
 
@@ -335,6 +335,9 @@ VOUCH_HORROR_MATCH_TEST=1 godot4 --headless --path .
 
 # Horror neighborhood smoke (standalone probe):
 godot4 --headless --path . -s res://scripts/vouch_horror_match_probe.gd
+
+# Sprint stamina drain + yellow HUD fill:
+godot4 --headless --path . -s res://scripts/vouch_stamina_sprint_probe.gd
 
 # Playable loop (phone/walkie) — bunker-only: VOUCH_BUNKER_ONLY=1; full escape path needs VOUCH_ESCAPE_PATH=1:
 VOUCH_PLAYABLE_LOOP_TEST=1 godot4 --headless --path .

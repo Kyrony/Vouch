@@ -11,13 +11,17 @@ signal local_meters_changed(health: float, stamina: float, fear: float)
 signal local_effect_state(effect_id: String, time_left: float, cooldown_left: float, duration: float, cooldown: float)
 
 const DEFAULT_MAX: float = 100.0
-const STAMINA_REGEN: float = 6.0
+## Sprint drain / walk-idle regen. Full bar lasts 5s of sprint; refill ~10s.
+const STAMINA_DRAIN_PER_SEC: float = 20.0
+const STAMINA_REGEN_PER_SEC: float = 10.0
+const STAMINA_REGEN: float = STAMINA_REGEN_PER_SEC
 const FEAR_DECAY: float = 3.0
 
 var _health: Dictionary = {}
 var _stamina: Dictionary = {}
 var _fear: Dictionary = {}
 var _max: Dictionary = {}
+var _sprinting: Dictionary = {}
 var _active_effects: Dictionary = {}  # peer_id -> Array of {id, time_left, cooldown_left}
 
 
@@ -26,6 +30,7 @@ func reset() -> void:
 	_stamina.clear()
 	_fear.clear()
 	_max.clear()
+	_sprinting.clear()
 	_active_effects.clear()
 
 
@@ -36,6 +41,7 @@ func server_init_peer(peer_id: int) -> void:
 	_health[peer_id] = DEFAULT_MAX
 	_stamina[peer_id] = DEFAULT_MAX
 	_fear[peer_id] = 0.0
+	_sprinting[peer_id] = false
 	_active_effects[peer_id] = []
 	_broadcast_meters(peer_id)
 
@@ -105,11 +111,66 @@ func get_effect_times(peer_id: int, effect_id: String) -> Vector2:
 	return Vector2.ZERO
 
 
+## Authority-owned sprint drain / walk-idle regen. Shared so HUD and probes stay in lockstep.
+static func tick_stamina(current: float, sprinting: bool, delta: float, cap: float = DEFAULT_MAX) -> float:
+	if sprinting:
+		return maxf(0.0, current - STAMINA_DRAIN_PER_SEC * delta)
+	return minf(cap, current + STAMINA_REGEN_PER_SEC * delta)
+
+
+static func simulate_stamina(start: float, sprinting: bool, seconds: float, dt: float = 0.05) -> float:
+	var value := start
+	var t := 0.0
+	while t < seconds - 0.0001:
+		var step := minf(dt, seconds - t)
+		value = tick_stamina(value, sprinting, step)
+		t += step
+	return value
+
+
+func server_set_sprinting(peer_id: int, sprinting: bool) -> void:
+	if not multiplayer.is_server():
+		return
+	_sprinting[peer_id] = sprinting
+
+
+func server_set_stamina(peer_id: int, stamina: float, broadcast: bool = false) -> void:
+	if not multiplayer.is_server():
+		return
+	if not _max.has(peer_id):
+		server_init_peer(peer_id)
+	var cap: float = float(_max[peer_id].y)
+	_stamina[peer_id] = clampf(stamina, 0.0, cap)
+	if broadcast:
+		_broadcast_meters(peer_id)
+
+
+func server_get_stamina(peer_id: int) -> float:
+	return float(_stamina.get(peer_id, DEFAULT_MAX))
+
+
+func server_is_sprinting(peer_id: int) -> bool:
+	return bool(_sprinting.get(peer_id, false))
+
+
+@rpc("any_peer", "call_remote", "reliable")
+func request_set_stamina(stamina: float, sprinting: bool = false) -> void:
+	if not multiplayer.is_server():
+		return
+	var sender := multiplayer.get_remote_sender_id()
+	if sender <= 0:
+		return
+	server_set_sprinting(sender, sprinting)
+	server_set_stamina(sender, stamina, false)
+
+
 func server_tick(delta: float) -> void:
 	if not multiplayer.is_server():
 		return
 	for peer_id in _health.keys():
-		_stamina[peer_id] = minf(float(_max[peer_id].y), float(_stamina.get(peer_id, DEFAULT_MAX)) + STAMINA_REGEN * delta)
+		# Sprint drain / walk regen is applied on the owning player authority
+		# (player.gd) and replicated here. Do not auto-regen on the server tick
+		# or it fights the live sprint bar.
 		_fear[peer_id] = maxf(0.0, float(_fear.get(peer_id, 0.0)) - FEAR_DECAY * delta)
 		_tick_effects(peer_id, delta)
 		_broadcast_meters(peer_id)
