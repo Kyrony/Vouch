@@ -15,6 +15,8 @@ const REMAP_ACTION_LABELS: Dictionary = {
 	"jump": "Jump",
 	"interact": "Interact",
 	"destroy": "Destroy (hold)",
+	"sprint": "Sprint",
+	"crouch": "Crouch",
 }
 
 @onready var home_panel: Control = $HomePanel

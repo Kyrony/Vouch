@@ -90,7 +90,7 @@ field as a placeholder — session codes are post-MVP.
 
 ### L1b farm country (terrain + roads + markers)
 
-Layout SoT is Leonardo’s **farm-country** plates plus the QA **v2** sheet (terrain / roads / spawn markers only). Live Start Match instantiates the authored packed scene `scenes/Horror/HorrorWorld.tscn` — **no runtime terrain/road/neighborhood builder**, and **no house, bunker, prop-kit, or mast meshes**. `NeighborhoodV05.OUTDOOR_ONLY` is **on**. L2 eng short ids stay 1:1 (CSV wins over plate typos). Pin 9 `under_porch_crawl` is on the SE road bend.
+Layout SoT is Leonardo’s **farm-country** plates plus the QA **v2** sheet. Live Start Match instantiates the authored packed scene `scenes/Horror/HorrorWorld.tscn` — **no runtime terrain/road/neighborhood builder**. The farm is a **baked hilly heightfield** with one **hilltop main house** on the east cluster. No extra houses, bunkers, or masts. `NeighborhoodV05.OUTDOOR_ONLY` is **on**. L2 eng short ids stay 1:1 (CSV wins over plate typos). Pin 9 `under_porch_crawl` is on the SE road bend. Hold **Shift** to sprint at **1.4×** walk speed.
 
 **In-editor check (Kyle):**
 

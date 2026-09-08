@@ -87,6 +87,8 @@ func _probe_horror_match() -> String:
 		return "Outdoor/Terrain missing"
 	if world_node.get_node_or_null("Outdoor/Roads") == null:
 		return "Outdoor/Roads missing"
+	if world_node.get_node_or_null("Outdoor/MainHouse") == null:
+		return "Outdoor/MainHouse missing"
 	if world_node.get_node_or_null("L2SpawnMarkers") == null:
 		return "L2SpawnMarkers missing"
 	var pickups := world_node.get_node_or_null("Pickups")
@@ -117,8 +119,16 @@ func _probe_horror_match() -> String:
 	if not phone_err.is_empty():
 		NetworkManager.leave_game()
 		return phone_err
-	print("  horror spawns=%d pickups=%d child_points=%d towers=%d pins=%s" % [
+	var player_script: GDScript = load("res://scripts/player.gd")
+	var walk_speed: float = float(player_script.move_speed_for(false))
+	var sprint_speed: float = float(player_script.move_speed_for(true))
+	if not InputMap.has_action("sprint") or absf(sprint_speed / walk_speed - 1.4) > 0.001:
+		NetworkManager.leave_game()
+		return "sprint is missing or not 1.4x walk"
+	print("  horror spawns=%d pickups=%d child_points=%d towers=%d house=%s sprint=%.2fx pins=%s" % [
 		spawn_count, pickups.get_child_count(), child_points.size(), TowerRules.get_active_ids().size(),
+		world_node.get_node("Outdoor/MainHouse").global_position,
+		sprint_speed / walk_speed,
 		ChildSpawnRNG.spawn_id_list(),
 	])
 	NetworkManager.leave_game()

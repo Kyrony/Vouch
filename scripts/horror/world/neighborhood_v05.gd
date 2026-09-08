@@ -26,7 +26,8 @@ const EXPECTED_PIN_COUNT: int = 11
 ## L1b playable span target (building origins, not the outer terrain).
 const NEIGHBORHOOD_SPAN_M: float = 80.0
 
-## Kyle redirect: Host Match is open farm terrain + roads. No building shells.
+## Host Match is authored farm terrain + roads + one hilltop main house.
+## No neighborhood of extra houses / bunkers / masts.
 const OUTDOOR_ONLY: bool = true
 const GRAYBOX_NEIGHBORHOOD: bool = false
 
