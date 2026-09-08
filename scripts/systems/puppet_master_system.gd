@@ -25,11 +25,26 @@ var _granted_targets: Dictionary = {}
 ## Server-only: pm_peer_id -> Array[int] of every other (non-PM) room
 ## index - the full elimination pool.
 var _eliminable_targets: Dictionary = {}
+## Server-only: msec deadline until which the PM's abilities are locked out
+## (set by a survivor's crowbar strike).
+var _stun_until_ms: int = 0
 
 
 func reset() -> void:
 	_granted_targets.clear()
 	_eliminable_targets.clear()
+	_stun_until_ms = 0
+
+
+## Lock the Puppet Master's abilities for `seconds` (crowbar counter-play).
+func server_stun(seconds: float) -> void:
+	if not multiplayer.is_server():
+		return
+	_stun_until_ms = maxi(_stun_until_ms, Time.get_ticks_msec() + int(seconds * 1000.0))
+
+
+func server_is_pm_stunned() -> bool:
+	return Time.get_ticks_msec() < _stun_until_ms
 
 
 ## Picks one of `peer_ids` to be the Puppet Master, subject to the spawn

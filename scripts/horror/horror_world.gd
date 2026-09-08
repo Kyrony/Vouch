@@ -19,6 +19,8 @@ func _ready() -> void:
 	_ensure_terrain_texture()
 	## Mask placement must not block Start Match / player spawn.
 	call_deferred("_run_semantic_maps")
+	## Drop a sample of every survival item near the first family pad.
+	call_deferred("server_scatter_starter_items")
 	var clock := get_node_or_null("/root/MatchClock")
 	if clock and clock.has_method("apply_to_world"):
 		clock.call("apply_to_world", self)
@@ -224,3 +226,52 @@ func _spawn_pickup_local(item_id: String, at: Vector3) -> void:
 		add_child(folder)
 	folder.add_child(pickup)
 	print("[HorrorWorld] pickup spawned item=%s at %s" % [item_id, at])
+
+
+## Scatter one of each survival item near the first family pad so players can
+## try them out. Server-only; call once the match is live.
+func server_scatter_starter_items() -> void:
+	if not multiplayer.is_server():
+		return
+	var catalog: GDScript = load("res://scripts/horror/items/item_catalog.gd")
+	var ids: Array = catalog.survival_item_ids()
+	var base := get_family_spawn_transform(0).origin + Vector3(0, 0.4, 0)
+	var i := 0
+	for item_id in ids:
+		var angle := float(i) * TAU / float(max(ids.size(), 1))
+		var offset := Vector3(cos(angle) * 2.4, 0.0, sin(angle) * 2.4)
+		spawn_pickup(str(item_id), base + offset)
+		i += 1
+
+
+## Flare: a temporary point light dropped on the ground (survival light).
+func spawn_flare(at: Vector3, light_range: float, seconds: float) -> void:
+	if not multiplayer.is_server():
+		return
+	_spawn_flare_local.rpc(at, light_range, seconds)
+
+
+@rpc("authority", "call_local", "reliable")
+func _spawn_flare_local(at: Vector3, light_range: float, seconds: float) -> void:
+	var light := OmniLight3D.new()
+	light.name = "Flare"
+	light.position = at + Vector3(0.0, 0.35, 0.0)
+	light.light_color = Color(1.0, 0.45, 0.2)
+	light.light_energy = 3.2
+	light.omni_range = light_range
+	var glow := MeshInstance3D.new()
+	var sphere := SphereMesh.new()
+	sphere.radius = 0.09
+	sphere.height = 0.18
+	glow.mesh = sphere
+	var mat := StandardMaterial3D.new()
+	mat.emission_enabled = true
+	mat.emission = Color(1.0, 0.4, 0.15)
+	mat.albedo_color = Color(1.0, 0.5, 0.2)
+	glow.set_surface_override_material(0, mat)
+	light.add_child(glow)
+	add_child(light)
+	var timer := get_tree().create_timer(seconds)
+	timer.timeout.connect(func() -> void:
+		if is_instance_valid(light):
+			light.queue_free())
