@@ -202,7 +202,7 @@ const L2_PIN_BY_ID := {
 	"car_trunk": 11,
 }
 
-## Shared by OutdoorBuilder (meshes) and OutdoorTerrain (flatten).
+## Authored road spans baked into HorrorWorld.tscn (data SoT only).
 ## West hub + family lanes, plus the east oval loop from the QA plate.
 const ROAD_SPANS: Array[Dictionary] = [
 	{"a": Vector2(-60.0, 0.0), "b": Vector2(22.0, 0.0), "r": 3.4},

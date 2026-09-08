@@ -1,10 +1,9 @@
 extends Node3D
 class_name HorrorWorld
-## Host Match farm: walkable terrain + roads + labeled L2 spawn markers.
+## Authored farm country. Terrain/roads/markers live in HorrorWorld.tscn.
+## Start Match instantiates that packed scene — it does not loop-build geometry.
 
-const _LAYOUT: GDScript = preload("res://scripts/horror/world/neighborhood_layout.gd")
-const _TERRAIN: GDScript = preload("res://scripts/horror/environment/outdoor_terrain.gd")
-const _PICKUP_SCENE: PackedScene = preload("res://scenes/Horror/WorldPickup.tscn")
+const PICKUP_SCENE: String = "res://scenes/Horror/WorldPickup.tscn"
 
 var _family_spawns: Array[Marker3D] = []
 var _pm_spawn: Marker3D = null
@@ -14,19 +13,21 @@ var _tick_accum: float = 0.0
 func _ready() -> void:
 	add_to_group("horror_world")
 	_suppress_parallel_worlds()
-	_install_farm_environment()
-	var built: Dictionary = _LAYOUT.call("build", self, 4)
-	_family_spawns.clear()
-	var spawned = built.get("family_spawns", [])
-	for m in spawned:
-		if m is Marker3D:
-			_family_spawns.append(m)
-	var pm = built.get("pm_spawn")
-	_pm_spawn = pm if pm is Marker3D else null
-	_scatter_pickups()
-	print("[HorrorWorld] farm terrain+roads built family_pads=%d l2_markers=%d" % [
+	_bind_authored_spawns()
+	print("[HorrorWorld] loaded authored farm scene family_pads=%d l2_markers=%d" % [
 		_family_spawns.size(), get_tree().get_nodes_in_group("child_spawn_points").size(),
 	])
+
+
+func _bind_authored_spawns() -> void:
+	_family_spawns.clear()
+	var folder := get_node_or_null("Outdoor/PlayerSpawns")
+	if folder:
+		for child in folder.get_children():
+			if child is Marker3D:
+				_family_spawns.append(child)
+	var pm := get_node_or_null("Outdoor/Outdoor_PM_Street")
+	_pm_spawn = pm if pm is Marker3D else null
 
 
 func _process(delta: float) -> void:
@@ -40,8 +41,6 @@ func _process(delta: float) -> void:
 
 
 func _suppress_parallel_worlds() -> void:
-	## Main.tscn always instances World/Outside beside Match. That courtyard
-	## + mountain CSG was still visible after Start Match (Kyle fail).
 	var match_node := get_parent()
 	if match_node == null:
 		return
@@ -55,23 +54,8 @@ func _suppress_parallel_worlds() -> void:
 	if outside is Node3D:
 		outside.visible = false
 		outside.process_mode = Node.PROCESS_MODE_DISABLED
-		var mountain := outside.get_node_or_null("MountainTerrain")
-		if mountain:
-			mountain.queue_free()
-
-
-func _install_farm_environment() -> void:
-	var env_node := WorldEnvironment.new()
-	env_node.name = "FarmSky"
-	var env := Environment.new()
-	env.background_mode = Environment.BG_COLOR
-	env.background_color = Color(0.55, 0.68, 0.82)
-	env.ambient_light_source = Environment.AMBIENT_SOURCE_COLOR
-	env.ambient_light_color = Color(0.55, 0.6, 0.58)
-	env.ambient_light_energy = 0.7
-	env.fog_enabled = false
-	env_node.environment = env
-	add_child(env_node)
+		for child in outside.get_children():
+			child.queue_free()
 
 
 func server_init_match(player_count: int) -> void:
@@ -79,7 +63,6 @@ func server_init_match(player_count: int) -> void:
 		return
 	var seed_base := player_count + int(Time.get_ticks_usec() % 9973)
 	ChildSpawnRNG.server_roll(self, seed_base)
-	## Kyle: no masts / tower meshes in the live farm world.
 
 
 func get_family_spawn_transform(family_index: int) -> Transform3D:
@@ -110,38 +93,28 @@ func get_family_count() -> int:
 	return _family_spawns.size()
 
 
-func spawn_pickup(item_id: String, global_pos: Vector3) -> void:
-	if get_node_or_null("Pickups") == null:
-		var pickups := Node3D.new()
-		pickups.name = "Pickups"
-		add_child(pickups)
-	_spawn_pickup_local(item_id, global_pos)
-
-
-func _spawn_pickup_local(item_id: String, pos: Vector3) -> void:
-	var container := get_node_or_null("Pickups")
-	if container == null:
+func spawn_pickup(item_id: String, at: Vector3) -> void:
+	if not multiplayer.is_server():
 		return
-	var pickup: Node = _PICKUP_SCENE.instantiate()
-	pickup.name = "Pickup_%s" % item_id
+	_spawn_pickup_local.rpc(item_id, at)
+
+
+@rpc("authority", "call_local", "reliable")
+func _spawn_pickup_local(item_id: String, at: Vector3) -> void:
+	if not ResourceLoader.exists(PICKUP_SCENE):
+		return
+	var packed: PackedScene = load(PICKUP_SCENE) as PackedScene
+	if packed == null:
+		return
+	var pickup: Node3D = packed.instantiate() as Node3D
+	if pickup == null:
+		return
 	pickup.set("item_id", item_id)
-	container.add_child(pickup)
-	pickup.global_position = pos + Vector3(0, 0.35, 0)
-
-
-func _scatter_pickups() -> void:
-	var pickups := Node3D.new()
-	pickups.name = "Pickups"
-	add_child(pickups)
-	var defs := [
-		{"id": "medkit", "xz": Vector2(-34.0, -12.0)},
-		{"id": "phone", "xz": Vector2(2.0, 2.0)},
-		{"id": "bandage", "xz": Vector2(40.0, 10.0)},
-		{"id": "battery", "xz": Vector2(-50.0, -40.0)},
-		{"id": "crowbar", "xz": Vector2(6.0, 24.0)},
-		{"id": "keycard", "xz": Vector2(10.0, 6.0)},
-	]
-	for d in defs:
-		var xz: Vector2 = d["xz"]
-		var y: float = float(_TERRAIN.call("height_at", xz.x, xz.y))
-		_spawn_pickup_local(d["id"], Vector3(xz.x, maxf(y, 0.0), xz.y))
+	pickup.position = at
+	var folder: Node = get_node_or_null("Pickups")
+	if folder == null:
+		folder = Node3D.new()
+		folder.name = "Pickups"
+		add_child(folder)
+	folder.add_child(pickup)
+	print("[HorrorWorld] pickup spawned item=%s at %s" % [item_id, at])

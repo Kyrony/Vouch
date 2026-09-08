@@ -36,9 +36,38 @@ static func _towers() -> Node:
 	return Engine.get_main_loop().root.get_node_or_null("TowerRules")
 
 
+const BANNED_WORLD_BUILDERS: Array[String] = [
+	"res://scripts/horror/environment/outdoor_builder.gd",
+	"res://scripts/horror/environment/outdoor_terrain.gd",
+	"res://scripts/horror/environment/spawn_point_markers.gd",
+	"res://scripts/horror/world/neighborhood_layout.gd",
+	"res://scripts/horror/environment/graybox_materials.gd",
+	"res://scripts/horror/environment/family_house_builder.gd",
+	"res://scripts/horror/environment/uncle_house_builder.gd",
+	"res://scripts/horror/environment/pm_mansion_builder.gd",
+	"res://scripts/horror/environment/trust_field_builder.gd",
+	"res://scripts/horror/environment/modular_kit.gd",
+	"res://scripts/horror/environment/graybox_builder.gd",
+]
+
+
+static func validate_no_runtime_world_gen() -> String:
+	for path in BANNED_WORLD_BUILDERS:
+		if ResourceLoader.exists(path):
+			return "runtime world builder still on disk: %s" % path
+	var hw: String = FileAccess.get_file_as_string("res://scripts/horror/horror_world.gd")
+	for needle in ["OutdoorBuilder", "OutdoorTerrain", "NeighborhoodLayout", "SpawnPointMarkers", "_install_farm_environment", "_scatter_pickups", "preload(\"res://scripts/horror/environment/outdoor"]:
+		if hw.contains(needle):
+			return "HorrorWorld still calls runtime world gen: %s" % needle
+	return ""
+
+
 static func validate_world(world: Node3D) -> String:
 	if world == null:
 		return "HorrorWorld missing"
+	var gen_err := validate_no_runtime_world_gen()
+	if not gen_err.is_empty():
+		return gen_err
 	var rng := _child_rng()
 	if rng == null:
 		return "ChildSpawnRNG autoload missing"
@@ -176,6 +205,11 @@ static func validate_live_start_match_world(world_root: Node) -> String:
 	var horror := world_root.get_node_or_null("Match/HorrorWorld") as Node3D
 	if horror == null:
 		return "Match/HorrorWorld missing after Start Match — live path did not load the farm"
+	if horror.get_node_or_null("Outdoor") == null or horror.get_node_or_null("L2SpawnMarkers") == null:
+		return "authored farm nodes missing from HorrorWorld.tscn"
+	var authored_err := validate_authored_scene_geometry(horror)
+	if not authored_err.is_empty():
+		return authored_err
 	for node_name in FORBIDDEN_SHELLS:
 		if world_root.find_child(node_name, true, false) != null:
 			return "forbidden node in live World: %s" % node_name
@@ -207,10 +241,58 @@ static func dump_live_world(world_root: Node) -> String:
 	summary.append("node_count=%d" % lines.size())
 	for t in types:
 		summary.append("  type %s = %d" % [t, type_counts[t]])
+	summary.append("RUNTIME WORLD GEN PROOF:")
+	var builders_present: PackedStringArray = PackedStringArray()
+	for path in BANNED_WORLD_BUILDERS:
+		if ResourceLoader.exists(path):
+			builders_present.append(path)
+	if builders_present.is_empty():
+		summary.append("  builder_scripts_on_disk=none")
+	else:
+		summary.append("  builder_scripts_on_disk=%s" % ",".join(builders_present))
+	var horror := world_root.get_node_or_null("Match/HorrorWorld") as Node3D
+	if horror:
+		var auto_names := _generated_auto_names(horror)
+		summary.append("  horror_world_source=res://scenes/Horror/HorrorWorld.tscn")
+		summary.append("  outdoor_exists=%s roads=%s terrain=%s markers=%s" % [
+			horror.get_node_or_null("Outdoor") != null,
+			horror.get_node_or_null("Outdoor/Roads") != null,
+			horror.get_node_or_null("Outdoor/Terrain") != null,
+			horror.get_node_or_null("L2SpawnMarkers") != null,
+		])
+		summary.append("  generated_at_names_under_farm=%d" % auto_names.size())
+		for n in auto_names:
+			summary.append("    AUTO %s" % n)
 	summary.append("TREE:")
 	for line in lines:
 		summary.append(line)
 	return "\n".join(summary)
+
+
+static func validate_authored_scene_geometry(world: Node3D) -> String:
+	for folder_path in ["Outdoor", "L2SpawnMarkers"]:
+		var folder := world.get_node_or_null(folder_path)
+		if folder == null:
+			return "authored folder missing: %s" % folder_path
+		for node in folder.find_children("*", "", true, false):
+			if str(node.name).begins_with("@"):
+				return "runtime-generated node under %s: %s" % [folder_path, node.get_path()]
+	var roads := world.get_node_or_null("Outdoor/Roads")
+	if roads and roads.get_node_or_null("Lane_00") == null:
+		return "authored Roads/Lane_00 missing — farm lanes must be scene nodes, not loop-stamped bodies"
+	return ""
+
+
+static func _generated_auto_names(world: Node3D) -> PackedStringArray:
+	var found: PackedStringArray = PackedStringArray()
+	for folder_path in ["Outdoor", "L2SpawnMarkers"]:
+		var folder := world.get_node_or_null(folder_path)
+		if folder == null:
+			continue
+		for node in folder.find_children("*", "", true, false):
+			if str(node.name).begins_with("@"):
+				found.append(str(node.get_path()))
+	return found
 
 
 static func _dump_walk(node: Node, depth: int, lines: PackedStringArray, type_counts: Dictionary) -> void:

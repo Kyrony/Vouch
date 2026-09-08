@@ -1,6 +1,1552 @@
-[gd_scene load_steps=2 format=3]
+[gd_scene load_steps=103 format=3]
 
 [ext_resource type="Script" path="res://scripts/horror/horror_world.gd" id="1"]
+[ext_resource type="PackedScene" path="res://scenes/Horror/WorldPickup.tscn" id="2"]
+[ext_resource type="Script" path="res://scripts/interactables/escape_zone.gd" id="3"]
+
+
+[sub_resource type="Environment" id="EnvFarm"]
+background_mode = 1
+background_color = Color(0.55, 0.68, 0.82, 1)
+ambient_light_source = 2
+ambient_light_color = Color(0.55, 0.6, 0.58, 1)
+ambient_light_energy = 0.7
+fog_enabled = false
+
+[sub_resource type="StandardMaterial3D" id="Mat_grass"]
+albedo_color = Color(0.3, 0.46, 0.22, 1)
+roughness = 0.92
+
+[sub_resource type="StandardMaterial3D" id="Mat_hill"]
+albedo_color = Color(0.36, 0.4, 0.22, 1)
+roughness = 0.92
+
+[sub_resource type="StandardMaterial3D" id="Mat_dirt"]
+albedo_color = Color(0.46, 0.33, 0.2, 1)
+roughness = 0.92
+
+[sub_resource type="StandardMaterial3D" id="Mat_asphalt"]
+albedo_color = Color(0.11, 0.11, 0.13, 1)
+roughness = 0.92
+
+[sub_resource type="StandardMaterial3D" id="Mat_curb"]
+albedo_color = Color(0.68, 0.66, 0.6, 1)
+roughness = 0.92
+
+[sub_resource type="StandardMaterial3D" id="Mat_paint"]
+albedo_color = Color(0.82, 0.72, 0.28, 1)
+roughness = 0.92
+
+[sub_resource type="StandardMaterial3D" id="Mat_pin"]
+albedo_color = Color(0.92, 0.82, 0.18, 1)
+roughness = 0.92
+emission_enabled = true
+emission = Color(0.92, 0.82, 0.18, 1)
+emission_energy_multiplier = 0.55
+
+[sub_resource type="StandardMaterial3D" id="Mat_base"]
+albedo_color = Color(0.95, 0.35, 0.18, 1)
+roughness = 0.92
+emission_enabled = true
+emission = Color(0.95, 0.35, 0.18, 1)
+emission_energy_multiplier = 0.55
+
+[sub_resource type="StandardMaterial3D" id="Mat_crawl"]
+albedo_color = Color(0.25, 0.85, 0.95, 1)
+roughness = 0.92
+emission_enabled = true
+emission = Color(0.25, 0.85, 0.95, 1)
+emission_energy_multiplier = 0.55
+
+[sub_resource type="BoxMesh" id="Box_terrain"]
+size = Vector3(144, 1.2, 120)
+material = SubResource("Mat_grass")
+
+[sub_resource type="BoxShape3D" id="Sh_terrain"]
+size = Vector3(144, 1.2, 120)
+
+[sub_resource type="BoxMesh" id="Box_hill_shed_nw"]
+size = Vector3(15.400000000000002, 4.4, 15.400000000000002)
+material = SubResource("Mat_hill")
+
+[sub_resource type="BoxShape3D" id="Sh_hill_shed_nw"]
+size = Vector3(15.400000000000002, 4.4, 15.400000000000002)
+
+[sub_resource type="BoxMesh" id="Box_hill_west_pasture"]
+size = Vector3(13.200000000000001, 2.8, 13.200000000000001)
+material = SubResource("Mat_hill")
+
+[sub_resource type="BoxShape3D" id="Sh_hill_west_pasture"]
+size = Vector3(13.200000000000001, 2.8, 13.200000000000001)
+
+[sub_resource type="BoxMesh" id="Box_hill_sw_field"]
+size = Vector3(14.3, 3.3, 14.3)
+material = SubResource("Mat_hill")
+
+[sub_resource type="BoxShape3D" id="Sh_hill_sw_field"]
+size = Vector3(14.3, 3.3, 14.3)
+
+[sub_resource type="BoxMesh" id="Box_hill_north_ridge"]
+size = Vector3(14.3, 3.5, 14.3)
+material = SubResource("Mat_hill")
+
+[sub_resource type="BoxShape3D" id="Sh_hill_north_ridge"]
+size = Vector3(14.3, 3.5, 14.3)
+
+[sub_resource type="BoxMesh" id="Box_hill_ne_behind_pm"]
+size = Vector3(15.400000000000002, 3.9, 15.400000000000002)
+material = SubResource("Mat_hill")
+
+[sub_resource type="BoxShape3D" id="Sh_hill_ne_behind_pm"]
+size = Vector3(15.400000000000002, 3.9, 15.400000000000002)
+
+[sub_resource type="BoxMesh" id="Box_hill_se_pasture"]
+size = Vector3(13.200000000000001, 2.9, 13.200000000000001)
+material = SubResource("Mat_hill")
+
+[sub_resource type="BoxShape3D" id="Sh_hill_se_pasture"]
+size = Vector3(13.200000000000001, 2.9, 13.200000000000001)
+
+[sub_resource type="BoxMesh" id="Box_hill_east_rise"]
+size = Vector3(11.0, 2.3, 11.0)
+material = SubResource("Mat_hill")
+
+[sub_resource type="BoxShape3D" id="Sh_hill_east_rise"]
+size = Vector3(11.0, 2.3, 11.0)
+
+[sub_resource type="CylinderMesh" id="Cyl_hub"]
+top_radius = 5.4
+bottom_radius = 5.4
+height = 0.1
+material = SubResource("Mat_asphalt")
+
+[sub_resource type="CylinderShape3D" id="CylSh_hub"]
+radius = 5.4
+height = 0.1
+
+[sub_resource type="CylinderMesh" id="Cyl_hub_curb"]
+top_radius = 5.65
+bottom_radius = 5.65
+height = 0.16
+material = SubResource("Mat_curb")
+
+[sub_resource type="BoxMesh" id="Box_eastpad"]
+size = Vector3(12, 0.1, 8)
+material = SubResource("Mat_asphalt")
+
+[sub_resource type="BoxShape3D" id="Sh_eastpad"]
+size = Vector3(12, 0.1, 8)
+
+[sub_resource type="CylinderMesh" id="Cyl_shed"]
+top_radius = 4.8
+bottom_radius = 4.8
+height = 0.1
+material = SubResource("Mat_asphalt")
+
+[sub_resource type="CylinderShape3D" id="CylSh_shed"]
+radius = 4.8
+height = 0.1
+
+[sub_resource type="BoxMesh" id="Box_field_a"]
+size = Vector3(18, 0.04, 14)
+material = SubResource("Mat_dirt")
+
+[sub_resource type="BoxMesh" id="Box_field_b"]
+size = Vector3(16, 0.04, 12)
+material = SubResource("Mat_dirt")
+
+[sub_resource type="BoxMesh" id="Box_pin"]
+size = Vector3(0.95, 1.55, 0.95)
+material = SubResource("Mat_pin")
+
+[sub_resource type="BoxMesh" id="Box_pinbase"]
+size = Vector3(0.95, 1.55, 0.95)
+material = SubResource("Mat_base")
+
+[sub_resource type="BoxMesh" id="Box_pincrawl"]
+size = Vector3(0.95, 1.55, 0.95)
+material = SubResource("Mat_crawl")
+
+[sub_resource type="BoxMesh" id="Box_painth"]
+size = Vector3(1.4, 0.03, 0.16)
+material = SubResource("Mat_paint")
+
+[sub_resource type="BoxMesh" id="Box_paintv"]
+size = Vector3(0.16, 0.03, 1.4)
+material = SubResource("Mat_paint")
+
+[sub_resource type="BoxMesh" id="Box_curbpad"]
+size = Vector3(12, 0.16, 0.26)
+material = SubResource("Mat_curb")
+
+[sub_resource type="BoxShape3D" id="Sh_escape"]
+size = Vector3(6, 3.2, 6)
+
+[sub_resource type="BoxMesh" id="Box_rd0"]
+size = Vector3(6.8, 0.1, 82.15)
+material = SubResource("Mat_asphalt")
+
+[sub_resource type="BoxShape3D" id="Sh_rd0"]
+size = Vector3(6.8, 0.1, 82.15)
+
+[sub_resource type="BoxMesh" id="Box_cb0"]
+size = Vector3(0.22, 0.16, 82.1)
+material = SubResource("Mat_curb")
+
+[sub_resource type="BoxMesh" id="Box_rd1"]
+size = Vector3(6.0, 0.1, 86.15)
+material = SubResource("Mat_asphalt")
+
+[sub_resource type="BoxShape3D" id="Sh_rd1"]
+size = Vector3(6.0, 0.1, 86.15)
+
+[sub_resource type="BoxMesh" id="Box_cb1"]
+size = Vector3(0.22, 0.16, 86.1)
+material = SubResource("Mat_curb")
+
+[sub_resource type="BoxMesh" id="Box_rd2"]
+size = Vector3(5.2, 0.1, 32.15)
+material = SubResource("Mat_asphalt")
+
+[sub_resource type="BoxShape3D" id="Sh_rd2"]
+size = Vector3(5.2, 0.1, 32.15)
+
+[sub_resource type="BoxMesh" id="Box_cb2"]
+size = Vector3(0.22, 0.16, 32.1)
+material = SubResource("Mat_curb")
+
+[sub_resource type="BoxMesh" id="Box_rd3"]
+size = Vector3(5.2, 0.1, 32.15)
+material = SubResource("Mat_asphalt")
+
+[sub_resource type="BoxShape3D" id="Sh_rd3"]
+size = Vector3(5.2, 0.1, 32.15)
+
+[sub_resource type="BoxMesh" id="Box_cb3"]
+size = Vector3(0.22, 0.16, 32.1)
+material = SubResource("Mat_curb")
+
+[sub_resource type="BoxMesh" id="Box_rd4"]
+size = Vector3(5.2, 0.1, 28.15)
+material = SubResource("Mat_asphalt")
+
+[sub_resource type="BoxShape3D" id="Sh_rd4"]
+size = Vector3(5.2, 0.1, 28.15)
+
+[sub_resource type="BoxMesh" id="Box_cb4"]
+size = Vector3(0.22, 0.16, 28.1)
+material = SubResource("Mat_curb")
+
+[sub_resource type="BoxMesh" id="Box_rd5"]
+size = Vector3(5.2, 0.1, 28.15)
+material = SubResource("Mat_asphalt")
+
+[sub_resource type="BoxShape3D" id="Sh_rd5"]
+size = Vector3(5.2, 0.1, 28.15)
+
+[sub_resource type="BoxMesh" id="Box_cb5"]
+size = Vector3(0.22, 0.16, 28.1)
+material = SubResource("Mat_curb")
+
+[sub_resource type="BoxMesh" id="Box_rd6"]
+size = Vector3(6.4, 0.1, 14.15)
+material = SubResource("Mat_asphalt")
+
+[sub_resource type="BoxShape3D" id="Sh_rd6"]
+size = Vector3(6.4, 0.1, 14.15)
+
+[sub_resource type="BoxMesh" id="Box_cb6"]
+size = Vector3(0.22, 0.16, 14.1)
+material = SubResource("Mat_curb")
+
+[sub_resource type="BoxMesh" id="Box_rd7"]
+size = Vector3(4.8, 0.1, 18.589088914585773)
+material = SubResource("Mat_asphalt")
+
+[sub_resource type="BoxShape3D" id="Sh_rd7"]
+size = Vector3(4.8, 0.1, 18.589088914585773)
+
+[sub_resource type="BoxMesh" id="Box_cb7"]
+size = Vector3(0.22, 0.16, 18.539088914585776)
+material = SubResource("Mat_curb")
+
+[sub_resource type="BoxMesh" id="Box_rd8"]
+size = Vector3(4.8, 0.1, 26.226809620810595)
+material = SubResource("Mat_asphalt")
+
+[sub_resource type="BoxShape3D" id="Sh_rd8"]
+size = Vector3(4.8, 0.1, 26.226809620810595)
+
+[sub_resource type="BoxMesh" id="Box_cb8"]
+size = Vector3(0.22, 0.16, 26.176809620810598)
+material = SubResource("Mat_curb")
+
+[sub_resource type="BoxMesh" id="Box_rd9"]
+size = Vector3(4.8, 0.1, 13.56640786499874)
+material = SubResource("Mat_asphalt")
+
+[sub_resource type="BoxShape3D" id="Sh_rd9"]
+size = Vector3(4.8, 0.1, 13.56640786499874)
+
+[sub_resource type="BoxMesh" id="Box_cb9"]
+size = Vector3(0.22, 0.16, 13.516407864998738)
+material = SubResource("Mat_curb")
+
+[sub_resource type="BoxMesh" id="Box_rd10"]
+size = Vector3(4.4, 0.1, 43.41661530556787)
+material = SubResource("Mat_asphalt")
+
+[sub_resource type="BoxShape3D" id="Sh_rd10"]
+size = Vector3(4.4, 0.1, 43.41661530556787)
+
+[sub_resource type="BoxMesh" id="Box_cb10"]
+size = Vector3(0.22, 0.16, 43.366615305567876)
+material = SubResource("Mat_curb")
+
+[sub_resource type="BoxMesh" id="Box_rd11"]
+size = Vector3(6.0, 0.1, 24.15)
+material = SubResource("Mat_asphalt")
+
+[sub_resource type="BoxShape3D" id="Sh_rd11"]
+size = Vector3(6.0, 0.1, 24.15)
+
+[sub_resource type="BoxMesh" id="Box_cb11"]
+size = Vector3(0.22, 0.16, 24.1)
+material = SubResource("Mat_curb")
+
+[sub_resource type="BoxMesh" id="Box_rd12"]
+size = Vector3(6.0, 0.1, 8.63528137423857)
+material = SubResource("Mat_asphalt")
+
+[sub_resource type="BoxShape3D" id="Sh_rd12"]
+size = Vector3(6.0, 0.1, 8.63528137423857)
+
+[sub_resource type="BoxMesh" id="Box_cb12"]
+size = Vector3(0.22, 0.16, 8.58528137423857)
+material = SubResource("Mat_curb")
+
+[sub_resource type="BoxMesh" id="Box_rd13"]
+size = Vector3(6.0, 0.1, 24.15)
+material = SubResource("Mat_asphalt")
+
+[sub_resource type="BoxShape3D" id="Sh_rd13"]
+size = Vector3(6.0, 0.1, 24.15)
+
+[sub_resource type="BoxMesh" id="Box_cb13"]
+size = Vector3(0.22, 0.16, 24.1)
+material = SubResource("Mat_curb")
+
+[sub_resource type="BoxMesh" id="Box_rd14"]
+size = Vector3(6.0, 0.1, 8.63528137423857)
+material = SubResource("Mat_asphalt")
+
+[sub_resource type="BoxShape3D" id="Sh_rd14"]
+size = Vector3(6.0, 0.1, 8.63528137423857)
+
+[sub_resource type="BoxMesh" id="Box_cb14"]
+size = Vector3(0.22, 0.16, 8.58528137423857)
+material = SubResource("Mat_curb")
+
+[sub_resource type="BoxMesh" id="Box_rd15"]
+size = Vector3(6.0, 0.1, 24.15)
+material = SubResource("Mat_asphalt")
+
+[sub_resource type="BoxShape3D" id="Sh_rd15"]
+size = Vector3(6.0, 0.1, 24.15)
+
+[sub_resource type="BoxMesh" id="Box_cb15"]
+size = Vector3(0.22, 0.16, 24.1)
+material = SubResource("Mat_curb")
+
+[sub_resource type="BoxMesh" id="Box_rd16"]
+size = Vector3(6.0, 0.1, 8.63528137423857)
+material = SubResource("Mat_asphalt")
+
+[sub_resource type="BoxShape3D" id="Sh_rd16"]
+size = Vector3(6.0, 0.1, 8.63528137423857)
+
+[sub_resource type="BoxMesh" id="Box_cb16"]
+size = Vector3(0.22, 0.16, 8.58528137423857)
+material = SubResource("Mat_curb")
+
+[sub_resource type="BoxMesh" id="Box_rd17"]
+size = Vector3(6.0, 0.1, 24.15)
+material = SubResource("Mat_asphalt")
+
+[sub_resource type="BoxShape3D" id="Sh_rd17"]
+size = Vector3(6.0, 0.1, 24.15)
+
+[sub_resource type="BoxMesh" id="Box_cb17"]
+size = Vector3(0.22, 0.16, 24.1)
+material = SubResource("Mat_curb")
+
+[sub_resource type="BoxMesh" id="Box_rd18"]
+size = Vector3(6.0, 0.1, 8.63528137423857)
+material = SubResource("Mat_asphalt")
+
+[sub_resource type="BoxShape3D" id="Sh_rd18"]
+size = Vector3(6.0, 0.1, 8.63528137423857)
+
+[sub_resource type="BoxMesh" id="Box_cb18"]
+size = Vector3(0.22, 0.16, 8.58528137423857)
+material = SubResource("Mat_curb")
 
 [node name="HorrorWorld" type="Node3D"]
 script = ExtResource("1")
+
+[node name="FarmSky" type="WorldEnvironment" parent="."]
+environment = SubResource("EnvFarm")
+
+[node name="Outdoor" type="Node3D" parent="."]
+
+[node name="Terrain" type="StaticBody3D" parent="Outdoor"]
+collision_layer = 1
+collision_mask = 0
+metadata/span_x = 144.0
+metadata/span_z = 120.0
+metadata/hill_count = 7
+
+[node name="MeshInstance3D" type="MeshInstance3D" parent="Outdoor/Terrain"]
+transform = Transform3D(1.00000, 0, 0.00000, 0, 1, 0, -0.00000, 0, 1.00000, 0.000, -0.600, 0.000)
+mesh = SubResource("Box_terrain")
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="Outdoor/Terrain"]
+transform = Transform3D(1.00000, 0, 0.00000, 0, 1, 0, -0.00000, 0, 1.00000, 0.000, -0.600, 0.000)
+shape = SubResource("Sh_terrain")
+
+[node name="Hills" type="Node3D" parent="Outdoor"]
+metadata/hill_count = 7
+
+[node name="Hill_shed_nw" type="Marker3D" parent="Outdoor/Hills"]
+position = Vector3(-50.0, 4.4, -40.0)
+metadata/hill_id = "shed_nw"
+
+[node name="HillMesh_shed_nw" type="StaticBody3D" parent="Outdoor/Hills"]
+transform = Transform3D(1.00000, 0, 0.00000, 0, 1, 0, -0.00000, 0, 1.00000, -50.000, 1.540, -40.000)
+collision_layer = 1
+collision_mask = 0
+
+[node name="MeshInstance3D" type="MeshInstance3D" parent="Outdoor/Hills/HillMesh_shed_nw"]
+mesh = SubResource("Box_hill_shed_nw")
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="Outdoor/Hills/HillMesh_shed_nw"]
+shape = SubResource("Sh_hill_shed_nw")
+
+[node name="Hill_west_pasture" type="Marker3D" parent="Outdoor/Hills"]
+position = Vector3(-56.0, 2.8, 12.0)
+metadata/hill_id = "west_pasture"
+
+[node name="HillMesh_west_pasture" type="StaticBody3D" parent="Outdoor/Hills"]
+transform = Transform3D(1.00000, 0, 0.00000, 0, 1, 0, -0.00000, 0, 1.00000, -56.000, 0.980, 12.000)
+collision_layer = 1
+collision_mask = 0
+
+[node name="MeshInstance3D" type="MeshInstance3D" parent="Outdoor/Hills/HillMesh_west_pasture"]
+mesh = SubResource("Box_hill_west_pasture")
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="Outdoor/Hills/HillMesh_west_pasture"]
+shape = SubResource("Sh_hill_west_pasture")
+
+[node name="Hill_sw_field" type="Marker3D" parent="Outdoor/Hills"]
+position = Vector3(-40.0, 3.3, 38.0)
+metadata/hill_id = "sw_field"
+
+[node name="HillMesh_sw_field" type="StaticBody3D" parent="Outdoor/Hills"]
+transform = Transform3D(1.00000, 0, 0.00000, 0, 1, 0, -0.00000, 0, 1.00000, -40.000, 1.155, 38.000)
+collision_layer = 1
+collision_mask = 0
+
+[node name="MeshInstance3D" type="MeshInstance3D" parent="Outdoor/Hills/HillMesh_sw_field"]
+mesh = SubResource("Box_hill_sw_field")
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="Outdoor/Hills/HillMesh_sw_field"]
+shape = SubResource("Sh_hill_sw_field")
+
+[node name="Hill_north_ridge" type="Marker3D" parent="Outdoor/Hills"]
+position = Vector3(10.0, 3.5, -48.0)
+metadata/hill_id = "north_ridge"
+
+[node name="HillMesh_north_ridge" type="StaticBody3D" parent="Outdoor/Hills"]
+transform = Transform3D(1.00000, 0, 0.00000, 0, 1, 0, -0.00000, 0, 1.00000, 10.000, 1.225, -48.000)
+collision_layer = 1
+collision_mask = 0
+
+[node name="MeshInstance3D" type="MeshInstance3D" parent="Outdoor/Hills/HillMesh_north_ridge"]
+mesh = SubResource("Box_hill_north_ridge")
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="Outdoor/Hills/HillMesh_north_ridge"]
+shape = SubResource("Sh_hill_north_ridge")
+
+[node name="Hill_ne_behind_pm" type="Marker3D" parent="Outdoor/Hills"]
+position = Vector3(54.0, 3.9, -36.0)
+metadata/hill_id = "ne_behind_pm"
+
+[node name="HillMesh_ne_behind_pm" type="StaticBody3D" parent="Outdoor/Hills"]
+transform = Transform3D(1.00000, 0, 0.00000, 0, 1, 0, -0.00000, 0, 1.00000, 54.000, 1.365, -36.000)
+collision_layer = 1
+collision_mask = 0
+
+[node name="MeshInstance3D" type="MeshInstance3D" parent="Outdoor/Hills/HillMesh_ne_behind_pm"]
+mesh = SubResource("Box_hill_ne_behind_pm")
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="Outdoor/Hills/HillMesh_ne_behind_pm"]
+shape = SubResource("Sh_hill_ne_behind_pm")
+
+[node name="Hill_se_pasture" type="Marker3D" parent="Outdoor/Hills"]
+position = Vector3(46.0, 2.9, 40.0)
+metadata/hill_id = "se_pasture"
+
+[node name="HillMesh_se_pasture" type="StaticBody3D" parent="Outdoor/Hills"]
+transform = Transform3D(1.00000, 0, 0.00000, 0, 1, 0, -0.00000, 0, 1.00000, 46.000, 1.015, 40.000)
+collision_layer = 1
+collision_mask = 0
+
+[node name="MeshInstance3D" type="MeshInstance3D" parent="Outdoor/Hills/HillMesh_se_pasture"]
+mesh = SubResource("Box_hill_se_pasture")
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="Outdoor/Hills/HillMesh_se_pasture"]
+shape = SubResource("Sh_hill_se_pasture")
+
+[node name="Hill_east_rise" type="Marker3D" parent="Outdoor/Hills"]
+position = Vector3(64.0, 2.3, 8.0)
+metadata/hill_id = "east_rise"
+
+[node name="HillMesh_east_rise" type="StaticBody3D" parent="Outdoor/Hills"]
+transform = Transform3D(1.00000, 0, 0.00000, 0, 1, 0, -0.00000, 0, 1.00000, 64.000, 0.805, 8.000)
+collision_layer = 1
+collision_mask = 0
+
+[node name="MeshInstance3D" type="MeshInstance3D" parent="Outdoor/Hills/HillMesh_east_rise"]
+mesh = SubResource("Box_hill_east_rise")
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="Outdoor/Hills/HillMesh_east_rise"]
+shape = SubResource("Sh_hill_east_rise")
+
+[node name="Roads" type="Node3D" parent="Outdoor"]
+
+[node name="HubRing" type="StaticBody3D" parent="Outdoor/Roads"]
+transform = Transform3D(1.00000, 0, 0.00000, 0, 1, 0, -0.00000, 0, 1.00000, 0.000, 0.020, 0.000)
+collision_layer = 1
+collision_mask = 0
+
+[node name="MeshInstance3D" type="MeshInstance3D" parent="Outdoor/Roads/HubRing"]
+mesh = SubResource("Cyl_hub")
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="Outdoor/Roads/HubRing"]
+shape = SubResource("CylSh_hub")
+
+[node name="HubCurb" type="StaticBody3D" parent="Outdoor/Roads"]
+transform = Transform3D(1.00000, 0, 0.00000, 0, 1, 0, -0.00000, 0, 1.00000, 0.000, 0.060, 0.000)
+collision_layer = 0
+collision_mask = 0
+
+[node name="MeshInstance3D" type="MeshInstance3D" parent="Outdoor/Roads/HubCurb"]
+mesh = SubResource("Cyl_hub_curb")
+
+[node name="EastPad" type="StaticBody3D" parent="Outdoor/Roads"]
+transform = Transform3D(1.00000, 0, 0.00000, 0, 1, 0, -0.00000, 0, 1.00000, 40.000, 0.020, 10.000)
+collision_layer = 1
+collision_mask = 0
+
+[node name="MeshInstance3D" type="MeshInstance3D" parent="Outdoor/Roads/EastPad"]
+mesh = SubResource("Box_eastpad")
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="Outdoor/Roads/EastPad"]
+shape = SubResource("Sh_eastpad")
+
+[node name="ShedRing" type="StaticBody3D" parent="Outdoor/Roads"]
+transform = Transform3D(1.00000, 0, 0.00000, 0, 1, 0, -0.00000, 0, 1.00000, -50.000, 0.020, -40.000)
+collision_layer = 1
+collision_mask = 0
+
+[node name="MeshInstance3D" type="MeshInstance3D" parent="Outdoor/Roads/ShedRing"]
+mesh = SubResource("Cyl_shed")
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="Outdoor/Roads/ShedRing"]
+shape = SubResource("CylSh_shed")
+
+[node name="Lane_00" type="StaticBody3D" parent="Outdoor/Roads"]
+transform = Transform3D(0.00000, 0, 1.00000, 0, 1, 0, -1.00000, 0, 0.00000, -19.000, 0.020, 0.000)
+collision_layer = 1
+collision_mask = 0
+
+[node name="MeshInstance3D" type="MeshInstance3D" parent="Outdoor/Roads/Lane_00"]
+mesh = SubResource("Box_rd0")
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="Outdoor/Roads/Lane_00"]
+shape = SubResource("Sh_rd0")
+
+[node name="Curb_00L" type="StaticBody3D" parent="Outdoor/Roads"]
+transform = Transform3D(0.00000, 0, 1.00000, 0, 1, 0, -1.00000, 0, 0.00000, -19.000, 0.100, -3.520)
+collision_layer = 0
+collision_mask = 0
+
+[node name="MeshInstance3D" type="MeshInstance3D" parent="Outdoor/Roads/Curb_00L"]
+mesh = SubResource("Box_cb0")
+
+[node name="Curb_00R" type="StaticBody3D" parent="Outdoor/Roads"]
+transform = Transform3D(0.00000, 0, 1.00000, 0, 1, 0, -1.00000, 0, 0.00000, -19.000, 0.100, 3.520)
+collision_layer = 0
+collision_mask = 0
+
+[node name="MeshInstance3D" type="MeshInstance3D" parent="Outdoor/Roads/Curb_00R"]
+mesh = SubResource("Box_cb0")
+
+[node name="Lane_01" type="StaticBody3D" parent="Outdoor/Roads"]
+transform = Transform3D(1.00000, 0, 0.00000, 0, 1, 0, -0.00000, 0, 1.00000, 0.000, 0.020, 1.000)
+collision_layer = 1
+collision_mask = 0
+
+[node name="MeshInstance3D" type="MeshInstance3D" parent="Outdoor/Roads/Lane_01"]
+mesh = SubResource("Box_rd1")
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="Outdoor/Roads/Lane_01"]
+shape = SubResource("Sh_rd1")
+
+[node name="Curb_01L" type="StaticBody3D" parent="Outdoor/Roads"]
+transform = Transform3D(1.00000, 0, 0.00000, 0, 1, 0, -0.00000, 0, 1.00000, 3.120, 0.100, 1.000)
+collision_layer = 0
+collision_mask = 0
+
+[node name="MeshInstance3D" type="MeshInstance3D" parent="Outdoor/Roads/Curb_01L"]
+mesh = SubResource("Box_cb1")
+
+[node name="Curb_01R" type="StaticBody3D" parent="Outdoor/Roads"]
+transform = Transform3D(1.00000, 0, 0.00000, 0, 1, 0, -0.00000, 0, 1.00000, -3.120, 0.100, 1.000)
+collision_layer = 0
+collision_mask = 0
+
+[node name="MeshInstance3D" type="MeshInstance3D" parent="Outdoor/Roads/Curb_01R"]
+mesh = SubResource("Box_cb1")
+
+[node name="Lane_02" type="StaticBody3D" parent="Outdoor/Roads"]
+transform = Transform3D(0.00000, 0, 1.00000, 0, 1, 0, -1.00000, 0, 0.00000, 0.000, 0.020, -14.000)
+collision_layer = 1
+collision_mask = 0
+
+[node name="MeshInstance3D" type="MeshInstance3D" parent="Outdoor/Roads/Lane_02"]
+mesh = SubResource("Box_rd2")
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="Outdoor/Roads/Lane_02"]
+shape = SubResource("Sh_rd2")
+
+[node name="Curb_02L" type="StaticBody3D" parent="Outdoor/Roads"]
+transform = Transform3D(0.00000, 0, 1.00000, 0, 1, 0, -1.00000, 0, 0.00000, 0.000, 0.100, -16.720)
+collision_layer = 0
+collision_mask = 0
+
+[node name="MeshInstance3D" type="MeshInstance3D" parent="Outdoor/Roads/Curb_02L"]
+mesh = SubResource("Box_cb2")
+
+[node name="Curb_02R" type="StaticBody3D" parent="Outdoor/Roads"]
+transform = Transform3D(0.00000, 0, 1.00000, 0, 1, 0, -1.00000, 0, 0.00000, 0.000, 0.100, -11.280)
+collision_layer = 0
+collision_mask = 0
+
+[node name="MeshInstance3D" type="MeshInstance3D" parent="Outdoor/Roads/Curb_02R"]
+mesh = SubResource("Box_cb2")
+
+[node name="Lane_03" type="StaticBody3D" parent="Outdoor/Roads"]
+transform = Transform3D(0.00000, 0, 1.00000, 0, 1, 0, -1.00000, 0, 0.00000, 0.000, 0.020, 14.000)
+collision_layer = 1
+collision_mask = 0
+
+[node name="MeshInstance3D" type="MeshInstance3D" parent="Outdoor/Roads/Lane_03"]
+mesh = SubResource("Box_rd3")
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="Outdoor/Roads/Lane_03"]
+shape = SubResource("Sh_rd3")
+
+[node name="Curb_03L" type="StaticBody3D" parent="Outdoor/Roads"]
+transform = Transform3D(0.00000, 0, 1.00000, 0, 1, 0, -1.00000, 0, 0.00000, 0.000, 0.100, 11.280)
+collision_layer = 0
+collision_mask = 0
+
+[node name="MeshInstance3D" type="MeshInstance3D" parent="Outdoor/Roads/Curb_03L"]
+mesh = SubResource("Box_cb3")
+
+[node name="Curb_03R" type="StaticBody3D" parent="Outdoor/Roads"]
+transform = Transform3D(0.00000, 0, 1.00000, 0, 1, 0, -1.00000, 0, 0.00000, 0.000, 0.100, 16.720)
+collision_layer = 0
+collision_mask = 0
+
+[node name="MeshInstance3D" type="MeshInstance3D" parent="Outdoor/Roads/Curb_03R"]
+mesh = SubResource("Box_cb3")
+
+[node name="Lane_04" type="StaticBody3D" parent="Outdoor/Roads"]
+transform = Transform3D(1.00000, 0, 0.00000, 0, 1, 0, -0.00000, 0, 1.00000, -16.000, 0.020, 0.000)
+collision_layer = 1
+collision_mask = 0
+
+[node name="MeshInstance3D" type="MeshInstance3D" parent="Outdoor/Roads/Lane_04"]
+mesh = SubResource("Box_rd4")
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="Outdoor/Roads/Lane_04"]
+shape = SubResource("Sh_rd4")
+
+[node name="Curb_04L" type="StaticBody3D" parent="Outdoor/Roads"]
+transform = Transform3D(1.00000, 0, 0.00000, 0, 1, 0, -0.00000, 0, 1.00000, -13.280, 0.100, 0.000)
+collision_layer = 0
+collision_mask = 0
+
+[node name="MeshInstance3D" type="MeshInstance3D" parent="Outdoor/Roads/Curb_04L"]
+mesh = SubResource("Box_cb4")
+
+[node name="Curb_04R" type="StaticBody3D" parent="Outdoor/Roads"]
+transform = Transform3D(1.00000, 0, 0.00000, 0, 1, 0, -0.00000, 0, 1.00000, -18.720, 0.100, 0.000)
+collision_layer = 0
+collision_mask = 0
+
+[node name="MeshInstance3D" type="MeshInstance3D" parent="Outdoor/Roads/Curb_04R"]
+mesh = SubResource("Box_cb4")
+
+[node name="Lane_05" type="StaticBody3D" parent="Outdoor/Roads"]
+transform = Transform3D(1.00000, 0, 0.00000, 0, 1, 0, -0.00000, 0, 1.00000, 16.000, 0.020, 0.000)
+collision_layer = 1
+collision_mask = 0
+
+[node name="MeshInstance3D" type="MeshInstance3D" parent="Outdoor/Roads/Lane_05"]
+mesh = SubResource("Box_rd5")
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="Outdoor/Roads/Lane_05"]
+shape = SubResource("Sh_rd5")
+
+[node name="Curb_05L" type="StaticBody3D" parent="Outdoor/Roads"]
+transform = Transform3D(1.00000, 0, 0.00000, 0, 1, 0, -0.00000, 0, 1.00000, 18.720, 0.100, 0.000)
+collision_layer = 0
+collision_mask = 0
+
+[node name="MeshInstance3D" type="MeshInstance3D" parent="Outdoor/Roads/Curb_05L"]
+mesh = SubResource("Box_cb5")
+
+[node name="Curb_05R" type="StaticBody3D" parent="Outdoor/Roads"]
+transform = Transform3D(1.00000, 0, 0.00000, 0, 1, 0, -0.00000, 0, 1.00000, 13.280, 0.100, 0.000)
+collision_layer = 0
+collision_mask = 0
+
+[node name="MeshInstance3D" type="MeshInstance3D" parent="Outdoor/Roads/Curb_05R"]
+mesh = SubResource("Box_cb5")
+
+[node name="Lane_06" type="StaticBody3D" parent="Outdoor/Roads"]
+transform = Transform3D(0.00000, 0, 1.00000, 0, 1, 0, -1.00000, 0, 0.00000, 15.000, 0.020, 0.000)
+collision_layer = 1
+collision_mask = 0
+
+[node name="MeshInstance3D" type="MeshInstance3D" parent="Outdoor/Roads/Lane_06"]
+mesh = SubResource("Box_rd6")
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="Outdoor/Roads/Lane_06"]
+shape = SubResource("Sh_rd6")
+
+[node name="Curb_06L" type="StaticBody3D" parent="Outdoor/Roads"]
+transform = Transform3D(0.00000, 0, 1.00000, 0, 1, 0, -1.00000, 0, 0.00000, 15.000, 0.100, -3.320)
+collision_layer = 0
+collision_mask = 0
+
+[node name="MeshInstance3D" type="MeshInstance3D" parent="Outdoor/Roads/Curb_06L"]
+mesh = SubResource("Box_cb6")
+
+[node name="Curb_06R" type="StaticBody3D" parent="Outdoor/Roads"]
+transform = Transform3D(0.00000, 0, 1.00000, 0, 1, 0, -1.00000, 0, 0.00000, 15.000, 0.100, 3.320)
+collision_layer = 0
+collision_mask = 0
+
+[node name="MeshInstance3D" type="MeshInstance3D" parent="Outdoor/Roads/Curb_06R"]
+mesh = SubResource("Box_cb6")
+
+[node name="Lane_07" type="StaticBody3D" parent="Outdoor/Roads"]
+transform = Transform3D(0.75926, 0, 0.65079, 0, 1, 0, -0.65079, 0, 0.75926, -6.000, 0.020, -7.000)
+collision_layer = 1
+collision_mask = 0
+
+[node name="MeshInstance3D" type="MeshInstance3D" parent="Outdoor/Roads/Lane_07"]
+mesh = SubResource("Box_rd7")
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="Outdoor/Roads/Lane_07"]
+shape = SubResource("Sh_rd7")
+
+[node name="Curb_07L" type="StaticBody3D" parent="Outdoor/Roads"]
+transform = Transform3D(0.75926, 0, 0.65079, 0, 1, 0, -0.65079, 0, 0.75926, -4.087, 0.100, -8.640)
+collision_layer = 0
+collision_mask = 0
+
+[node name="MeshInstance3D" type="MeshInstance3D" parent="Outdoor/Roads/Curb_07L"]
+mesh = SubResource("Box_cb7")
+
+[node name="Curb_07R" type="StaticBody3D" parent="Outdoor/Roads"]
+transform = Transform3D(0.75926, 0, 0.65079, 0, 1, 0, -0.65079, 0, 0.75926, -7.913, 0.100, -5.360)
+collision_layer = 0
+collision_mask = 0
+
+[node name="MeshInstance3D" type="MeshInstance3D" parent="Outdoor/Roads/Curb_07R"]
+mesh = SubResource("Box_cb7")
+
+[node name="Lane_08" type="StaticBody3D" parent="Outdoor/Roads"]
+transform = Transform3D(-0.07670, 0, 0.99705, 0, 1, 0, -0.99705, 0, -0.07670, -25.000, 0.020, -13.000)
+collision_layer = 1
+collision_mask = 0
+
+[node name="MeshInstance3D" type="MeshInstance3D" parent="Outdoor/Roads/Lane_08"]
+mesh = SubResource("Box_rd8")
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="Outdoor/Roads/Lane_08"]
+shape = SubResource("Sh_rd8")
+
+[node name="Curb_08L" type="StaticBody3D" parent="Outdoor/Roads"]
+transform = Transform3D(-0.07670, 0, 0.99705, 0, 1, 0, -0.99705, 0, -0.07670, -25.193, 0.100, -15.513)
+collision_layer = 0
+collision_mask = 0
+
+[node name="MeshInstance3D" type="MeshInstance3D" parent="Outdoor/Roads/Curb_08L"]
+mesh = SubResource("Box_cb8")
+
+[node name="Curb_08R" type="StaticBody3D" parent="Outdoor/Roads"]
+transform = Transform3D(-0.07670, 0, 0.99705, 0, 1, 0, -0.99705, 0, -0.07670, -24.807, 0.100, -10.487)
+collision_layer = 0
+collision_mask = 0
+
+[node name="MeshInstance3D" type="MeshInstance3D" parent="Outdoor/Roads/Curb_08R"]
+mesh = SubResource("Box_cb8")
+
+[node name="Lane_09" type="StaticBody3D" parent="Outdoor/Roads"]
+transform = Transform3D(0.89443, 0, 0.44721, 0, 1, 0, -0.44721, 0, 0.89443, 3.000, 0.020, 20.000)
+collision_layer = 1
+collision_mask = 0
+
+[node name="MeshInstance3D" type="MeshInstance3D" parent="Outdoor/Roads/Lane_09"]
+mesh = SubResource("Box_rd9")
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="Outdoor/Roads/Lane_09"]
+shape = SubResource("Sh_rd9")
+
+[node name="Curb_09L" type="StaticBody3D" parent="Outdoor/Roads"]
+transform = Transform3D(0.89443, 0, 0.44721, 0, 1, 0, -0.44721, 0, 0.89443, 5.254, 0.100, 18.873)
+collision_layer = 0
+collision_mask = 0
+
+[node name="MeshInstance3D" type="MeshInstance3D" parent="Outdoor/Roads/Curb_09L"]
+mesh = SubResource("Box_cb9")
+
+[node name="Curb_09R" type="StaticBody3D" parent="Outdoor/Roads"]
+transform = Transform3D(0.89443, 0, 0.44721, 0, 1, 0, -0.44721, 0, 0.89443, 0.746, 0.100, 21.127)
+collision_layer = 0
+collision_mask = 0
+
+[node name="MeshInstance3D" type="MeshInstance3D" parent="Outdoor/Roads/Curb_09R"]
+mesh = SubResource("Box_cb9")
+
+[node name="Lane_10" type="StaticBody3D" parent="Outdoor/Roads"]
+transform = Transform3D(-0.55470, 0, -0.83205, 0, 1, 0, 0.83205, 0, -0.55470, -30.000, 0.020, -26.000)
+collision_layer = 1
+collision_mask = 0
+
+[node name="MeshInstance3D" type="MeshInstance3D" parent="Outdoor/Roads/Lane_10"]
+mesh = SubResource("Box_rd10")
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="Outdoor/Roads/Lane_10"]
+shape = SubResource("Sh_rd10")
+
+[node name="Curb_10L" type="StaticBody3D" parent="Outdoor/Roads"]
+transform = Transform3D(-0.55470, 0, -0.83205, 0, 1, 0, 0.83205, 0, -0.55470, -31.287, 0.100, -24.070)
+collision_layer = 0
+collision_mask = 0
+
+[node name="MeshInstance3D" type="MeshInstance3D" parent="Outdoor/Roads/Curb_10L"]
+mesh = SubResource("Box_cb10")
+
+[node name="Curb_10R" type="StaticBody3D" parent="Outdoor/Roads"]
+transform = Transform3D(-0.55470, 0, -0.83205, 0, 1, 0, 0.83205, 0, -0.55470, -28.713, 0.100, -27.930)
+collision_layer = 0
+collision_mask = 0
+
+[node name="MeshInstance3D" type="MeshInstance3D" parent="Outdoor/Roads/Curb_10R"]
+mesh = SubResource("Box_cb10")
+
+[node name="Lane_11" type="StaticBody3D" parent="Outdoor/Roads"]
+transform = Transform3D(0.00000, 0, 1.00000, 0, 1, 0, -1.00000, 0, 0.00000, 40.000, 0.020, -20.000)
+collision_layer = 1
+collision_mask = 0
+
+[node name="MeshInstance3D" type="MeshInstance3D" parent="Outdoor/Roads/Lane_11"]
+mesh = SubResource("Box_rd11")
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="Outdoor/Roads/Lane_11"]
+shape = SubResource("Sh_rd11")
+
+[node name="Curb_11L" type="StaticBody3D" parent="Outdoor/Roads"]
+transform = Transform3D(0.00000, 0, 1.00000, 0, 1, 0, -1.00000, 0, 0.00000, 40.000, 0.100, -23.120)
+collision_layer = 0
+collision_mask = 0
+
+[node name="MeshInstance3D" type="MeshInstance3D" parent="Outdoor/Roads/Curb_11L"]
+mesh = SubResource("Box_cb11")
+
+[node name="Curb_11R" type="StaticBody3D" parent="Outdoor/Roads"]
+transform = Transform3D(0.00000, 0, 1.00000, 0, 1, 0, -1.00000, 0, 0.00000, 40.000, 0.100, -16.880)
+collision_layer = 0
+collision_mask = 0
+
+[node name="MeshInstance3D" type="MeshInstance3D" parent="Outdoor/Roads/Curb_11R"]
+mesh = SubResource("Box_cb11")
+
+[node name="Lane_12" type="StaticBody3D" parent="Outdoor/Roads"]
+transform = Transform3D(0.70711, 0, 0.70711, 0, 1, 0, -0.70711, 0, 0.70711, 55.000, 0.020, -17.000)
+collision_layer = 1
+collision_mask = 0
+
+[node name="MeshInstance3D" type="MeshInstance3D" parent="Outdoor/Roads/Lane_12"]
+mesh = SubResource("Box_rd12")
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="Outdoor/Roads/Lane_12"]
+shape = SubResource("Sh_rd12")
+
+[node name="Curb_12L" type="StaticBody3D" parent="Outdoor/Roads"]
+transform = Transform3D(0.70711, 0, 0.70711, 0, 1, 0, -0.70711, 0, 0.70711, 57.206, 0.100, -19.206)
+collision_layer = 0
+collision_mask = 0
+
+[node name="MeshInstance3D" type="MeshInstance3D" parent="Outdoor/Roads/Curb_12L"]
+mesh = SubResource("Box_cb12")
+
+[node name="Curb_12R" type="StaticBody3D" parent="Outdoor/Roads"]
+transform = Transform3D(0.70711, 0, 0.70711, 0, 1, 0, -0.70711, 0, 0.70711, 52.794, 0.100, -14.794)
+collision_layer = 0
+collision_mask = 0
+
+[node name="MeshInstance3D" type="MeshInstance3D" parent="Outdoor/Roads/Curb_12R"]
+mesh = SubResource("Box_cb12")
+
+[node name="Lane_13" type="StaticBody3D" parent="Outdoor/Roads"]
+transform = Transform3D(1.00000, 0, 0.00000, 0, 1, 0, -0.00000, 0, 1.00000, 58.000, 0.020, -2.000)
+collision_layer = 1
+collision_mask = 0
+
+[node name="MeshInstance3D" type="MeshInstance3D" parent="Outdoor/Roads/Lane_13"]
+mesh = SubResource("Box_rd13")
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="Outdoor/Roads/Lane_13"]
+shape = SubResource("Sh_rd13")
+
+[node name="Curb_13L" type="StaticBody3D" parent="Outdoor/Roads"]
+transform = Transform3D(1.00000, 0, 0.00000, 0, 1, 0, -0.00000, 0, 1.00000, 61.120, 0.100, -2.000)
+collision_layer = 0
+collision_mask = 0
+
+[node name="MeshInstance3D" type="MeshInstance3D" parent="Outdoor/Roads/Curb_13L"]
+mesh = SubResource("Box_cb13")
+
+[node name="Curb_13R" type="StaticBody3D" parent="Outdoor/Roads"]
+transform = Transform3D(1.00000, 0, 0.00000, 0, 1, 0, -0.00000, 0, 1.00000, 54.880, 0.100, -2.000)
+collision_layer = 0
+collision_mask = 0
+
+[node name="MeshInstance3D" type="MeshInstance3D" parent="Outdoor/Roads/Curb_13R"]
+mesh = SubResource("Box_cb13")
+
+[node name="Lane_14" type="StaticBody3D" parent="Outdoor/Roads"]
+transform = Transform3D(0.70711, 0, -0.70711, 0, 1, 0, 0.70711, 0, 0.70711, 55.000, 0.020, 13.000)
+collision_layer = 1
+collision_mask = 0
+
+[node name="MeshInstance3D" type="MeshInstance3D" parent="Outdoor/Roads/Lane_14"]
+mesh = SubResource("Box_rd14")
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="Outdoor/Roads/Lane_14"]
+shape = SubResource("Sh_rd14")
+
+[node name="Curb_14L" type="StaticBody3D" parent="Outdoor/Roads"]
+transform = Transform3D(0.70711, 0, -0.70711, 0, 1, 0, 0.70711, 0, 0.70711, 57.206, 0.100, 15.206)
+collision_layer = 0
+collision_mask = 0
+
+[node name="MeshInstance3D" type="MeshInstance3D" parent="Outdoor/Roads/Curb_14L"]
+mesh = SubResource("Box_cb14")
+
+[node name="Curb_14R" type="StaticBody3D" parent="Outdoor/Roads"]
+transform = Transform3D(0.70711, 0, -0.70711, 0, 1, 0, 0.70711, 0, 0.70711, 52.794, 0.100, 10.794)
+collision_layer = 0
+collision_mask = 0
+
+[node name="MeshInstance3D" type="MeshInstance3D" parent="Outdoor/Roads/Curb_14R"]
+mesh = SubResource("Box_cb14")
+
+[node name="Lane_15" type="StaticBody3D" parent="Outdoor/Roads"]
+transform = Transform3D(0.00000, 0, -1.00000, 0, 1, 0, 1.00000, 0, 0.00000, 40.000, 0.020, 16.000)
+collision_layer = 1
+collision_mask = 0
+
+[node name="MeshInstance3D" type="MeshInstance3D" parent="Outdoor/Roads/Lane_15"]
+mesh = SubResource("Box_rd15")
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="Outdoor/Roads/Lane_15"]
+shape = SubResource("Sh_rd15")
+
+[node name="Curb_15L" type="StaticBody3D" parent="Outdoor/Roads"]
+transform = Transform3D(0.00000, 0, -1.00000, 0, 1, 0, 1.00000, 0, 0.00000, 40.000, 0.100, 19.120)
+collision_layer = 0
+collision_mask = 0
+
+[node name="MeshInstance3D" type="MeshInstance3D" parent="Outdoor/Roads/Curb_15L"]
+mesh = SubResource("Box_cb15")
+
+[node name="Curb_15R" type="StaticBody3D" parent="Outdoor/Roads"]
+transform = Transform3D(0.00000, 0, -1.00000, 0, 1, 0, 1.00000, 0, 0.00000, 40.000, 0.100, 12.880)
+collision_layer = 0
+collision_mask = 0
+
+[node name="MeshInstance3D" type="MeshInstance3D" parent="Outdoor/Roads/Curb_15R"]
+mesh = SubResource("Box_cb15")
+
+[node name="Lane_16" type="StaticBody3D" parent="Outdoor/Roads"]
+transform = Transform3D(-0.70711, 0, -0.70711, 0, 1, 0, 0.70711, 0, -0.70711, 25.000, 0.020, 13.000)
+collision_layer = 1
+collision_mask = 0
+
+[node name="MeshInstance3D" type="MeshInstance3D" parent="Outdoor/Roads/Lane_16"]
+mesh = SubResource("Box_rd16")
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="Outdoor/Roads/Lane_16"]
+shape = SubResource("Sh_rd16")
+
+[node name="Curb_16L" type="StaticBody3D" parent="Outdoor/Roads"]
+transform = Transform3D(-0.70711, 0, -0.70711, 0, 1, 0, 0.70711, 0, -0.70711, 22.794, 0.100, 15.206)
+collision_layer = 0
+collision_mask = 0
+
+[node name="MeshInstance3D" type="MeshInstance3D" parent="Outdoor/Roads/Curb_16L"]
+mesh = SubResource("Box_cb16")
+
+[node name="Curb_16R" type="StaticBody3D" parent="Outdoor/Roads"]
+transform = Transform3D(-0.70711, 0, -0.70711, 0, 1, 0, 0.70711, 0, -0.70711, 27.206, 0.100, 10.794)
+collision_layer = 0
+collision_mask = 0
+
+[node name="MeshInstance3D" type="MeshInstance3D" parent="Outdoor/Roads/Curb_16R"]
+mesh = SubResource("Box_cb16")
+
+[node name="Lane_17" type="StaticBody3D" parent="Outdoor/Roads"]
+transform = Transform3D(-1.00000, 0, 0.00000, 0, 1, 0, -0.00000, 0, -1.00000, 22.000, 0.020, -2.000)
+collision_layer = 1
+collision_mask = 0
+
+[node name="MeshInstance3D" type="MeshInstance3D" parent="Outdoor/Roads/Lane_17"]
+mesh = SubResource("Box_rd17")
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="Outdoor/Roads/Lane_17"]
+shape = SubResource("Sh_rd17")
+
+[node name="Curb_17L" type="StaticBody3D" parent="Outdoor/Roads"]
+transform = Transform3D(-1.00000, 0, 0.00000, 0, 1, 0, -0.00000, 0, -1.00000, 18.880, 0.100, -2.000)
+collision_layer = 0
+collision_mask = 0
+
+[node name="MeshInstance3D" type="MeshInstance3D" parent="Outdoor/Roads/Curb_17L"]
+mesh = SubResource("Box_cb17")
+
+[node name="Curb_17R" type="StaticBody3D" parent="Outdoor/Roads"]
+transform = Transform3D(-1.00000, 0, 0.00000, 0, 1, 0, -0.00000, 0, -1.00000, 25.120, 0.100, -2.000)
+collision_layer = 0
+collision_mask = 0
+
+[node name="MeshInstance3D" type="MeshInstance3D" parent="Outdoor/Roads/Curb_17R"]
+mesh = SubResource("Box_cb17")
+
+[node name="Lane_18" type="StaticBody3D" parent="Outdoor/Roads"]
+transform = Transform3D(-0.70711, 0, 0.70711, 0, 1, 0, -0.70711, 0, -0.70711, 25.000, 0.020, -17.000)
+collision_layer = 1
+collision_mask = 0
+
+[node name="MeshInstance3D" type="MeshInstance3D" parent="Outdoor/Roads/Lane_18"]
+mesh = SubResource("Box_rd18")
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="Outdoor/Roads/Lane_18"]
+shape = SubResource("Sh_rd18")
+
+[node name="Curb_18L" type="StaticBody3D" parent="Outdoor/Roads"]
+transform = Transform3D(-0.70711, 0, 0.70711, 0, 1, 0, -0.70711, 0, -0.70711, 22.794, 0.100, -19.206)
+collision_layer = 0
+collision_mask = 0
+
+[node name="MeshInstance3D" type="MeshInstance3D" parent="Outdoor/Roads/Curb_18L"]
+mesh = SubResource("Box_cb18")
+
+[node name="Curb_18R" type="StaticBody3D" parent="Outdoor/Roads"]
+transform = Transform3D(-0.70711, 0, 0.70711, 0, 1, 0, -0.70711, 0, -0.70711, 27.206, 0.100, -14.794)
+collision_layer = 0
+collision_mask = 0
+
+[node name="MeshInstance3D" type="MeshInstance3D" parent="Outdoor/Roads/Curb_18R"]
+mesh = SubResource("Box_cb18")
+
+[node name="EastCurbN" type="StaticBody3D" parent="Outdoor/Roads"]
+transform = Transform3D(1.00000, 0, 0.00000, 0, 1, 0, -0.00000, 0, 1.00000, 40.000, 0.100, 14.150)
+collision_layer = 0
+
+[node name="MeshInstance3D" type="MeshInstance3D" parent="Outdoor/Roads/EastCurbN"]
+mesh = SubResource("Box_curbpad")
+
+[node name="EastCurbS" type="StaticBody3D" parent="Outdoor/Roads"]
+transform = Transform3D(1.00000, 0, 0.00000, 0, 1, 0, -0.00000, 0, 1.00000, 40.000, 0.100, 5.850)
+collision_layer = 0
+
+[node name="MeshInstance3D" type="MeshInstance3D" parent="Outdoor/Roads/EastCurbS"]
+mesh = SubResource("Box_curbpad")
+
+[node name="PaintH_0" type="MeshInstance3D" parent="Outdoor/Roads"]
+transform = Transform3D(1.00000, 0, 0.00000, 0, 1, 0, -0.00000, 0, 1.00000, -22.000, 0.100, 0.000)
+mesh = SubResource("Box_painth")
+
+[node name="PaintH_1" type="MeshInstance3D" parent="Outdoor/Roads"]
+transform = Transform3D(1.00000, 0, 0.00000, 0, 1, 0, -0.00000, 0, 1.00000, -17.000, 0.100, 0.000)
+mesh = SubResource("Box_painth")
+
+[node name="PaintH_2" type="MeshInstance3D" parent="Outdoor/Roads"]
+transform = Transform3D(1.00000, 0, 0.00000, 0, 1, 0, -0.00000, 0, 1.00000, -12.000, 0.100, 0.000)
+mesh = SubResource("Box_painth")
+
+[node name="PaintH_3" type="MeshInstance3D" parent="Outdoor/Roads"]
+transform = Transform3D(1.00000, 0, 0.00000, 0, 1, 0, -0.00000, 0, 1.00000, -7.000, 0.100, 0.000)
+mesh = SubResource("Box_painth")
+
+[node name="PaintH_4" type="MeshInstance3D" parent="Outdoor/Roads"]
+transform = Transform3D(1.00000, 0, 0.00000, 0, 1, 0, -0.00000, 0, 1.00000, -2.000, 0.100, 0.000)
+mesh = SubResource("Box_painth")
+
+[node name="PaintH_5" type="MeshInstance3D" parent="Outdoor/Roads"]
+transform = Transform3D(1.00000, 0, 0.00000, 0, 1, 0, -0.00000, 0, 1.00000, 3.000, 0.100, 0.000)
+mesh = SubResource("Box_painth")
+
+[node name="PaintH_6" type="MeshInstance3D" parent="Outdoor/Roads"]
+transform = Transform3D(1.00000, 0, 0.00000, 0, 1, 0, -0.00000, 0, 1.00000, 8.000, 0.100, 0.000)
+mesh = SubResource("Box_painth")
+
+[node name="PaintH_7" type="MeshInstance3D" parent="Outdoor/Roads"]
+transform = Transform3D(1.00000, 0, 0.00000, 0, 1, 0, -0.00000, 0, 1.00000, 13.000, 0.100, 0.000)
+mesh = SubResource("Box_painth")
+
+[node name="PaintH_8" type="MeshInstance3D" parent="Outdoor/Roads"]
+transform = Transform3D(1.00000, 0, 0.00000, 0, 1, 0, -0.00000, 0, 1.00000, 18.000, 0.100, 0.000)
+mesh = SubResource("Box_painth")
+
+[node name="PaintH_9" type="MeshInstance3D" parent="Outdoor/Roads"]
+transform = Transform3D(1.00000, 0, 0.00000, 0, 1, 0, -0.00000, 0, 1.00000, 23.000, 0.100, 0.000)
+mesh = SubResource("Box_painth")
+
+[node name="PaintH_10" type="MeshInstance3D" parent="Outdoor/Roads"]
+transform = Transform3D(1.00000, 0, 0.00000, 0, 1, 0, -0.00000, 0, 1.00000, 28.000, 0.100, 0.000)
+mesh = SubResource("Box_painth")
+
+[node name="PaintV_0" type="MeshInstance3D" parent="Outdoor/Roads"]
+transform = Transform3D(1.00000, 0, 0.00000, 0, 1, 0, -0.00000, 0, 1.00000, 0.000, 0.100, -20.000)
+mesh = SubResource("Box_paintv")
+
+[node name="PaintV_1" type="MeshInstance3D" parent="Outdoor/Roads"]
+transform = Transform3D(1.00000, 0, 0.00000, 0, 1, 0, -0.00000, 0, 1.00000, 0.000, 0.100, -15.000)
+mesh = SubResource("Box_paintv")
+
+[node name="PaintV_2" type="MeshInstance3D" parent="Outdoor/Roads"]
+transform = Transform3D(1.00000, 0, 0.00000, 0, 1, 0, -0.00000, 0, 1.00000, 0.000, 0.100, -10.000)
+mesh = SubResource("Box_paintv")
+
+[node name="PaintV_3" type="MeshInstance3D" parent="Outdoor/Roads"]
+transform = Transform3D(1.00000, 0, 0.00000, 0, 1, 0, -0.00000, 0, 1.00000, 0.000, 0.100, -5.000)
+mesh = SubResource("Box_paintv")
+
+[node name="PaintV_4" type="MeshInstance3D" parent="Outdoor/Roads"]
+transform = Transform3D(1.00000, 0, 0.00000, 0, 1, 0, -0.00000, 0, 1.00000, 0.000, 0.100, 0.000)
+mesh = SubResource("Box_paintv")
+
+[node name="PaintV_5" type="MeshInstance3D" parent="Outdoor/Roads"]
+transform = Transform3D(1.00000, 0, 0.00000, 0, 1, 0, -0.00000, 0, 1.00000, 0.000, 0.100, 5.000)
+mesh = SubResource("Box_paintv")
+
+[node name="PaintV_6" type="MeshInstance3D" parent="Outdoor/Roads"]
+transform = Transform3D(1.00000, 0, 0.00000, 0, 1, 0, -0.00000, 0, 1.00000, 0.000, 0.100, 10.000)
+mesh = SubResource("Box_paintv")
+
+[node name="PaintV_7" type="MeshInstance3D" parent="Outdoor/Roads"]
+transform = Transform3D(1.00000, 0, 0.00000, 0, 1, 0, -0.00000, 0, 1.00000, 0.000, 0.100, 15.000)
+mesh = SubResource("Box_paintv")
+
+[node name="PaintV_8" type="MeshInstance3D" parent="Outdoor/Roads"]
+transform = Transform3D(1.00000, 0, 0.00000, 0, 1, 0, -0.00000, 0, 1.00000, 0.000, 0.100, 20.000)
+mesh = SubResource("Box_paintv")
+
+[node name="Fields" type="Node3D" parent="Outdoor"]
+
+[node name="FieldWest" type="MeshInstance3D" parent="Outdoor/Fields"]
+transform = Transform3D(1.00000, 0, 0.00000, 0, 1, 0, -0.00000, 0, 1.00000, -38.000, 0.030, 24.000)
+mesh = SubResource("Box_field_a")
+
+[node name="FieldEast" type="MeshInstance3D" parent="Outdoor/Fields"]
+transform = Transform3D(1.00000, 0, 0.00000, 0, 1, 0, -0.00000, 0, 1.00000, 20.000, 0.030, 26.000)
+mesh = SubResource("Box_field_b")
+
+[node name="PlayerSpawns" type="Node3D" parent="Outdoor"]
+
+[node name="Outdoor_Family_A" type="Marker3D" parent="Outdoor/PlayerSpawns" groups=["outdoor_player_spawns"]]
+transform = Transform3D(0.90045, 0, 0.43497, 0, 1, 0, -0.43497, 0, 0.90045, -12.000, 0.120, -7.000)
+
+[node name="Outdoor_Family_B" type="Marker3D" parent="Outdoor/PlayerSpawns" groups=["outdoor_player_spawns"]]
+transform = Transform3D(-0.00000, 0, -1.00000, 0, 1, 0, 1.00000, 0, -0.00000, -30.000, 0.120, -12.000)
+
+[node name="Outdoor_Family_C" type="Marker3D" parent="Outdoor/PlayerSpawns" groups=["outdoor_player_spawns"]]
+transform = Transform3D(-1.00000, 0, 0.00000, 0, 1, 0, -0.00000, 0, -1.00000, 32.000, 0.120, 13.000)
+
+[node name="Outdoor_Family_D" type="Marker3D" parent="Outdoor/PlayerSpawns" groups=["outdoor_player_spawns"]]
+transform = Transform3D(-1.00000, 0, 0.00000, 0, 1, 0, -0.00000, 0, -1.00000, 6.000, 0.120, 22.000)
+
+[node name="Outdoor_PM_Street" type="Marker3D" parent="Outdoor" groups=["outdoor_player_spawns"]]
+transform = Transform3D(-0.00000, 0, -1.00000, 0, 1, 0, 1.00000, 0, -0.00000, 40.000, 0.120, 10.000)
+
+[node name="HorrorEscapeZone" type="Area3D" parent="Outdoor"]
+transform = Transform3D(1.00000, 0, 0.00000, 0, 1, 0, -0.00000, 0, 1.00000, -62.000, 0.620, 12.000)
+collision_layer = 0
+collision_mask = 4
+script = ExtResource("3")
+metadata/soft_gated = true
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="Outdoor/HorrorEscapeZone"]
+shape = SubResource("Sh_escape")
+
+[node name="OutdoorFill" type="OmniLight3D" parent="Outdoor"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 16, 6)
+light_color = Color(0.72, 0.78, 0.88, 1)
+light_energy = 0.58
+omni_range = 90.0
+
+[node name="L2SpawnMarkers" type="Node3D" parent="."]
+
+[node name="SpawnPoint_pm_attic" type="Node3D" parent="L2SpawnMarkers"]
+transform = Transform3D(1.00000, 0, 0.00000, 0, 1, 0, -0.00000, 0, 1.00000, 30.000, 0.120, -14.000)
+
+[node name="ChildSpawn_pm_attic" type="Marker3D" parent="L2SpawnMarkers/SpawnPoint_pm_attic" groups=["child_spawn_points"]]
+metadata/spawn_id = "pm_attic"
+metadata/l2_pin = 1
+metadata/visible_label = "Spawn Point"
+
+[node name="Box" type="MeshInstance3D" parent="L2SpawnMarkers/SpawnPoint_pm_attic"]
+transform = Transform3D(1.00000, 0, 0.00000, 0, 1, 0, -0.00000, 0, 1.00000, 0.000, 0.775, 0.000)
+mesh = SubResource("Box_pin")
+
+[node name="Label" type="Label3D" parent="L2SpawnMarkers/SpawnPoint_pm_attic"]
+transform = Transform3D(1.00000, 0, 0.00000, 0, 1, 0, -0.00000, 0, 1.00000, 0.000, 2.100, 0.000)
+text = "Spawn Point"
+font_size = 42
+outline_size = 10
+billboard = 1
+no_depth_test = true
+
+[node name="SpawnId" type="Label3D" parent="L2SpawnMarkers/SpawnPoint_pm_attic"]
+transform = Transform3D(1.00000, 0, 0.00000, 0, 1, 0, -0.00000, 0, 1.00000, 0.000, 1.770, 0.000)
+text = "pm_attic"
+font_size = 22
+outline_size = 8
+billboard = 1
+no_depth_test = true
+
+[node name="SpawnPoint_master_bedroom" type="Node3D" parent="L2SpawnMarkers"]
+transform = Transform3D(1.00000, 0, 0.00000, 0, 1, 0, -0.00000, 0, 1.00000, 30.000, 0.120, -7.000)
+
+[node name="ChildSpawn_master_bedroom" type="Marker3D" parent="L2SpawnMarkers/SpawnPoint_master_bedroom" groups=["child_spawn_points"]]
+metadata/spawn_id = "master_bedroom"
+metadata/l2_pin = 2
+metadata/visible_label = "Spawn Point"
+
+[node name="Box" type="MeshInstance3D" parent="L2SpawnMarkers/SpawnPoint_master_bedroom"]
+transform = Transform3D(1.00000, 0, 0.00000, 0, 1, 0, -0.00000, 0, 1.00000, 0.000, 0.775, 0.000)
+mesh = SubResource("Box_pin")
+
+[node name="Label" type="Label3D" parent="L2SpawnMarkers/SpawnPoint_master_bedroom"]
+transform = Transform3D(1.00000, 0, 0.00000, 0, 1, 0, -0.00000, 0, 1.00000, 0.000, 2.100, 0.000)
+text = "Spawn Point"
+font_size = 42
+outline_size = 10
+billboard = 1
+no_depth_test = true
+
+[node name="SpawnId" type="Label3D" parent="L2SpawnMarkers/SpawnPoint_master_bedroom"]
+transform = Transform3D(1.00000, 0, 0.00000, 0, 1, 0, -0.00000, 0, 1.00000, 0.000, 1.770, 0.000)
+text = "master_bedroom"
+font_size = 22
+outline_size = 8
+billboard = 1
+no_depth_test = true
+
+[node name="SpawnPoint_bunker_utility" type="Node3D" parent="L2SpawnMarkers"]
+transform = Transform3D(1.00000, 0, 0.00000, 0, 1, 0, -0.00000, 0, 1.00000, 30.000, 0.120, 0.000)
+
+[node name="ChildSpawn_bunker_utility" type="Marker3D" parent="L2SpawnMarkers/SpawnPoint_bunker_utility" groups=["child_spawn_points"]]
+metadata/spawn_id = "bunker_utility"
+metadata/l2_pin = 3
+metadata/visible_label = "Spawn Point"
+
+[node name="Box" type="MeshInstance3D" parent="L2SpawnMarkers/SpawnPoint_bunker_utility"]
+transform = Transform3D(1.00000, 0, 0.00000, 0, 1, 0, -0.00000, 0, 1.00000, 0.000, 0.775, 0.000)
+mesh = SubResource("Box_pin")
+
+[node name="Label" type="Label3D" parent="L2SpawnMarkers/SpawnPoint_bunker_utility"]
+transform = Transform3D(1.00000, 0, 0.00000, 0, 1, 0, -0.00000, 0, 1.00000, 0.000, 2.100, 0.000)
+text = "Spawn Point"
+font_size = 42
+outline_size = 10
+billboard = 1
+no_depth_test = true
+
+[node name="SpawnId" type="Label3D" parent="L2SpawnMarkers/SpawnPoint_bunker_utility"]
+transform = Transform3D(1.00000, 0, 0.00000, 0, 1, 0, -0.00000, 0, 1.00000, 0.000, 1.770, 0.000)
+text = "bunker_utility"
+font_size = 22
+outline_size = 8
+billboard = 1
+no_depth_test = true
+
+[node name="SpawnPoint_basement" type="Node3D" parent="L2SpawnMarkers"]
+transform = Transform3D(1.00000, 0, 0.00000, 0, 1, 0, -0.00000, 0, 1.00000, 28.000, 0.120, 7.000)
+
+[node name="ChildSpawn_basement" type="Marker3D" parent="L2SpawnMarkers/SpawnPoint_basement" groups=["child_spawn_points"]]
+metadata/spawn_id = "basement"
+metadata/l2_pin = 4
+metadata/visible_label = "Spawn Point"
+
+[node name="Box" type="MeshInstance3D" parent="L2SpawnMarkers/SpawnPoint_basement"]
+transform = Transform3D(1.00000, 0, 0.00000, 0, 1, 0, -0.00000, 0, 1.00000, 0.000, 0.775, 0.000)
+mesh = SubResource("Box_pinbase")
+
+[node name="Label" type="Label3D" parent="L2SpawnMarkers/SpawnPoint_basement"]
+transform = Transform3D(1.00000, 0, 0.00000, 0, 1, 0, -0.00000, 0, 1.00000, 0.000, 2.100, 0.000)
+text = "Spawn Point"
+font_size = 42
+outline_size = 10
+billboard = 1
+no_depth_test = true
+
+[node name="SpawnId" type="Label3D" parent="L2SpawnMarkers/SpawnPoint_basement"]
+transform = Transform3D(1.00000, 0, 0.00000, 0, 1, 0, -0.00000, 0, 1.00000, 0.000, 1.770, 0.000)
+text = "basement"
+font_size = 22
+outline_size = 8
+billboard = 1
+no_depth_test = true
+
+[node name="SpawnPoint_uncle_bedroom" type="Node3D" parent="L2SpawnMarkers"]
+transform = Transform3D(1.00000, 0, 0.00000, 0, 1, 0, -0.00000, 0, 1.00000, 50.000, 0.120, -12.000)
+
+[node name="ChildSpawn_uncle_bedroom" type="Marker3D" parent="L2SpawnMarkers/SpawnPoint_uncle_bedroom" groups=["child_spawn_points"]]
+metadata/spawn_id = "uncle_bedroom"
+metadata/l2_pin = 5
+metadata/visible_label = "Spawn Point"
+
+[node name="Box" type="MeshInstance3D" parent="L2SpawnMarkers/SpawnPoint_uncle_bedroom"]
+transform = Transform3D(1.00000, 0, 0.00000, 0, 1, 0, -0.00000, 0, 1.00000, 0.000, 0.775, 0.000)
+mesh = SubResource("Box_pin")
+
+[node name="Label" type="Label3D" parent="L2SpawnMarkers/SpawnPoint_uncle_bedroom"]
+transform = Transform3D(1.00000, 0, 0.00000, 0, 1, 0, -0.00000, 0, 1.00000, 0.000, 2.100, 0.000)
+text = "Spawn Point"
+font_size = 42
+outline_size = 10
+billboard = 1
+no_depth_test = true
+
+[node name="SpawnId" type="Label3D" parent="L2SpawnMarkers/SpawnPoint_uncle_bedroom"]
+transform = Transform3D(1.00000, 0, 0.00000, 0, 1, 0, -0.00000, 0, 1.00000, 0.000, 1.770, 0.000)
+text = "uncle_bedroom"
+font_size = 22
+outline_size = 8
+billboard = 1
+no_depth_test = true
+
+[node name="SpawnPoint_uncle_garage" type="Node3D" parent="L2SpawnMarkers"]
+transform = Transform3D(1.00000, 0, 0.00000, 0, 1, 0, -0.00000, 0, 1.00000, 52.000, 0.120, -2.000)
+
+[node name="ChildSpawn_uncle_garage" type="Marker3D" parent="L2SpawnMarkers/SpawnPoint_uncle_garage" groups=["child_spawn_points"]]
+metadata/spawn_id = "uncle_garage"
+metadata/l2_pin = 6
+metadata/visible_label = "Spawn Point"
+
+[node name="Box" type="MeshInstance3D" parent="L2SpawnMarkers/SpawnPoint_uncle_garage"]
+transform = Transform3D(1.00000, 0, 0.00000, 0, 1, 0, -0.00000, 0, 1.00000, 0.000, 0.775, 0.000)
+mesh = SubResource("Box_pin")
+
+[node name="Label" type="Label3D" parent="L2SpawnMarkers/SpawnPoint_uncle_garage"]
+transform = Transform3D(1.00000, 0, 0.00000, 0, 1, 0, -0.00000, 0, 1.00000, 0.000, 2.100, 0.000)
+text = "Spawn Point"
+font_size = 42
+outline_size = 10
+billboard = 1
+no_depth_test = true
+
+[node name="SpawnId" type="Label3D" parent="L2SpawnMarkers/SpawnPoint_uncle_garage"]
+transform = Transform3D(1.00000, 0, 0.00000, 0, 1, 0, -0.00000, 0, 1.00000, 0.000, 1.770, 0.000)
+text = "uncle_garage"
+font_size = 22
+outline_size = 8
+billboard = 1
+no_depth_test = true
+
+[node name="SpawnPoint_family_shed" type="Node3D" parent="L2SpawnMarkers"]
+transform = Transform3D(1.00000, 0, 0.00000, 0, 1, 0, -0.00000, 0, 1.00000, -50.000, 0.120, -40.000)
+
+[node name="ChildSpawn_family_shed" type="Marker3D" parent="L2SpawnMarkers/SpawnPoint_family_shed" groups=["child_spawn_points"]]
+metadata/spawn_id = "family_shed"
+metadata/l2_pin = 7
+metadata/visible_label = "Spawn Point"
+
+[node name="Box" type="MeshInstance3D" parent="L2SpawnMarkers/SpawnPoint_family_shed"]
+transform = Transform3D(1.00000, 0, 0.00000, 0, 1, 0, -0.00000, 0, 1.00000, 0.000, 0.775, 0.000)
+mesh = SubResource("Box_pin")
+
+[node name="Label" type="Label3D" parent="L2SpawnMarkers/SpawnPoint_family_shed"]
+transform = Transform3D(1.00000, 0, 0.00000, 0, 1, 0, -0.00000, 0, 1.00000, 0.000, 2.100, 0.000)
+text = "Spawn Point"
+font_size = 42
+outline_size = 10
+billboard = 1
+no_depth_test = true
+
+[node name="SpawnId" type="Label3D" parent="L2SpawnMarkers/SpawnPoint_family_shed"]
+transform = Transform3D(1.00000, 0, 0.00000, 0, 1, 0, -0.00000, 0, 1.00000, 0.000, 1.770, 0.000)
+text = "family_shed"
+font_size = 22
+outline_size = 8
+billboard = 1
+no_depth_test = true
+
+[node name="SpawnPoint_storm_drain" type="Node3D" parent="L2SpawnMarkers"]
+transform = Transform3D(1.00000, 0, 0.00000, 0, 1, 0, -0.00000, 0, 1.00000, -40.000, 0.120, -18.000)
+
+[node name="ChildSpawn_storm_drain" type="Marker3D" parent="L2SpawnMarkers/SpawnPoint_storm_drain" groups=["child_spawn_points"]]
+metadata/spawn_id = "storm_drain"
+metadata/l2_pin = 8
+metadata/visible_label = "Spawn Point"
+
+[node name="Box" type="MeshInstance3D" parent="L2SpawnMarkers/SpawnPoint_storm_drain"]
+transform = Transform3D(1.00000, 0, 0.00000, 0, 1, 0, -0.00000, 0, 1.00000, 0.000, 0.775, 0.000)
+mesh = SubResource("Box_pin")
+
+[node name="Label" type="Label3D" parent="L2SpawnMarkers/SpawnPoint_storm_drain"]
+transform = Transform3D(1.00000, 0, 0.00000, 0, 1, 0, -0.00000, 0, 1.00000, 0.000, 2.100, 0.000)
+text = "Spawn Point"
+font_size = 42
+outline_size = 10
+billboard = 1
+no_depth_test = true
+
+[node name="SpawnId" type="Label3D" parent="L2SpawnMarkers/SpawnPoint_storm_drain"]
+transform = Transform3D(1.00000, 0, 0.00000, 0, 1, 0, -0.00000, 0, 1.00000, 0.000, 1.770, 0.000)
+text = "storm_drain"
+font_size = 22
+outline_size = 8
+billboard = 1
+no_depth_test = true
+
+[node name="SpawnPoint_under_porch_crawl" type="Node3D" parent="L2SpawnMarkers"]
+transform = Transform3D(1.00000, 0, 0.00000, 0, 1, 0, -0.00000, 0, 1.00000, 50.000, 0.120, 16.000)
+
+[node name="ChildSpawn_under_porch_crawl" type="Marker3D" parent="L2SpawnMarkers/SpawnPoint_under_porch_crawl" groups=["child_spawn_points"]]
+metadata/spawn_id = "under_porch_crawl"
+metadata/l2_pin = 9
+metadata/visible_label = "Spawn Point"
+
+[node name="Box" type="MeshInstance3D" parent="L2SpawnMarkers/SpawnPoint_under_porch_crawl"]
+transform = Transform3D(1.00000, 0, 0.00000, 0, 1, 0, -0.00000, 0, 1.00000, 0.000, 0.775, 0.000)
+mesh = SubResource("Box_pincrawl")
+
+[node name="Label" type="Label3D" parent="L2SpawnMarkers/SpawnPoint_under_porch_crawl"]
+transform = Transform3D(1.00000, 0, 0.00000, 0, 1, 0, -0.00000, 0, 1.00000, 0.000, 2.100, 0.000)
+text = "Spawn Point"
+font_size = 42
+outline_size = 10
+billboard = 1
+no_depth_test = true
+
+[node name="SpawnId" type="Label3D" parent="L2SpawnMarkers/SpawnPoint_under_porch_crawl"]
+transform = Transform3D(1.00000, 0, 0.00000, 0, 1, 0, -0.00000, 0, 1.00000, 0.000, 1.770, 0.000)
+text = "under_porch_crawl"
+font_size = 22
+outline_size = 8
+billboard = 1
+no_depth_test = true
+
+[node name="SpawnPoint_garden_well" type="Node3D" parent="L2SpawnMarkers"]
+transform = Transform3D(1.00000, 0, 0.00000, 0, 1, 0, -0.00000, 0, 1.00000, 16.000, 0.120, -6.000)
+
+[node name="ChildSpawn_garden_well" type="Marker3D" parent="L2SpawnMarkers/SpawnPoint_garden_well" groups=["child_spawn_points"]]
+metadata/spawn_id = "garden_well"
+metadata/l2_pin = 10
+metadata/visible_label = "Spawn Point"
+
+[node name="Box" type="MeshInstance3D" parent="L2SpawnMarkers/SpawnPoint_garden_well"]
+transform = Transform3D(1.00000, 0, 0.00000, 0, 1, 0, -0.00000, 0, 1.00000, 0.000, 0.775, 0.000)
+mesh = SubResource("Box_pin")
+
+[node name="Label" type="Label3D" parent="L2SpawnMarkers/SpawnPoint_garden_well"]
+transform = Transform3D(1.00000, 0, 0.00000, 0, 1, 0, -0.00000, 0, 1.00000, 0.000, 2.100, 0.000)
+text = "Spawn Point"
+font_size = 42
+outline_size = 10
+billboard = 1
+no_depth_test = true
+
+[node name="SpawnId" type="Label3D" parent="L2SpawnMarkers/SpawnPoint_garden_well"]
+transform = Transform3D(1.00000, 0, 0.00000, 0, 1, 0, -0.00000, 0, 1.00000, 0.000, 1.770, 0.000)
+text = "garden_well"
+font_size = 22
+outline_size = 8
+billboard = 1
+no_depth_test = true
+
+[node name="SpawnPoint_car_trunk" type="Node3D" parent="L2SpawnMarkers"]
+transform = Transform3D(1.00000, 0, 0.00000, 0, 1, 0, -0.00000, 0, 1.00000, 0.000, 0.120, 16.000)
+
+[node name="ChildSpawn_car_trunk" type="Marker3D" parent="L2SpawnMarkers/SpawnPoint_car_trunk" groups=["child_spawn_points"]]
+metadata/spawn_id = "car_trunk"
+metadata/l2_pin = 11
+metadata/visible_label = "Spawn Point"
+
+[node name="Box" type="MeshInstance3D" parent="L2SpawnMarkers/SpawnPoint_car_trunk"]
+transform = Transform3D(1.00000, 0, 0.00000, 0, 1, 0, -0.00000, 0, 1.00000, 0.000, 0.775, 0.000)
+mesh = SubResource("Box_pin")
+
+[node name="Label" type="Label3D" parent="L2SpawnMarkers/SpawnPoint_car_trunk"]
+transform = Transform3D(1.00000, 0, 0.00000, 0, 1, 0, -0.00000, 0, 1.00000, 0.000, 2.100, 0.000)
+text = "Spawn Point"
+font_size = 42
+outline_size = 10
+billboard = 1
+no_depth_test = true
+
+[node name="SpawnId" type="Label3D" parent="L2SpawnMarkers/SpawnPoint_car_trunk"]
+transform = Transform3D(1.00000, 0, 0.00000, 0, 1, 0, -0.00000, 0, 1.00000, 0.000, 1.770, 0.000)
+text = "car_trunk"
+font_size = 22
+outline_size = 8
+billboard = 1
+no_depth_test = true
+
+[node name="Pickups" type="Node3D" parent="."]
+
+[node name="Pickup_medkit" parent="Pickups" instance=ExtResource("2")]
+transform = Transform3D(1.00000, 0, 0.00000, 0, 1, 0, -0.00000, 0, 1.00000, -34.000, 0.120, -12.000)
+item_id = "medkit"
+
+[node name="Pickup_phone" parent="Pickups" instance=ExtResource("2")]
+transform = Transform3D(1.00000, 0, 0.00000, 0, 1, 0, -0.00000, 0, 1.00000, 2.000, 0.120, 2.000)
+item_id = "phone"
+
+[node name="Pickup_bandage" parent="Pickups" instance=ExtResource("2")]
+transform = Transform3D(1.00000, 0, 0.00000, 0, 1, 0, -0.00000, 0, 1.00000, 40.000, 0.120, 10.000)
+item_id = "bandage"
+
+[node name="Pickup_battery" parent="Pickups" instance=ExtResource("2")]
+transform = Transform3D(1.00000, 0, 0.00000, 0, 1, 0, -0.00000, 0, 1.00000, -50.000, 0.120, -40.000)
+item_id = "battery"
+
+[node name="Pickup_crowbar" parent="Pickups" instance=ExtResource("2")]
+transform = Transform3D(1.00000, 0, 0.00000, 0, 1, 0, -0.00000, 0, 1.00000, 6.000, 0.120, 24.000)
+item_id = "crowbar"
+
+[node name="Pickup_keycard" parent="Pickups" instance=ExtResource("2")]
+transform = Transform3D(1.00000, 0, 0.00000, 0, 1, 0, -0.00000, 0, 1.00000, 10.000, 0.120, 6.000)
+item_id = "keycard"
