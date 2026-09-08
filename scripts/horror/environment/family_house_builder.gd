@@ -178,11 +178,9 @@ static func _build_porch(root: Node3D, size: Vector3, porch_x: float, porch_z: f
 static func _build_under_porch_crawl(root: Node3D, porch_x: float, porch_z: float, mats) -> Marker3D:
 	var crawl: Node3D = _build_crawl_void(root, porch_x, porch_z, mats, true)
 	var hide := Marker3D.new()
-	hide.name = "ChildSpawn_under_porch_crawl"
 	hide.position = Vector3(0, 0.28, 0)
-	hide.add_to_group("child_spawn_points")
-	hide.set_meta("spawn_id", "under_porch_crawl")
 	crawl.add_child(hide)
+	_V05.call("stamp_child_pin", hide, "under_porch_crawl")
 	var tag := Label3D.new()
 	tag.name = "CrawlLabel"
 	tag.text = "CRAWL"

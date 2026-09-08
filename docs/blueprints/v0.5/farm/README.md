@@ -2,7 +2,7 @@
 
 Kyle / Leonardo aligned plates for the **graybox farm** Host Match. Soft-go graybox only — walls/floors/doors, not Steam-final art.
 
-If the PNG plates are in this folder, they are the visual SoT. Eng still follows the locks below when art labels drift.
+Drop the aligned PNGs here as `L1-farm.png` … `L4-farm.png` when checking them into git. Eng follows the locks below even when art labels drift.
 
 | Layer | Plate | What it locks |
 | --- | --- | --- |
@@ -15,7 +15,9 @@ Family-house modular kit (13.5×11 m, porch crawl on A) and PM bunker + utility 
 
 ## L2 eng short ids (do not “fix” from the art sheet)
 
-Art may show `masterBedroom`, `bunkerUtility`, `underPorchCrawl`, or shuffled pin numbers. Live markers use only:
+**James verify (locked):** camelCase on the Leonardo L2 legend is **not** SoT. Do not wire camelCase or long-form ids. The art map duplicates **pin 4** on basement and under-porch — that is art drift. Eng places by `spawn_id`: pin 4 = `basement`, pin 9 = `under_porch_crawl`.
+
+Live markers use only:
 
 1. `pm_attic`
 2. `master_bedroom`

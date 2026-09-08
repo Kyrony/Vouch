@@ -19,9 +19,9 @@ Kyle locked these sheets as the graybox production look. Eng traces in this fold
 
 Canonical pin list: [`L2_child_rng_spawns.csv`](L2_child_rng_spawns.csv) / [`L2_child_rng_spawns.md`](L2_child_rng_spawns.md).
 
-`spawn_id` values are the locked **eng short ids** (`pm_attic`, `master_bedroom`, `bunker_utility`, `basement`, `garden_well`, `car_trunk`, …). Callouts are human labels only.
+`spawn_id` values are the locked **eng short ids** (`pm_attic`, `master_bedroom`, `bunker_utility`, `basement`, `garden_well`, `car_trunk`, …). Callouts are human labels only. CamelCase art legend and long-form ids are rejected.
 
-L2 art map labels are deferred. Dirty pin# / label mismatches are not used for world markers.
+L2 art map labels and **duplicate art pin 4** (basement + under-porch) are not source of truth. Pin 4 = `basement`. Pin 9 = `under_porch_crawl`.
 
 ## Escape
 

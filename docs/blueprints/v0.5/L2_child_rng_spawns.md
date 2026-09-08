@@ -2,7 +2,9 @@
 
 Pin source of truth for Neighborhood Layout v0.5. **Use these `spawn_id` values exactly.** They match `ChildSpawnRNG.SPAWN_IDS`.
 
-Art map labels are deferred. Dirty L2 map callouts (camelCase like `masterBedroom`, shuffled pin numbers) are not source of truth.
+Art map labels are deferred. **James verify:** Leonardo legend camelCase (`masterBedroom`, `bunkerUtility`, `underPorchCrawl`, …) is **not** SoT. Do not wire camelCase or long-form ids (`pm_basement`, `bunker_utility_closet`, …).
+
+The farm art sheet **duplicates pin 4** on basement and under-porch. Eng ignores that. **Pin 4 = `basement`** (PM basement). **Pin 9 = `under_porch_crawl`** (House A porch dirt hide). Place markers by `spawn_id`, not by art pin numbers.
 
 All 11 pins are **alive-only**. Pin 9 is an under-porch crawl / dirt hide — no grave wording.
 

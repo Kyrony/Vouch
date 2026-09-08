@@ -4,6 +4,7 @@ class_name HorrorModularKit
 ## L1b farm graybox primitives (kit-language, not Steam-final GLB).
 
 const _GEOM: GDScript = preload("res://scripts/rooms/geometry_util.gd")
+const _V05: GDScript = preload("res://scripts/horror/world/neighborhood_v05.gd")
 
 
 static func add_box(parent: Node3D, size: Vector3, pos: Vector3, mat: Material, layer: int = 1) -> StaticBody3D:
@@ -97,11 +98,9 @@ static func add_shed(parent: Node3D, origin: Vector3, mats, spawn_id: String = "
 	add_box(shed, Vector3(0.7, 1.2, 0.08), Vector3(0, 0.7, 0.92), mats.wood)
 	if not spawn_id.is_empty():
 		var m := Marker3D.new()
-		m.name = "ChildSpawn_%s" % spawn_id
 		m.position = Vector3(0, 0.3, 0)
-		m.add_to_group("child_spawn_points")
-		m.set_meta("spawn_id", spawn_id)
 		shed.add_child(m)
+		_V05.call("stamp_child_pin", m, spawn_id)
 	return shed
 
 

@@ -33,11 +33,9 @@ static func build(parent: Node3D, origin: Vector3, mats, rotation_y: float = -PI
 	_KIT.call("add_roof_slopes", root, size, size.y + 0.12, mats)
 
 	var bedroom := Marker3D.new()
-	bedroom.name = "ChildSpawn_uncle_bedroom"
 	bedroom.position = Vector3(-2.8, 0.5, -2.1)
-	bedroom.add_to_group("child_spawn_points")
-	bedroom.set_meta("spawn_id", "uncle_bedroom")
 	root.add_child(bedroom)
+	_V05.call("stamp_child_pin", bedroom, "uncle_bedroom")
 
 	var porch_spawn: Marker3D = _GB.call("add_spawn_marker", root, Vector3(0.0, 0.12, size.z * 0.5 + 1.2), "Uncle_Porch")
 	porch_spawn.add_to_group("outdoor_player_spawns")
@@ -60,10 +58,8 @@ static func build_garage(parent: Node3D, origin: Vector3, mats, rotation_y: floa
 	_GB.call("add_walkable_exit", garage, Vector3(0.0, 0.12, size.z * 0.5 + 0.35), "GarageBay")
 
 	var garage_child := Marker3D.new()
-	garage_child.name = "ChildSpawn_uncle_garage"
 	garage_child.position = Vector3(-1.5, 0.4, 1.6)
-	garage_child.add_to_group("child_spawn_points")
-	garage_child.set_meta("spawn_id", "uncle_garage")
 	garage.add_child(garage_child)
+	_V05.call("stamp_child_pin", garage_child, "uncle_garage")
 
 	return {"root": garage, "garage_marker": garage_child}

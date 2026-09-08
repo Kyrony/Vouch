@@ -135,7 +135,7 @@ const PM_L4_DUCT_LINKS: Array[Dictionary] = [
 	{"a": "Dining", "b": "Kitchen"},
 ]
 
-## Farm-plate camelCase / dirty labels — never use these as spawn_id.
+## James verify: Leonardo L2 legend camelCase is NOT SoT. Never wire these.
 const L2_ART_DRIFT_IDS: Array[String] = [
 	"masterBedroom",
 	"bunkerUtility",
@@ -147,6 +147,35 @@ const L2_ART_DRIFT_IDS: Array[String] = [
 	"gardenWell",
 	"carTrunk",
 ]
+
+## Long-form / prefixed ids — also not SoT. Eng short snake_case only.
+const L2_LONG_FORM_IDS: Array[String] = [
+	"pm_master_bedroom",
+	"pm_bunker_utility",
+	"pm_basement",
+	"pm_bunker",
+	"bunker_utility_closet",
+	"utility_closet",
+	"under_porch_crawlspace",
+	"garden_well_crawlspace",
+	"car_trunk_curb",
+]
+
+## Eng pin numbers (CSV). Art may stamp pin 4 on both basement and under-porch —
+## that duplicate is ignored. under_porch_crawl is pin 9; basement is pin 4.
+const L2_PIN_BY_ID := {
+	"pm_attic": 1,
+	"master_bedroom": 2,
+	"bunker_utility": 3,
+	"basement": 4,
+	"uncle_bedroom": 5,
+	"uncle_garage": 6,
+	"family_shed": 7,
+	"storm_drain": 8,
+	"under_porch_crawl": 9,
+	"garden_well": 10,
+	"car_trunk": 11,
+}
 
 ## Shared by OutdoorBuilder (meshes) and OutdoorTerrain (flatten).
 const ROAD_SPANS: Array[Dictionary] = [
@@ -181,6 +210,33 @@ const BUILDING_PADS: Array[Dictionary] = [
 
 static func spawn_id_list() -> Array[String]:
 	return SPAWN_IDS.duplicate()
+
+
+static func is_canonical_spawn_id(spawn_id: String) -> bool:
+	return SPAWN_IDS.has(spawn_id)
+
+
+static func is_forbidden_spawn_id(spawn_id: String) -> bool:
+	if L2_ART_DRIFT_IDS.has(spawn_id) or L2_LONG_FORM_IDS.has(spawn_id):
+		return true
+	if spawn_id != spawn_id.to_snake_case():
+		return true
+	if (spawn_id.begins_with("pm_") and spawn_id != "pm_attic"):
+		return true
+	if spawn_id.ends_with("_closet") or spawn_id.ends_with("_crawlspace") or spawn_id.ends_with("_curb"):
+		return true
+	return false
+
+
+static func l2_pin_number(spawn_id: String) -> int:
+	return int(L2_PIN_BY_ID.get(spawn_id, -1))
+
+
+static func stamp_child_pin(marker: Marker3D, spawn_id: String) -> void:
+	marker.name = "ChildSpawn_%s" % spawn_id
+	marker.add_to_group("child_spawn_points")
+	marker.set_meta("spawn_id", spawn_id)
+	marker.set_meta("l2_pin", l2_pin_number(spawn_id))
 
 
 static func family_letter(index: int) -> String:

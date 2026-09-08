@@ -30,14 +30,8 @@ static func validate_world(world: Node3D) -> String:
 			return "ChildSpawnRNG[%d]=%s != L2 SoT %s" % [i, expected[i], sot[i]]
 	for sid in expected:
 		var sid_s := str(sid)
-		if (sid_s.begins_with("pm_") and sid_s != "pm_attic") or sid_s.ends_with("_closet") or sid_s.ends_with("_crawlspace") or sid_s.ends_with("_curb"):
-			return "SPAWN_IDS used long-form id %s — eng short ids only" % sid_s
-		if _V05.L2_ART_DRIFT_IDS.has(sid_s):
-			return "SPAWN_IDS used farm-plate art label %s — eng short ids only" % sid_s
-	for drift in _V05.L2_ART_DRIFT_IDS:
-		for node in world.get_tree().get_nodes_in_group("child_spawn_points"):
-			if str(node.get_meta("spawn_id", "")) == str(drift):
-				return "child marker used art-drift id %s — eng short ids only" % drift
+		if bool(_V05.call("is_forbidden_spawn_id", sid_s)):
+			return "SPAWN_IDS used non-eng id %s — snake_case short ids only" % sid_s
 	var child_points: Array = world.get_tree().get_nodes_in_group("child_spawn_points")
 	if child_points.size() != expected.size():
 		return "expected %d child spawn points, got %d" % [expected.size(), child_points.size()]
@@ -54,6 +48,9 @@ static func validate_world(world: Node3D) -> String:
 	for sid in expected:
 		if not seen.has(sid):
 			return "missing child spawn_id=%s" % sid
+	var pin_err := validate_l2_pin_homes(world)
+	if not pin_err.is_empty():
+		return pin_err
 
 	var candidates: Array = world.get_tree().get_nodes_in_group("tower_candidates")
 	if candidates.size() < 8:
@@ -75,6 +72,57 @@ static func validate_world(world: Node3D) -> String:
 	if not outdoor_err.is_empty():
 		return outdoor_err
 	return ""
+
+
+## Place by eng id, not Leonardo art pin numbers. Art duplicates pin 4 on
+## basement + under-porch; eng keeps basement=4 and under_porch_crawl=9.
+static func validate_l2_pin_homes(world: Node3D) -> String:
+	var basement: Node3D = null
+	var crawl: Node3D = null
+	for node in world.get_tree().get_nodes_in_group("child_spawn_points"):
+		if not (node is Node3D):
+			continue
+		var n3: Node3D = node
+		var sid := str(n3.get_meta("spawn_id", ""))
+		if bool(_V05.call("is_forbidden_spawn_id", sid)):
+			return "child marker %s wired forbidden id %s" % [n3.name, sid]
+		if not bool(_V05.call("is_canonical_spawn_id", sid)):
+			return "child marker %s has unknown spawn_id=%s" % [n3.name, sid]
+		var want_pin: int = int(_V05.call("l2_pin_number", sid))
+		if int(n3.get_meta("l2_pin", -1)) != want_pin:
+			return "child marker %s l2_pin=%s != eng pin %d for %s" % [
+				n3.name, n3.get_meta("l2_pin", -1), want_pin, sid,
+			]
+		if sid == "basement":
+			basement = n3
+		elif sid == "under_porch_crawl":
+			crawl = n3
+	if basement == null:
+		return "basement marker missing"
+	if crawl == null:
+		return "under_porch_crawl marker missing"
+	if not _has_ancestor_named(basement, "Basement"):
+		return "basement (pin 4) must live in PM Basement — do not follow art pin 4 on the porch"
+	if not _has_ancestor_named(crawl, "UnderPorchCrawl"):
+		return "under_porch_crawl (pin 9) must live under House A porch — art pin 4 there is wrong"
+	if _has_ancestor_named(crawl, "Basement"):
+		return "under_porch_crawl was parented under Basement (art pin-4 collision)"
+	if basement.global_position.y > -1.5:
+		return "basement pin is not in the PM basement volume (y=%.2f)" % basement.global_position.y
+	if crawl.global_position.y < -0.5:
+		return "under_porch_crawl sank like a basement pin (y=%.2f)" % crawl.global_position.y
+	if basement.global_position.distance_to(crawl.global_position) < 12.0:
+		return "basement and under_porch_crawl markers collapsed — place by eng id, not art pin 4"
+	return ""
+
+
+static func _has_ancestor_named(node: Node, want: String) -> bool:
+	var walk: Node = node
+	while walk:
+		if walk.name == want:
+			return true
+		walk = walk.get_parent()
+	return false
 
 
 static func validate_v05_layout(world: Node3D) -> String:
@@ -263,6 +311,7 @@ static func validate_kit_graybox(world: Node3D) -> String:
 
 
 static func validate_tower_roll(world: Node3D) -> String:
+	## James / L3: 3 active per match, 1 forced near the PM.
 	var rules := _towers()
 	if rules == null:
 		return "TowerRules autoload missing"
@@ -272,6 +321,8 @@ static func validate_tower_roll(world: Node3D) -> String:
 		return "service/weak radii invalid (service=%.1f weak=%.1f)" % [service, weak]
 	var active: Array = rules.call("server_roll", world, 42)
 	var want: int = int(rules.call("active_count"))
+	if want != 3:
+		return "L3 lock: active tower count must be 3, got %d" % want
 	if active.size() != want:
 		return "expected %d active towers, got %d (%s)" % [want, active.size(), active]
 	var live: Array = world.get_tree().get_nodes_in_group("active_towers")

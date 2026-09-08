@@ -246,11 +246,9 @@ static func _build_car_trunk(root: Node3D, mats, markers: Array) -> void:
 
 static func _add_child_marker(parent: Node3D, local_pos: Vector3, spawn_id: String, out: Array) -> void:
 	var m := Marker3D.new()
-	m.name = "ChildSpawn_%s" % spawn_id
 	m.position = local_pos
-	m.add_to_group("child_spawn_points")
-	m.set_meta("spawn_id", spawn_id)
 	parent.add_child(m)
+	_V05.call("stamp_child_pin", m, spawn_id)
 	out.append(m)
 
 
