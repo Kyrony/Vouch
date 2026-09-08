@@ -63,14 +63,15 @@ static func invisible_hitbox() -> StyleBoxEmpty:
 	return StyleBoxEmpty.new()
 
 
-static func glow_box(border: Color, fill_alpha: float = 0.08, glow: float = 10.0) -> StyleBoxFlat:
+static func glow_box(border: Color, fill_alpha: float = 0.08, border_w: int = 3) -> StyleBoxFlat:
 	var box := StyleBoxFlat.new()
 	box.bg_color = Color(border.r, border.g, border.b, fill_alpha)
 	box.border_color = border
-	box.set_border_width_all(2)
+	box.set_border_width_all(border_w)
 	box.set_corner_radius_all(2)
-	box.shadow_color = Color(border.r, border.g, border.b, 0.62)
-	box.shadow_size = int(glow)
+	# Compatibility renderer often skips StyleBox shadows; the thick border is the glow.
+	box.shadow_color = Color(border.r, border.g, border.b, 0.7)
+	box.shadow_size = 14
 	box.shadow_offset = Vector2.ZERO
 	box.content_margin_left = 8
 	box.content_margin_right = 8
@@ -80,14 +81,13 @@ static func glow_box(border: Color, fill_alpha: float = 0.08, glow: float = 10.0
 
 
 static func apply_plate_hitbox(button: Button, selected: bool = false) -> void:
-	var idle := glow_box(Color(0.55, 0.58, 0.62, 0.45), 0.05, 0.0)
-	idle.set_border_width_all(1)
+	var idle := glow_box(Color(0.7, 0.72, 0.76, 0.55), 0.04, 1)
 	idle.shadow_size = 0
-	var hover := glow_box(YELLOW, 0.10, 12.0)
-	var pressed := glow_box(RED, 0.12, 10.0)
-	var focus := glow_box(YELLOW, 0.10, 12.0)
+	var hover := glow_box(YELLOW, 0.22, 4)
+	var pressed := glow_box(RED, 0.20, 4)
+	var focus := glow_box(YELLOW, 0.22, 4)
 	if selected:
-		idle = glow_box(YELLOW, 0.12, 12.0)
+		idle = glow_box(YELLOW, 0.18, 4)
 	button.flat = true
 	button.text = ""
 	button.focus_mode = Control.FOCUS_ALL
