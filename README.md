@@ -97,7 +97,7 @@ This is a **terrain-first** neighborhood rethink. The deliverable is a **large c
 **In-editor check (Kyle):**
 
 1. Open `project.godot` in Godot 4.3+, let it import, press **F5**.
-2. Home → **Play** → **CLASSIC** → **Host Match** → **Start Match** (one player is enough).
+2. Home (painted menu) → click **CLASSIC** → **Host Match** → **Start Match** (one player is enough).
 3. You should stand on the **cul-de-sac asphalt or grass**, see green/brown ground vs dark road + light curbs, and be able to walk the whole yard including the perimeter hills. You should **not** start in a sealed bedroom, basement, or bunker.
 4. Optional second instance: **Play → Join** (blank IP) — host-authoritative outdoor spawns should match for the joiner.
 
@@ -266,7 +266,7 @@ See [`docs/blueprints/v0.5/`](docs/blueprints/v0.5/) for Leonardo v0.5 sheets.
 
 **Towers (soft-go):** many candidate masts; **3 active per match**; **1 forced near the PM**. Phone + mast use **service / weak / dead** radii. Scratch on the slate only (not a voice or SMS line).
 
-**HUD + smartphone (soft-go):** Leonardo’s approved UI pack is wired in `scripts/horror/ui/` and `assets/horror/ui/` + `assets/horror/hud/`. Home is the locked left-nav shell (VOUCH neon **V** + **OUCH** on puppet strings — **no X-stick / crossbar through the V**). Play opens Classic / Hardcore / Custom / Practice / Friends Lobby; **Classic** is the live outdoor Host Match path, other modes are soft-gated. In-match HUD follows the mock: MISSING CHILD / ALIVE ONLY banner, hearts + EKG, cyan stamina, violet fear, phone LED + signal, PM ability cooldown, center **E INTERACT**. Phone light is the camera LED only — no torch glyph. Drain/TTK stay eng-owned. Textures are wiring refs; Leonardo may redraw them before Steam.
+**HUD + smartphone (soft-go):** Leonardo’s approved UI pack is wired in `scripts/horror/ui/` and `assets/horror/ui/` + `assets/horror/hud/`. Home is a **hybrid plate**: `menu_leonardo_locked.png` is the full visual (neon **V** + strung **OUCH**, no X-stick); Godot only adds invisible hitboxes. **Classic** is the live outdoor Host Match path; other painted modes are soft stubs. In-match HUD follows the mock: MISSING CHILD / ALIVE ONLY banner, hearts + EKG, cyan stamina, violet fear, phone LED + signal, PM ability cooldown, center **E INTERACT**. Phone light is the camera LED only — no torch glyph. Drain/TTK stay eng-owned. Textures are wiring refs; Leonardo may redraw them before Steam.
 
 **Environment kits (soft-go):** Family houses use modular porch / foundation / stairs / crawl graybox (`under_porch_crawl` under house A — no grave wording). PM bunker gets sealed concrete + pipes/shelves and a utility closet for `bunker_utility` (red/yellow neon, fluorescent; no gore, no guns). See `assets/horror/kits/README.md`. Kit plan sizes are art targets; live footprints stay v0.5.
 

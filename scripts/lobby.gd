@@ -27,16 +27,16 @@ const REMAP_ACTION_LABELS: Dictionary = {
 @onready var settings_panel: Control = $SettingsPanel
 @onready var character_panel: Control = $CharacterPanel
 
-@onready var play_button: Button = $HomePanel/NavColumn/PlayButton
-@onready var join_friends_button: Button = $HomePanel/NavColumn/JoinFriendsButton
-@onready var settings_button: Button = $HomePanel/NavColumn/SettingsButton
-@onready var quit_button: Button = $HomePanel/NavColumn/QuitButton
-@onready var mode_panel: Control = $HomePanel/ModePanel
-@onready var classic_button: Button = $HomePanel/ModePanel/ModeList/ClassicButton
-@onready var hardcore_button: Button = $HomePanel/ModePanel/ModeList/HardcoreButton
-@onready var custom_button: Button = $HomePanel/ModePanel/ModeList/CustomButton
-@onready var practice_button: Button = $HomePanel/ModePanel/ModeList/PracticeButton
-@onready var friends_lobby_button: Button = $HomePanel/ModePanel/ModeList/FriendsLobbyButton
+@onready var play_button: Button = $HomePanel/HitboxRoot/MenuButtons/PlayButton
+@onready var join_friends_button: Button = $HomePanel/HitboxRoot/MenuButtons/JoinFriendsButton
+@onready var settings_button: Button = $HomePanel/HitboxRoot/MenuButtons/SettingsButton
+@onready var quit_button: Button = $HomePanel/HitboxRoot/MenuButtons/QuitButton
+@onready var mode_panel: Control = $HomePanel/HitboxRoot/GameModes
+@onready var classic_button: Button = $HomePanel/HitboxRoot/GameModes/ClassicButton
+@onready var hardcore_button: Button = $HomePanel/HitboxRoot/GameModes/HardcoreButton
+@onready var custom_button: Button = $HomePanel/HitboxRoot/GameModes/CustomButton
+@onready var practice_button: Button = $HomePanel/HitboxRoot/GameModes/PracticeButton
+@onready var friends_lobby_button: Button = $HomePanel/HitboxRoot/GameModes/FriendsLobbyButton
 
 @onready var host_button: Button = $PlayPanel/VBoxContainer/HostButton
 @onready var ip_input: LineEdit = $PlayPanel/VBoxContainer/JoinRow/IPInput
@@ -121,6 +121,9 @@ func _show_panel(panel: Control) -> void:
 	settings_panel.visible = false
 	character_panel.visible = false
 	panel.visible = true
+	var plate := get_node_or_null("Background") as CanvasItem
+	if plate:
+		plate.visible = panel == home_panel
 	if panel == home_panel:
 		mode_panel.visible = true
 	if panel == play_panel:
@@ -128,8 +131,8 @@ func _show_panel(panel: Control) -> void:
 
 
 func _on_play_nav_pressed() -> void:
+	# Modes are already painted on the plate. Play is a hitbox, not a rebuilt panel.
 	_show_panel(home_panel)
-	mode_panel.visible = true
 
 
 func _on_classic_pressed() -> void:
@@ -143,8 +146,8 @@ func _on_join_friends_pressed() -> void:
 
 
 func _on_gated_mode_pressed() -> void:
-	# Soft-gate: keep the live Classic Host Match path. No extra mode systems.
-	_on_classic_pressed()
+	# Soft stub: clickable painted modes, do not start a second mode system.
+	_show_panel(home_panel)
 
 
 func _refresh_match_settings_access() -> void:
@@ -352,9 +355,6 @@ func _refresh_settings_labels() -> void:
 
 
 func _apply_ui_theme() -> void:
-	var bg := $Background as ColorRect
-	if bg and HorrorModeSettings.is_horror_mode():
-		bg.color = Color(0.02, 0.02, 0.03, 1)
 	var neon: GDScript = load("res://scripts/horror/ui/neon_menu.gd")
 	neon.call("apply", self)
 	if HorrorModeSettings.is_horror_mode():
@@ -364,7 +364,3 @@ func _apply_ui_theme() -> void:
 		lobby_code_input.placeholder_text = "Lobby codes not wired yet — use direct IP"
 		lobby_code_input.editable = false
 		lobby_code_input.tooltip_text = "Session codes and relay are post-MVP. Join with the host LAN IP."
-	var bars := home_panel.get_node_or_null("SignalAccent/Bars") as TextureRect
-	if bars and bars.texture == null:
-		var kit: GDScript = load("res://scripts/horror/ui/ui_kit.gd")
-		bars.texture = kit.call("texture", "signal_bars")
