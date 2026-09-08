@@ -50,6 +50,9 @@ var winning_faction_id: String = ""
 ## the exact rule.
 var puppet_master_won: bool = false
 
+## True when the dusk→morning clock hits 6:00 AM and ends the match.
+var morning_reached: bool = false
+
 ## Server-only: which peer_id is the Puppet Master this match, or -1 if
 ## not yet assigned / no match running.
 var puppet_master_peer_id: int = -1
@@ -87,9 +90,13 @@ func reset_for_new_match() -> void:
 	local_is_puppet_master = false
 	winning_faction_id = ""
 	puppet_master_won = false
+	morning_reached = false
 	puppet_master_peer_id = -1
 	local_player_node = null
 	room_water_levels.clear()
+	var clock := get_node_or_null("/root/MatchClock")
+	if clock and clock.has_method("stop"):
+		clock.stop()
 
 
 func server_register_player(peer_id: int, display_name: String) -> void:

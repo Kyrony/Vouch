@@ -33,10 +33,24 @@ static func validate_menu(lobby: Control) -> String:
 		return "NavColumn missing on the Control home"
 	var banner := lobby.get_node_or_null("HomePanel/Banner") as Control
 	if banner and banner.visible:
-		return "VOUCH wordmark must stay off the home"
+		return "legacy Banner wordmark must stay off the home (use MenuLogo)"
 	var signal_cluster := lobby.get_node_or_null("HomePanel/SignalCluster") as Control
 	if signal_cluster and signal_cluster.visible:
 		return "SIGNAL cluster must stay off the home"
+	var logo := lobby.get_node_or_null("HomePanel/MenuLogo") as TextureRect
+	if logo == null:
+		return "MenuLogo missing on the Control home"
+	if not logo.visible:
+		return "MenuLogo must stay visible on the home"
+	if logo.texture == null:
+		return "MenuLogo has no texture"
+	if logo.position.x > 48.0 or logo.position.y > 48.0:
+		return "MenuLogo must sit in the top-left"
+	if not FileAccess.file_exists("res://assets/horror/ui/vouch_fiery_logo.png"):
+		return "vouch_fiery_logo.png missing"
+	var nav := lobby.get_node_or_null("HomePanel/NavColumn") as Control
+	if nav and nav.position.y < logo.position.y + logo.size.y - 4.0:
+		return "NavColumn overlaps the fiery VOUCH logo"
 	var atmo := lobby.get_node_or_null("MenuAtmosphere")
 	if atmo == null:
 		return "MenuAtmosphere title background missing"
@@ -128,6 +142,10 @@ static func validate_menu(lobby: Control) -> String:
 	var builder_src := FileAccess.get_file_as_string("res://scripts/horror/ui/vouch_menu_builder.gd")
 	if builder_src.contains("\"mansion-bg.png\"") or builder_src.contains("\"modes/") or builder_src.contains("res://assets/modes"):
 		return "menu must not require mansion-bg.png or modes/*.png"
+	if not builder_src.contains("vouch_fiery_logo.png"):
+		return "menu builder lost the fiery VOUCH logo"
+	if not builder_src.contains("NAV_TOP"):
+		return "menu builder lost the lowered nav offset"
 	var banner_src := FileAccess.get_file_as_string("res://scripts/horror/ui/vouch_banner.gd")
 	if not banner_src.contains("BANNER_HAS_CROSSBAR := false"):
 		return "VouchBanner must keep BANNER_HAS_CROSSBAR false"
@@ -150,6 +168,10 @@ static func _validate_boot_scene_file() -> String:
 		return "Lobby.tscn must ship a ColorRect named Background"
 	if not tscn.contains("menu_title_bg.png"):
 		return "Lobby.tscn must reference menu_title_bg.png as the title art"
+	if not tscn.contains("vouch_fiery_logo.png"):
+		return "Lobby.tscn must reference vouch_fiery_logo.png as MenuLogo"
+	if not tscn.contains('[node name="MenuLogo" type="TextureRect"'):
+		return "Lobby.tscn must ship MenuLogo as a TextureRect"
 	if not tscn.contains('[node name="MenuAtmosphere" type="TextureRect"'):
 		return "Lobby.tscn must ship MenuAtmosphere as a TextureRect"
 	if tscn.contains("MatchSettingsPanel") or tscn.contains("HiddenHallwayRow"):

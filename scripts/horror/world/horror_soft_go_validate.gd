@@ -115,6 +115,43 @@ static func validate_world(world: Node3D) -> String:
 	var outdoor_err := validate_outdoor_terrain(world)
 	if not outdoor_err.is_empty():
 		return outdoor_err
+	var cycle_err := validate_day_cycle(world)
+	if not cycle_err.is_empty():
+		return cycle_err
+	return ""
+
+
+static func validate_day_cycle(world: Node3D) -> String:
+	if not FileAccess.file_exists("res://scripts/autoload/match_clock.gd"):
+		return "MatchClock script missing"
+	var clock_src := FileAccess.get_file_as_string("res://scripts/autoload/match_clock.gd")
+	if not clock_src.contains("MATCH_REAL_SECONDS := 1440.0"):
+		return "dusk→morning must be 24 real minutes (1440s)"
+	if not clock_src.contains("REAL_SECONDS_PER_GAME_HOUR := 120.0"):
+		return "1 in-game hour must equal 2 real minutes"
+	var clock_script: GDScript = load("res://scripts/autoload/match_clock.gd")
+	if clock_script == null:
+		return "MatchClock failed to load"
+	if str(clock_script.call("clock_label_for_progress", 0.0)) != "6:00 PM":
+		return "match must start at 6:00 PM dusk"
+	if str(clock_script.call("clock_label_for_progress", 1.0)) != "6:00 AM":
+		return "match must end at 6:00 AM morning"
+	var dusk: Dictionary = clock_script.call("sample_lighting", 0.0)
+	var night: Dictionary = clock_script.call("sample_lighting", 0.5)
+	var dawn: Dictionary = clock_script.call("sample_lighting", 1.0)
+	if (dusk["sky"] as Color).v <= (night["sky"] as Color).v:
+		return "night sky should read darker than dusk"
+	if float(dawn["lit_e"]) <= float(night["lit_e"]):
+		return "morning sun should be brighter than midnight"
+	if world.get_node_or_null("FarmSky") == null:
+		return "FarmSky WorldEnvironment missing for the day cycle"
+	if world.get_node_or_null("SunMoon") == null:
+		return "SunMoon DirectionalLight3D missing for the day cycle"
+	var project := FileAccess.get_file_as_string("res://project.godot")
+	if not project.contains("MatchClock="):
+		return "MatchClock autoload missing from project.godot"
+	if not FileAccess.file_exists("res://scripts/horror/ui/morning_end_overlay.gd"):
+		return "morning end overlay missing"
 	return ""
 
 

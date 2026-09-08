@@ -7,14 +7,15 @@
 
 [sub_resource type="Environment" id="EnvFarm"]
 background_mode = 1
-background_color = Color(0.55, 0.68, 0.82, 1)
+background_color = Color(0.72, 0.38, 0.22, 1)
 ambient_light_source = 2
-ambient_light_color = Color(0.55, 0.6, 0.58, 1)
-ambient_light_energy = 0.7
+ambient_light_color = Color(0.58, 0.34, 0.22, 1)
+ambient_light_energy = 0.55
 
 [sub_resource type="StandardMaterial3D" id="Mat_grass"]
-albedo_color = Color(0.3, 0.46, 0.22, 1)
-roughness = 0.92
+albedo_color = Color(0.36, 0.43, 0.20, 1)
+roughness = 0.86
+metallic = 0.0
 cull_mode = 2
 
 [sub_resource type="StandardMaterial3D" id="Mat_asphalt"]
@@ -223,6 +224,12 @@ script = ExtResource("1")
 
 [node name="FarmSky" type="WorldEnvironment" parent="."]
 environment = SubResource("EnvFarm")
+
+[node name="SunMoon" type="DirectionalLight3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 0.978, 0.208, 0, -0.208, 0.978, 0, 24, 0)
+light_color = Color(1, 0.55, 0.28, 1)
+light_energy = 0.88
+shadow_enabled = true
 
 [node name="Outdoor" type="Node3D" parent="."]
 
@@ -529,8 +536,8 @@ shape = SubResource("Sh_escape")
 
 [node name="OutdoorFill" type="OmniLight3D" parent="Outdoor"]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 16, 6)
-light_color = Color(0.72, 0.78, 0.88, 1)
-light_energy = 0.58
+light_color = Color(1, 0.55, 0.28, 1)
+light_energy = 0.34
 omni_range = 90.0
 
 [node name="MainHouse" type="Node3D" parent="Outdoor"]

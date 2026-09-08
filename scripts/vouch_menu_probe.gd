@@ -19,6 +19,16 @@ func _run() -> void:
 		push_error("VOUCH MENU PROBE FAILED: %s" % menu_err)
 		quit(1)
 		return
+	var logo := lobby.get_node_or_null("HomePanel/MenuLogo") as TextureRect
+	var nav := lobby.get_node_or_null("HomePanel/NavColumn") as Control
+	if logo == null or not logo.visible or logo.texture == null:
+		push_error("VOUCH MENU PROBE FAILED: MenuLogo missing or empty")
+		quit(1)
+		return
+	if nav == null or nav.position.y < logo.position.y + logo.size.y - 4.0:
+		push_error("VOUCH MENU PROBE FAILED: nav overlaps MenuLogo")
+		quit(1)
+		return
 	lobby.call("_set_nav", "")
 	if lobby.get_node("HomePanel/SidePanel").visible:
 		push_error("VOUCH MENU PROBE FAILED: backdrop/nav-null did not close the side panel")
