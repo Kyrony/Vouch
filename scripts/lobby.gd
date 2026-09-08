@@ -2,15 +2,10 @@ extends Control
 ## Lobby
 ##
 ## Acts as the game's "home screen": Play / Join Friends / Settings / Quit.
-## Play opens the locked Classic mode panel. Classic is the live Host Match
-## path (IP-based direct connect only for MVP — lobby codes and relay are
-## future work, see docs/MVP_GDD.md). Other listed modes are soft-gated.
-## Settings has real key-remapping, mouse sensitivity, and audio volume
-## controls, all persisted locally via `SettingsManager`. The Play panel
-## shows a LIVE joined-player list (name + peer id) that updates as peers
-## connect, broadcast to everyone via `NetworkManager.lobby_roster_updated`
-## - this is pre-match "who's here" information only, never faction/role
-## info - plus host-only "match spawn odds" sliders (`MatchSettings`).
+## Play reveals the painted game-modes panel. Classic is the live Host Match
+## path (IP-based direct connect only for MVP). Other listed modes are
+## soft-gated. Host lobby is minimal: host / join / Start Match. Settings
+## has key-remapping, mouse sensitivity, and audio volume via SettingsManager.
 
 const REMAP_ACTION_LABELS: Dictionary = {
 	"move_forward": "Move Forward",
@@ -32,6 +27,7 @@ const REMAP_ACTION_LABELS: Dictionary = {
 @onready var settings_button: Button = $HomePanel/HitboxRoot/MenuButtons/SettingsButton
 @onready var quit_button: Button = $HomePanel/HitboxRoot/MenuButtons/QuitButton
 @onready var mode_panel: Control = $HomePanel/HitboxRoot/GameModes
+@onready var modes_cover: Control = $HomePanel/HitboxRoot/ModesCover
 @onready var classic_button: Button = $HomePanel/HitboxRoot/GameModes/ClassicButton
 @onready var hardcore_button: Button = $HomePanel/HitboxRoot/GameModes/HardcoreButton
 @onready var custom_button: Button = $HomePanel/HitboxRoot/GameModes/CustomButton
@@ -43,22 +39,10 @@ const REMAP_ACTION_LABELS: Dictionary = {
 @onready var join_button: Button = $PlayPanel/VBoxContainer/JoinRow/JoinButton
 @onready var start_match_button: Button = $PlayPanel/VBoxContainer/StartMatchButton
 @onready var status_label: Label = $PlayPanel/VBoxContainer/StatusLabel
-@onready var play_back_button: Button = $PlayPanel/VBoxContainer/BackButton
+@onready var play_back_button: Button = $PlayPanel/BackButton
 
-@onready var player_count_label: Label = $PlayPanel/PlayerListPanel/VBoxContainer/PlayerCountLabel
-@onready var player_list_box: VBoxContainer = $PlayPanel/PlayerListPanel/VBoxContainer/PlayerListScroll/PlayerListBox
-
-@onready var match_settings_panel: Panel = $PlayPanel/MatchSettingsPanel
-@onready var match_settings_client_label: Label = $PlayPanel/MatchSettingsClientLabel
-@onready var match_settings_host_box: VBoxContainer = $PlayPanel/MatchSettingsPanel/VBoxContainer
-@onready var hallway_slider: HSlider = $PlayPanel/MatchSettingsPanel/VBoxContainer/HiddenHallwayRow/Slider
-@onready var hallway_value_label: Label = $PlayPanel/MatchSettingsPanel/VBoxContainer/HiddenHallwayRow/ValueLabel
-@onready var code_lock_slider: HSlider = $PlayPanel/MatchSettingsPanel/VBoxContainer/CodeLockRow/Slider
-@onready var code_lock_value_label: Label = $PlayPanel/MatchSettingsPanel/VBoxContainer/CodeLockRow/ValueLabel
-@onready var flame_paper_slider: HSlider = $PlayPanel/MatchSettingsPanel/VBoxContainer/FlamePaperRow/Slider
-@onready var flame_paper_value_label: Label = $PlayPanel/MatchSettingsPanel/VBoxContainer/FlamePaperRow/ValueLabel
-@onready var flood_valve_slider: HSlider = $PlayPanel/MatchSettingsPanel/VBoxContainer/FloodValveRow/Slider
-@onready var flood_valve_value_label: Label = $PlayPanel/MatchSettingsPanel/VBoxContainer/FloodValveRow/ValueLabel
+@onready var player_count_label: Label = $PlayPanel/VBoxContainer/PlayerCountLabel
+@onready var player_list_box: VBoxContainer = $PlayPanel/VBoxContainer/PlayerListBox
 
 @onready var remap_container: VBoxContainer = $SettingsPanel/ScrollContainer/VBoxContainer/RemapContainer
 @onready var sensitivity_slider: HSlider = $SettingsPanel/ScrollContainer/VBoxContainer/SensitivityRow/Slider
@@ -71,10 +55,10 @@ const REMAP_ACTION_LABELS: Dictionary = {
 
 @onready var character_back_button: Button = $CharacterPanel/VBoxContainer/BackButton
 
-@onready var lobby_code_row: HBoxContainer = $PlayPanel/VBoxContainer/LobbyCodeRow
-@onready var lobby_code_input: LineEdit = $PlayPanel/VBoxContainer/LobbyCodeRow/LobbyCodeInput
-
 const _UI: GDScript = preload("res://scripts/ui/ui_theme.gd")
+const _NEON: GDScript = preload("res://scripts/horror/ui/neon_menu.gd")
+
+var _modes_open: bool = false
 
 ## Set while waiting for the next input event to finish a key-remap.
 var _awaiting_remap_action: String = ""
@@ -84,7 +68,7 @@ var _remap_buttons: Dictionary = {}
 func _ready() -> void:
 	play_button.pressed.connect(_on_play_nav_pressed)
 	join_friends_button.pressed.connect(_on_join_friends_pressed)
-	settings_button.pressed.connect(func(): _show_panel(settings_panel))
+	settings_button.pressed.connect(_on_settings_pressed)
 	quit_button.pressed.connect(_on_exit_pressed)
 	classic_button.pressed.connect(_on_classic_pressed)
 	hardcore_button.pressed.connect(_on_gated_mode_pressed)
@@ -92,9 +76,9 @@ func _ready() -> void:
 	practice_button.pressed.connect(_on_gated_mode_pressed)
 	friends_lobby_button.pressed.connect(_on_gated_mode_pressed)
 
-	play_back_button.pressed.connect(func(): _show_panel(home_panel))
-	settings_back_button.pressed.connect(func(): _show_panel(home_panel))
-	character_back_button.pressed.connect(func(): _show_panel(home_panel))
+	play_back_button.pressed.connect(_close_play_flow)
+	settings_back_button.pressed.connect(_close_play_flow)
+	character_back_button.pressed.connect(_close_play_flow)
 
 	host_button.pressed.connect(_on_host_pressed)
 	join_button.pressed.connect(_on_join_pressed)
@@ -108,10 +92,11 @@ func _ready() -> void:
 
 	_build_remap_rows()
 	_setup_settings_controls()
-	_setup_match_settings_controls()
 	_apply_ui_theme()
+	set_process_unhandled_input(true)
 
 	_show_panel(home_panel)
+	_set_modes_open(false)
 	_on_roster_updated(NetworkManager.lobby_roster)
 
 
@@ -125,14 +110,31 @@ func _show_panel(panel: Control) -> void:
 	if plate:
 		plate.visible = panel == home_panel
 	if panel == home_panel:
-		mode_panel.visible = true
-	if panel == play_panel:
-		_refresh_match_settings_access()
+		_set_modes_open(_modes_open)
+
+
+func _set_modes_open(open: bool) -> void:
+	_modes_open = open
+	if mode_panel:
+		mode_panel.visible = open
+	if modes_cover:
+		modes_cover.visible = not open
+	_NEON.call("set_play_selected", home_panel, open)
+
+
+func _close_play_flow() -> void:
+	_set_modes_open(false)
+	_show_panel(home_panel)
 
 
 func _on_play_nav_pressed() -> void:
-	# Modes are already painted on the plate. Play is a hitbox, not a rebuilt panel.
+	_set_modes_open(not _modes_open)
 	_show_panel(home_panel)
+
+
+func _on_settings_pressed() -> void:
+	_set_modes_open(false)
+	_show_panel(settings_panel)
 
 
 func _on_classic_pressed() -> void:
@@ -141,35 +143,15 @@ func _on_classic_pressed() -> void:
 
 
 func _on_join_friends_pressed() -> void:
+	_set_modes_open(false)
 	_show_panel(play_panel)
 	status_label.text = "Join a friend's host via direct IP."
 
 
 func _on_gated_mode_pressed() -> void:
-	# Soft stub: clickable painted modes, do not start a second mode system.
+	# Soft stub: stay on the Play-open home. Do not start another mode.
+	_set_modes_open(true)
 	_show_panel(home_panel)
-
-
-func _refresh_match_settings_access() -> void:
-	var is_host := NetworkManager.is_server()
-	match_settings_panel.visible = is_host
-	match_settings_client_label.visible = not is_host and NetworkManager.multiplayer.multiplayer_peer != null
-	if is_host:
-		_set_odds_sliders_enabled(true)
-	else:
-		_set_odds_sliders_enabled(false)
-
-
-func _set_odds_sliders_enabled(enabled: bool) -> void:
-	hallway_slider.editable = enabled
-	code_lock_slider.editable = enabled
-	flame_paper_slider.editable = enabled
-	flood_valve_slider.editable = enabled
-	for row in match_settings_host_box.get_children():
-		if row is HBoxContainer:
-			for child in row.get_children():
-				if child is HSlider:
-					child.editable = enabled
 
 
 func _on_exit_pressed() -> void:
@@ -179,9 +161,8 @@ func _on_exit_pressed() -> void:
 func _on_host_pressed() -> void:
 	var err := NetworkManager.host_game()
 	if err == OK:
-		status_label.text = "Hosting on port %d. Friends join via direct IP (see below)." % NetworkManager.DEFAULT_PORT
+		status_label.text = "Hosting on port %d. Friends join via direct IP." % NetworkManager.DEFAULT_PORT
 		start_match_button.visible = true
-		_refresh_match_settings_access()
 	else:
 		status_label.text = "Failed to host (error %s)." % err
 
@@ -203,7 +184,6 @@ func _on_start_match_pressed() -> void:
 
 func _on_joined_server() -> void:
 	status_label.text = "Connected. Waiting for the host to start the match."
-	_refresh_match_settings_access()
 
 
 func _on_join_failed(reason: String) -> void:
@@ -213,8 +193,6 @@ func _on_join_failed(reason: String) -> void:
 func _on_disconnected() -> void:
 	status_label.text = "Disconnected from host."
 	start_match_button.visible = false
-	match_settings_panel.visible = false
-	match_settings_client_label.visible = false
 
 
 func _on_roster_updated(roster: Array) -> void:
@@ -227,36 +205,6 @@ func _on_roster_updated(roster: Array) -> void:
 		player_list_box.add_child(label)
 
 	player_count_label.text = "Players connected: %d" % roster.size()
-
-
-# --- Match settings (host-only spawn odds) ------------------------------
-
-func _setup_match_settings_controls() -> void:
-	hallway_slider.value = MatchSettings.hidden_hallway_chance
-	code_lock_slider.value = MatchSettings.code_lock_chance
-	flame_paper_slider.value = MatchSettings.flame_paper_chance
-	flood_valve_slider.value = MatchSettings.flood_valve_chance
-	_refresh_odds_labels()
-
-	hallway_slider.value_changed.connect(func(v):
-		MatchSettings.hidden_hallway_chance = v
-		_refresh_odds_labels())
-	code_lock_slider.value_changed.connect(func(v):
-		MatchSettings.code_lock_chance = v
-		_refresh_odds_labels())
-	flame_paper_slider.value_changed.connect(func(v):
-		MatchSettings.flame_paper_chance = v
-		_refresh_odds_labels())
-	flood_valve_slider.value_changed.connect(func(v):
-		MatchSettings.flood_valve_chance = v
-		_refresh_odds_labels())
-
-
-func _refresh_odds_labels() -> void:
-	hallway_value_label.text = "%d%%" % roundi(MatchSettings.hidden_hallway_chance * 100)
-	code_lock_value_label.text = "%d%%" % roundi(MatchSettings.code_lock_chance * 100)
-	flame_paper_value_label.text = "%d%%" % roundi(MatchSettings.flame_paper_chance * 100)
-	flood_valve_value_label.text = "%d%%" % roundi(MatchSettings.flood_valve_chance * 100)
 
 
 # --- Settings: key remapping ---------------------------------------------
@@ -298,6 +246,13 @@ func _start_remap(action_name: String, button: Button) -> void:
 
 func _unhandled_input(event: InputEvent) -> void:
 	if _awaiting_remap_action.is_empty():
+		if event is InputEventKey and event.pressed and not event.echo and event.physical_keycode == KEY_ESCAPE:
+			if play_panel.visible or settings_panel.visible or character_panel.visible:
+				_close_play_flow()
+				get_viewport().set_input_as_handled()
+			elif home_panel.visible and _modes_open:
+				_set_modes_open(false)
+				get_viewport().set_input_as_handled()
 		return
 
 	if event is InputEventKey and event.pressed and not event.echo:
@@ -360,7 +315,3 @@ func _apply_ui_theme() -> void:
 	if HorrorModeSettings.is_horror_mode():
 		start_match_button.text = "Start Match"
 	_UI.call("apply_label_hierarchy", status_label, "body")
-	if is_instance_valid(lobby_code_input):
-		lobby_code_input.placeholder_text = "Lobby codes not wired yet — use direct IP"
-		lobby_code_input.editable = false
-		lobby_code_input.tooltip_text = "Session codes and relay are post-MVP. Join with the host LAN IP."

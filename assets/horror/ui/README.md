@@ -11,10 +11,11 @@ instances `res://scenes/Lobby/Lobby.tscn`. That Lobby scene **is** the boot
 home — there is no separate Home/MainMenu scene.
 
 `menu_leonardo_locked.png` is the **full home visual** (1280×720). The scene
-ships a full-rect `TextureRect` (`Background`, Keep Aspect Covered) plus
-`StyleBoxEmpty` hitboxes. Godot must not rebuild Play / Join Friends /
-Settings / Quit or the mode list with ColorRect, StyleBoxFlat, or a visible
-`NavColumn`.
+ships a full-rect `TextureRect` (`Background`, Keep Aspect Covered). Overlay
+hitboxes sit on the painted Play / Join Friends / Settings / Quit zones and
+**glow yellow/red on hover**. The painted modes card stays covered until
+**Play**; then Classic / Hardcore / Custom / Practice / Friends Lobby appear.
+Godot must not rebuild the home as ColorRect + `NavColumn`.
 
 Logo lives in the plate: neon **V** + **OUCH** on strings only — **no X-stick**.
 If you drop a replacement plate, keep that banner form.

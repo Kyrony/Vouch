@@ -30,6 +30,7 @@ static func validate_menu(lobby: Control) -> String:
 		"HomePanel/HitboxRoot/MenuButtons/QuitButton",
 		"HomePanel/HitboxRoot/GameModes/ClassicButton",
 		"PlayPanel/VBoxContainer/HostButton",
+		"PlayPanel/BackButton",
 	]:
 		if lobby.get_node_or_null(path) == null:
 			return "menu node missing: %s" % path
@@ -47,9 +48,18 @@ static func validate_menu(lobby: Control) -> String:
 		var hit := lobby.get_node(path) as Button
 		if not hit.text.is_empty():
 			return "hitbox %s still has visible text" % path
-		var style := hit.get_theme_stylebox("normal")
-		if style is StyleBoxFlat:
-			return "hitbox %s still uses StyleBoxFlat chrome" % path
+		var hover := hit.get_theme_stylebox("hover")
+		if not (hover is StyleBoxFlat):
+			return "hitbox %s needs a neon glow hover box" % path
+	var modes := lobby.get_node_or_null("HomePanel/HitboxRoot/GameModes") as Control
+	if modes == null:
+		return "GameModes panel missing"
+	if modes.visible:
+		return "game-modes panel must stay hidden until Play"
+	if lobby.get_node_or_null("HomePanel/HitboxRoot/ModesCover") == null:
+		return "ModesCover missing"
+	if lobby.get_node_or_null("PlayPanel/MatchSettingsPanel") != null:
+		return "Host Lobby still has spawn-odds sliders"
 	var classic := lobby.get_node("HomePanel/HitboxRoot/GameModes/ClassicButton") as Button
 	if classic.disabled:
 		return "Classic must stay the live Host Match path"
@@ -72,11 +82,17 @@ static func validate_menu(lobby: Control) -> String:
 		return "menu must not claim voice/SMS"
 	if not ResourceLoader.exists("res://assets/horror/ui/menu_leonardo_locked.png"):
 		return "locked menu plate missing"
-	var plate := Image.new()
-	if plate.load("res://assets/horror/ui/menu_leonardo_locked.png") != OK:
-		return "menu_leonardo_locked.png failed to load as an image"
+	var plate := load("res://assets/horror/ui/menu_leonardo_locked.png") as Texture2D
+	if plate == null:
+		return "menu_leonardo_locked.png failed to load as a texture"
 	if plate.get_width() != 1280 or plate.get_height() != 720:
 		return "menu plate must be 1280x720"
+	var png := FileAccess.open("res://assets/horror/ui/menu_leonardo_locked.png", FileAccess.READ)
+	if png == null:
+		return "menu_leonardo_locked.png unreadable"
+	var magic := png.get_buffer(8)
+	if magic != PackedByteArray([0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A]):
+		return "menu_leonardo_locked.png is not a PNG"
 	var banner_src := FileAccess.get_file_as_string("res://scripts/horror/ui/vouch_banner.gd")
 	if not banner_src.contains("BANNER_HAS_CROSSBAR := false"):
 		return "VouchBanner must keep BANNER_HAS_CROSSBAR false"
@@ -97,6 +113,12 @@ static func _validate_boot_scene_file() -> String:
 		return "Lobby.tscn must reference menu_leonardo_locked.png"
 	if tscn.contains("NavColumn"):
 		return "Lobby.tscn still has NavColumn"
+	if tscn.contains("MatchSettingsPanel") or tscn.contains("HiddenHallwayRow"):
+		return "Lobby.tscn Host Lobby still has spawn-odds sliders"
+	var play_chunk := tscn.get_slice('[node name="PlayPanel"', 1)
+	play_chunk = play_chunk.get_slice('[node name="SettingsPanel"', 0)
+	if play_chunk.contains("type=\"HSlider\""):
+		return "PlayPanel still has sliders"
 	var home := tscn.get_slice('[node name="PlayPanel"', 0)
 	for line in home.split("\n"):
 		var trimmed := line.strip_edges()
