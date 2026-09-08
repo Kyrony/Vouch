@@ -21,8 +21,10 @@ Mode thumbnails stay **blank placeholders**. Do not require `mansion-bg.png`
 or `modes/*.png`. The old mansion ColorRect stand-in stays hidden.
 
 **Classic → START** is the live Host Match path (Host / Join / Start / Back).
-Other modes toast a stub. Friends is a lobby-code + JOIN stub. Settings is
-master / SFX volume, fullscreen, SAVE. Quit calls `get_tree().quit()`.
+Other modes toast a stub. Friends is a lobby-code + JOIN stub. Settings is a
+sidebox with Keybinds / Audio / Visual / Controls tabs (master / SFX / 
+fullscreen / sensitivity are live; the rest are stubs). Quit calls
+`get_tree().quit()`. In-match Esc opens the same settings plus Exit to Home.
 
 `menu_leonardo_locked.png` is leftover plate art and is **not** the F5 visual.
 

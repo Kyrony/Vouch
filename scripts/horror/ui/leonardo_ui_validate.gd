@@ -49,6 +49,10 @@ static func validate_menu(lobby: Control) -> String:
 		return "title background must use Keep Aspect Covered"
 	if not FileAccess.file_exists("res://assets/horror/ui/menu_title_bg.png"):
 		return "menu_title_bg.png missing"
+	if lobby.get_node_or_null("MenuVignette") == null:
+		return "MenuVignette missing over the title plate"
+	if lobby.get_node_or_null("MenuNavShade") == null:
+		return "MenuNavShade missing over the title plate"
 	for path in [
 		"HomePanel/NavColumn/PlayButton",
 		"HomePanel/NavColumn/JoinFriendsButton",
@@ -58,6 +62,11 @@ static func validate_menu(lobby: Control) -> String:
 		"HomePanel/SidePanel/PlayContent/StartButton",
 		"HomePanel/SidePanel/FriendsContent/LobbyCodeInput",
 		"HomePanel/SidePanel/FriendsContent/FriendsJoinButton",
+		"HomePanel/SidePanel/SettingsContent/TabNav/KeybindsButton",
+		"HomePanel/SidePanel/SettingsContent/TabNav/AudioButton",
+		"HomePanel/SidePanel/SettingsContent/TabNav/VisualButton",
+		"HomePanel/SidePanel/SettingsContent/TabNav/ControlsButton",
+		"HomePanel/SidePanel/SettingsContent/KeybindsPanel",
 		"HomePanel/SidePanel/SettingsContent/MasterVolumeRow/Slider",
 		"HomePanel/SidePanel/SettingsContent/SfxVolumeRow/Slider",
 		"HomePanel/SidePanel/SettingsContent/FullscreenRow/FullscreenToggle",
