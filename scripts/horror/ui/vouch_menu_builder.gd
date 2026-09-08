@@ -10,6 +10,9 @@ const LOGO := "res://assets/horror/ui/vouch_fiery_logo.png"
 const NAV_TOP := 320.0
 ## Previous plate was 880×260. Keep the same aspect at one-third scale.
 const LOGO_SIZE := Vector2(880.0 / 3.0, 260.0 / 3.0)
+## Draw order for the interactive menu so it always sits in front of the
+## decorative logo and background plate ("most forward" when the menu opens).
+const MENU_FRONT_Z := 5
 
 const NAV := [
 	{"id": "play", "name": "PlayButton", "label": "PLAY"},
