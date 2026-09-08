@@ -17,6 +17,9 @@ func _run() -> void:
 	_running = true
 	await process_frame
 	var err: String = await _probe()
+	var net: Node = root.get_node_or_null("NetworkManager")
+	if net and net.has_method("leave_game"):
+		net.call("leave_game")
 	if err.is_empty():
 		print("HORROR MATCH PROBE OK")
 		quit(0)
@@ -32,6 +35,7 @@ func _probe() -> String:
 	var main: Node = load("res://scenes/Main.tscn").instantiate()
 	root.add_child(main)
 	await process_frame
+	await process_frame
 	var lobby := main.get_node_or_null("Lobby") as Control
 	var ui_check: GDScript = load("res://scripts/horror/world/horror_soft_go_validate.gd")
 	var menu_err: String = ui_check.call("validate_leonardo_menu", lobby)
@@ -43,29 +47,54 @@ func _probe() -> String:
 	if not match_node.is_node_ready():
 		await match_node.ready
 
-	var horror_script: GDScript = load("res://scripts/horror/match_horror.gd") as GDScript
-	if horror_script == null:
+	## Same path as F5 → Play → Classic → Host Match → Start Match.
+	var net: Node = root.get_node_or_null("NetworkManager")
+	if net == null:
 		main.queue_free()
-		return "match_horror.gd failed to load"
-	horror_script.call("build_world_all_peers", match_node)
+		return "NetworkManager autoload missing — live Start Match path unavailable"
+	var host_err: Error = net.call("host_game", 19829)
+	if host_err != OK:
+		main.queue_free()
+		return "host_game failed err=%s" % host_err
+	net.call("start_match")
 	await process_frame
 	await physics_frame
+	await process_frame
+
+	var world_root: Node = main.get_node_or_null("World")
+	var live_err: String = ui_check.call("validate_live_start_match_world", world_root)
+	print(ui_check.call("dump_live_world", world_root))
+	if not live_err.is_empty():
+		net.call("leave_game")
+		main.queue_free()
+		return live_err
 
 	var world := match_node.get_node_or_null("HorrorWorld")
 	if world == null:
+		net.call("leave_game")
 		main.queue_free()
-		return "HorrorWorld missing after build_world_all_peers"
+		return "HorrorWorld missing after Start Match"
 
 	var spawn_count: int = world.call("get_spawn_point_count")
 	if spawn_count < 4:
 		main.queue_free()
-		return "expected >= 4 outdoor family spawns, got %d" % spawn_count
+		return "expected >= 4 outdoor family pads, got %d" % spawn_count
 	if world.get_node_or_null("Outdoor/Terrain") == null:
 		main.queue_free()
 		return "Outdoor/Terrain missing"
 	if world.get_node_or_null("Outdoor/Hills") == null:
 		main.queue_free()
 		return "Outdoor/Hills missing"
+	if world.get_node_or_null("Outdoor/Roads") == null:
+		main.queue_free()
+		return "Outdoor/Roads missing"
+	if world.get_node_or_null("L2SpawnMarkers") == null:
+		main.queue_free()
+		return "L2SpawnMarkers missing"
+	var exits: Array = world.get_tree().get_nodes_in_group("walkable_exits")
+	if not exits.is_empty():
+		main.queue_free()
+		return "building door exits still present (%d)" % exits.size()
 	var fam0 = world.call("get_family_spawn_transform", 0)
 	if fam0.origin.y < -0.35:
 		main.queue_free()
@@ -80,10 +109,10 @@ func _probe() -> String:
 		main.queue_free()
 		return "no world pickups spawned"
 
-	for node_name in ["FamilyHouses", "PMMansion", "UncleHouse", "Outdoor"]:
-		if world.get_node_or_null(node_name) == null:
+	for node_name in ["FamilyHouses", "PMMansion", "UncleHouse", "RadioTowers"]:
+		if world.get_node_or_null(node_name) != null:
 			main.queue_free()
-			return "neighborhood node missing: %s" % node_name
+			return "forbidden shell still loaded: %s" % node_name
 
 	var _CHECK: GDScript = load("res://scripts/horror/world/horror_soft_go_validate.gd")
 	var pin_err: String = _CHECK.call("validate_world", world)
@@ -113,6 +142,7 @@ func _probe() -> String:
 	player.position = world.call("get_family_spawn_transform", 0).origin + Vector3(0, 1, 0)
 	player.set_multiplayer_authority(1)
 	match_node.get_node("PlayersContainer").add_child(player)
+	var horror_script: GDScript = load("res://scripts/horror/match_horror.gd") as GDScript
 	horror_script.call("attach_pm_controller", player)
 	horror_script.call("attach_pm_controller", player)
 	await physics_frame
@@ -145,7 +175,7 @@ func _probe() -> String:
 
 	var rng := root.get_node_or_null("ChildSpawnRNG")
 	var pins: Array = rng.call("spawn_id_list") if rng else []
-	print("  horror outdoor_spawns=%d pickups=%d child_points=%d towers=%d fam0=%s pm=%s pins=%s" % [
+	print("  horror farm_pads=%d pickups=%d child_points=%d towers=%d fam0=%s pm=%s pins=%s" % [
 		spawn_count, pickups.get_child_count(), child_points.size(),
 		world.get_tree().get_nodes_in_group("active_towers").size(),
 		fam0.origin,

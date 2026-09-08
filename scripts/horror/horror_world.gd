@@ -1,9 +1,9 @@
 extends Node3D
 class_name HorrorWorld
-## Procedural graybox horror neighborhood: family houses, PM mansion, uncle house, yard.
+## Authored farm country. Terrain/roads/markers live in HorrorWorld.tscn.
+## Start Match instantiates that packed scene — it does not loop-build geometry.
 
-const _LAYOUT: GDScript = preload("res://scripts/horror/world/neighborhood_layout.gd")
-const _PICKUP_SCENE: PackedScene = preload("res://scenes/Horror/WorldPickup.tscn")
+const PICKUP_SCENE: String = "res://scenes/Horror/WorldPickup.tscn"
 
 var _family_spawns: Array[Marker3D] = []
 var _pm_spawn: Marker3D = null
@@ -12,18 +12,22 @@ var _tick_accum: float = 0.0
 
 func _ready() -> void:
 	add_to_group("horror_world")
-	var built: Dictionary = _LAYOUT.call("build", self, 4)
-	_family_spawns.clear()
-	var spawned = built.get("family_spawns", [])
-	for m in spawned:
-		if m is Marker3D:
-			_family_spawns.append(m)
-	var pm = built.get("pm_spawn")
-	_pm_spawn = pm if pm is Marker3D else null
-	_scatter_pickups()
-	print("[HorrorWorld] neighborhood built families=%d outdoor_spawns=%d terrain=phase1" % [
-		built["family_count"], _family_spawns.size(),
+	_suppress_parallel_worlds()
+	_bind_authored_spawns()
+	print("[HorrorWorld] loaded authored farm scene family_pads=%d l2_markers=%d" % [
+		_family_spawns.size(), get_tree().get_nodes_in_group("child_spawn_points").size(),
 	])
+
+
+func _bind_authored_spawns() -> void:
+	_family_spawns.clear()
+	var folder := get_node_or_null("Outdoor/PlayerSpawns")
+	if folder:
+		for child in folder.get_children():
+			if child is Marker3D:
+				_family_spawns.append(child)
+	var pm := get_node_or_null("Outdoor/Outdoor_PM_Street")
+	_pm_spawn = pm if pm is Marker3D else null
 
 
 func _process(delta: float) -> void:
@@ -36,30 +40,47 @@ func _process(delta: float) -> void:
 		PhoneDevice.server_tick(0.1)
 
 
+func _suppress_parallel_worlds() -> void:
+	var match_node := get_parent()
+	if match_node == null:
+		return
+	var we := match_node.get_node_or_null("WorldEnvironment") as WorldEnvironment
+	if we:
+		we.environment = null
+	var world_root := match_node.get_parent()
+	if world_root == null:
+		return
+	var outside := world_root.get_node_or_null("Outside")
+	if outside is Node3D:
+		outside.visible = false
+		outside.process_mode = Node.PROCESS_MODE_DISABLED
+		for child in outside.get_children():
+			child.queue_free()
+
+
 func server_init_match(player_count: int) -> void:
 	if not multiplayer.is_server():
 		return
 	var seed_base := player_count + int(Time.get_ticks_usec() % 9973)
 	ChildSpawnRNG.server_roll(self, seed_base)
-	TowerRules.server_roll(self, seed_base + 17)
 
 
 func get_family_spawn_transform(family_index: int) -> Transform3D:
 	if _family_spawns.is_empty():
-		return Transform3D(Basis.IDENTITY, Vector3(0, 0.2, -4.8))
+		return Transform3D(Basis.IDENTITY, Vector3(-12.0, 0.2, -8.0))
 	var idx := clampi(family_index, 0, _family_spawns.size() - 1)
 	return _family_spawns[idx].global_transform
 
 
 func get_pm_spawn_transform() -> Transform3D:
 	if _pm_spawn == null:
-		return Transform3D(Basis.IDENTITY, Vector3(14.8, 0.2, 0))
+		return Transform3D(Basis.IDENTITY, Vector3(40.0, 0.2, 10.0))
 	return _pm_spawn.global_transform
 
 
 func get_random_spawn_transform() -> Transform3D:
 	if _family_spawns.is_empty():
-		return Transform3D(Basis.IDENTITY, Vector3(0, 0.2, -4.8))
+		return Transform3D(Basis.IDENTITY, Vector3(-12.0, 0.2, -8.0))
 	var m: Marker3D = _family_spawns[randi() % _family_spawns.size()]
 	return m.global_transform
 
@@ -72,36 +93,28 @@ func get_family_count() -> int:
 	return _family_spawns.size()
 
 
-func spawn_pickup(item_id: String, global_pos: Vector3) -> void:
-	if get_node_or_null("Pickups") == null:
-		var pickups := Node3D.new()
-		pickups.name = "Pickups"
-		add_child(pickups)
-	_spawn_pickup_local(item_id, global_pos)
-
-
-func _spawn_pickup_local(item_id: String, pos: Vector3) -> void:
-	var container := get_node_or_null("Pickups")
-	if container == null:
+func spawn_pickup(item_id: String, at: Vector3) -> void:
+	if not multiplayer.is_server():
 		return
-	var pickup: Node = _PICKUP_SCENE.instantiate()
-	pickup.name = "Pickup_%s" % item_id
+	_spawn_pickup_local.rpc(item_id, at)
+
+
+@rpc("authority", "call_local", "reliable")
+func _spawn_pickup_local(item_id: String, at: Vector3) -> void:
+	if not ResourceLoader.exists(PICKUP_SCENE):
+		return
+	var packed: PackedScene = load(PICKUP_SCENE) as PackedScene
+	if packed == null:
+		return
+	var pickup: Node3D = packed.instantiate() as Node3D
+	if pickup == null:
+		return
 	pickup.set("item_id", item_id)
-	container.add_child(pickup)
-	pickup.global_position = pos + Vector3(0, 0.35, 0)
-
-
-func _scatter_pickups() -> void:
-	var pickups := Node3D.new()
-	pickups.name = "Pickups"
-	add_child(pickups)
-	var defs := [
-		{"id": "medkit", "pos": Vector3(-10.2, 0.5, 1.2)},
-		{"id": "phone", "pos": Vector3(8.4, 0.5, 1.6)},
-		{"id": "bandage", "pos": Vector3(22.5, -11.4, 0)},
-		{"id": "battery", "pos": Vector3(-14.0, 0.5, -6.0)},
-		{"id": "crowbar", "pos": Vector3(1.2, 0.5, 8.4)},
-		{"id": "keycard", "pos": Vector3(-6.4, 0.5, 16.8)},
-	]
-	for d in defs:
-		_spawn_pickup_local(d["id"], d["pos"])
+	pickup.position = at
+	var folder: Node = get_node_or_null("Pickups")
+	if folder == null:
+		folder = Node3D.new()
+		folder.name = "Pickups"
+		add_child(folder)
+	folder.add_child(pickup)
+	print("[HorrorWorld] pickup spawned item=%s at %s" % [item_id, at])

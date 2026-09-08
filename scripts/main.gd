@@ -63,44 +63,65 @@ func _probe_horror_match() -> String:
 	var match_node = $World/Match
 	if not match_node.is_node_ready():
 		await match_node.ready
-	_HORROR.call("build_world_all_peers", match_node)
+	var host_err: Error = NetworkManager.host_game(19831)
+	if host_err != OK:
+		return "host_game failed err=%s" % host_err
+	NetworkManager.start_match()
 	await get_tree().process_frame
 	await get_tree().physics_frame
+	await get_tree().process_frame
+	var _CHECK: GDScript = load("res://scripts/horror/world/horror_soft_go_validate.gd")
+	var live_err: String = _CHECK.call("validate_live_start_match_world", world)
+	print(_CHECK.call("dump_live_world", world))
+	if not live_err.is_empty():
+		NetworkManager.leave_game()
+		return live_err
 	var world_node := match_node.get_node_or_null("HorrorWorld")
 	if world_node == null:
-		return "HorrorWorld missing"
+		NetworkManager.leave_game()
+		return "HorrorWorld missing after Start Match"
 	var spawn_count: int = world_node.call("get_spawn_point_count")
 	if spawn_count < 4:
-		return "expected >= 4 outdoor family spawns, got %d" % spawn_count
+		return "expected >= 4 outdoor family pads, got %d" % spawn_count
 	if world_node.get_node_or_null("Outdoor/Terrain") == null:
 		return "Outdoor/Terrain missing"
+	if world_node.get_node_or_null("Outdoor/Roads") == null:
+		return "Outdoor/Roads missing"
+	if world_node.get_node_or_null("L2SpawnMarkers") == null:
+		return "L2SpawnMarkers missing"
 	var pickups := world_node.get_node_or_null("Pickups")
 	if pickups == null or pickups.get_child_count() < 1:
 		return "no pickups"
-	for node_name in ["FamilyHouses", "PMMansion", "UncleHouse", "Outdoor"]:
-		if world_node.get_node_or_null(node_name) == null:
-			return "neighborhood node missing: %s" % node_name
-	var _CHECK: GDScript = load("res://scripts/horror/world/horror_soft_go_validate.gd")
+	for node_name in ["FamilyHouses", "PMMansion", "UncleHouse", "RadioTowers"]:
+		if world_node.get_node_or_null(node_name) != null:
+			NetworkManager.leave_game()
+			return "forbidden shell still loaded: %s" % node_name
 	var menu_err: String = _CHECK.call("validate_leonardo_menu", lobby)
 	if not menu_err.is_empty():
+		NetworkManager.leave_game()
 		return menu_err
 	var pin_err: String = _CHECK.call("validate_world", world_node)
 	if not pin_err.is_empty():
+		NetworkManager.leave_game()
 		return pin_err
 	var tower_err: String = _CHECK.call("validate_tower_roll", world_node)
 	if not tower_err.is_empty():
+		NetworkManager.leave_game()
 		return tower_err
 	var child_points := world_node.get_tree().get_nodes_in_group("child_spawn_points")
 	var steal_err: String = _CHECK.call("validate_life_steal")
 	if not steal_err.is_empty():
+		NetworkManager.leave_game()
 		return steal_err
 	var phone_err: String = _CHECK.call("validate_phone_hud", world_node)
 	if not phone_err.is_empty():
+		NetworkManager.leave_game()
 		return phone_err
 	print("  horror spawns=%d pickups=%d child_points=%d towers=%d pins=%s" % [
 		spawn_count, pickups.get_child_count(), child_points.size(), TowerRules.get_active_ids().size(),
 		ChildSpawnRNG.spawn_id_list(),
 	])
+	NetworkManager.leave_game()
 	return ""
 
 
@@ -493,6 +514,11 @@ func _spawn_test_room(room_id: int, full_items: bool = false):
 func _on_match_started() -> void:
 	lobby.visible = false
 	world.visible = true
+	if HorrorModeSettings.is_horror_mode():
+		var outside := world.get_node_or_null("Outside")
+		if outside is Node3D:
+			outside.visible = false
+			outside.process_mode = Node.PROCESS_MODE_DISABLED
 
 
 func _on_pause_exit() -> void:

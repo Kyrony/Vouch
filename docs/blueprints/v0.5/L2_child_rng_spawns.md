@@ -2,7 +2,9 @@
 
 Pin source of truth for Neighborhood Layout v0.5. **Use these `spawn_id` values exactly.** They match `ChildSpawnRNG.SPAWN_IDS`.
 
-Art map labels are deferred. Dirty L2 map callouts are not source of truth.
+Art map labels are deferred. **James verify:** Leonardo legend camelCase (`masterBedroom`, `bunkerUtility`, `underPorchCrawl`, …) is **not** SoT. Do not wire camelCase or long-form ids (`pm_basement`, `bunker_utility_closet`, …).
+
+The farm art sheet **duplicates pin 4** on basement and under-porch. Eng ignores that. **Pin 4 = `basement`** (PM basement). **Pin 9 = `under_porch_crawl`** (House A porch dirt hide). Place markers by `spawn_id`, not by art pin numbers.
 
 All 11 pins are **alive-only**. Pin 9 is an under-porch crawl / dirt hide — no grave wording.
 
@@ -20,4 +22,4 @@ All 11 pins are **alive-only**. Pin 9 is an under-porch crawl / dirt hide — no
 | 10 | `garden_well` | GARDEN WELL / CRAWLSPACE | Garden well or crawlspace |
 | 11 | `car_trunk` | CAR TRUNK (CURB) | Parked car trunk at curb |
 
-Host RNG picks **one** pin per match. Place markers on the matching L1 / L4 rooms, not on mislabeled L2 art numbers.
+Host RNG picks **one** pin per match. Live farm places a labeled **Spawn Point** box at each eng id on the QA v2 terrain/roads footprint. Pin 9 `under_porch_crawl` is on the SE road bend. Ignore plate typos (`master_become`, `unclebecome`) and a duplicate art **1** in the north clearing.
