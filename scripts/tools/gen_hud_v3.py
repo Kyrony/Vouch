@@ -16,6 +16,10 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
 HUD = ROOT / "assets" / "horror" / "hud"
+SOT_DIRS = [
+    Path("/workspace/leonardo-hud-v3"),
+    Path("/workspace/leonardo-hud-pngs"),
+]
 
 RED = (255, 56, 82)
 CYAN = (56, 230, 255)
@@ -189,17 +193,36 @@ def empty_bar(name: str, color: tuple[int, int, int]) -> None:
     write_import(c.save(name))
 
 
+def copy_sot(name: str) -> bool:
+    """Prefer Kyle-locked bytes. Never invent a substitute when SoT is on disk."""
+    for folder in SOT_DIRS:
+        src = folder / name
+        if src.is_file() and src.stat().st_size > 32:
+            dest = HUD / name
+            dest.write_bytes(src.read_bytes())
+            if not dest.with_suffix(".png.import").exists():
+                write_import(dest)
+            print("copied SoT", src, "->", dest.relative_to(ROOT), dest.stat().st_size)
+            return True
+    return False
+
+
 def chip(name: str, color: tuple[int, int, int]) -> None:
+    if copy_sot(name):
+        return
+    # Pixel-art squircle + inner pill — locked v3 shape language.
     s = 64
     c = Canvas(s, s)
-    c.fill_round_rect(8, 8, 56, 56, 12, (8, 8, 11), 0.94)
-    c.stroke_round_rect(8, 8, 56, 56, 12, color, 6.0, 0.4)
-    c.stroke_round_rect(8, 8, 56, 56, 12, color, 2.6, 1.0)
-    c.stroke_round_rect(18, 26, 46, 38, 7, color, 2.0, 0.95)
+    c.fill_round_rect(10, 10, 54, 54, 14, (8, 10, 20), 0.98)
+    c.stroke_round_rect(10, 10, 54, 54, 14, color, 5.5, 0.32)
+    c.stroke_round_rect(10, 10, 54, 54, 14, color, 1.45, 1.0)
+    c.stroke_round_rect(20, 28, 44, 36, 5, color, 1.45, 1.0)
     write_import(c.save(name))
 
 
 def phone_led() -> None:
+    if copy_sot("phone_led.png"):
+        return
     c = Canvas(128, 128)
     c.fill_round_rect(44, 18, 84, 110, 16, (10, 10, 16), 0.96)
     c.stroke_round_rect(44, 18, 84, 110, 16, GOLD, 6.5, 0.4)
@@ -210,35 +233,42 @@ def phone_led() -> None:
 
 
 def _signal_bars(c: Canvas, lit: int, on: tuple[int, int, int], off: tuple[int, int, int], off_a: float) -> None:
-    heights = (28, 40, 52, 66)
+    heights = (28, 42, 56, 72)
     for i, h in enumerate(heights):
-        x0 = 28 + i * 20
-        y1 = 100
+        x0 = 26 + i * 20
+        y1 = 104
         y0 = y1 - h
         col = on if i < lit else off
-        a = 0.95 if i < lit else off_a
-        c.fill_round_rect(x0, y0, x0 + 12, y1, 4, col, a)
+        a = 0.96 if i < lit else off_a
+        c.fill_round_rect(x0, y0, x0 + 13, y1, 6, col, a)
         if i < lit:
-            c.stroke_round_rect(x0, y0, x0 + 12, y1, 4, col, 2.2, 0.55)
+            c.stroke_round_rect(x0, y0, x0 + 13, y1, 6, col, 2.4, 0.5)
 
 
 def signal_full() -> None:
+    if copy_sot("signal_full.png"):
+        return
     c = Canvas(128, 128)
     _signal_bars(c, 4, GREEN, (30, 40, 32), 0.2)
     write_import(c.save("signal_full.png"))
 
 
 def signal_weak() -> None:
+    if copy_sot("signal_weak.png"):
+        return
     c = Canvas(128, 128)
-    _signal_bars(c, 2, WEAK, (50, 42, 28), 0.28)
+    _signal_bars(c, 2, WEAK, (46, 46, 50), 0.55)
     write_import(c.save("signal_weak.png"))
 
 
 def signal_dead() -> None:
+    if copy_sot("signal_dead.png"):
+        return
     c = Canvas(128, 128)
-    _signal_bars(c, 0, DEAD, (62, 32, 34), 0.32)
-    c.stroke_round_rect(30, 30, 98, 98, 34, DEAD, 3.4, 1.0)
-    c.line(42, 42, 86, 86, DEAD, 3.2, 1.0)
+    _signal_bars(c, 0, DEAD, (36, 40, 48), 0.7)
+    # Neon pink/red X over dim bars (locked dead state).
+    c.line(38, 38, 90, 90, (255, 72, 110), 3.6, 1.0)
+    c.line(90, 38, 38, 90, (255, 72, 110), 3.6, 1.0)
     write_import(c.save("signal_dead.png"))
 
 
