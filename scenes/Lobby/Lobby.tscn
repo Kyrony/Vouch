@@ -1,11 +1,7 @@
-[gd_scene load_steps=6 format=3]
+[gd_scene load_steps=3 format=3]
 
 [ext_resource type="Script" path="res://scripts/lobby.gd" id="1"]
-[ext_resource type="Texture2D" path="res://assets/horror/ui/menu_leonardo_locked.png" id="2"]
-[ext_resource type="Script" path="res://scripts/horror/ui/menu_hitbox_layout.gd" id="3"]
-[ext_resource type="Texture2D" path="res://assets/horror/ui/menu_modes_cover.png" id="4"]
-
-[sub_resource type="StyleBoxEmpty" id="StyleBoxEmpty_hitbox"]
+[ext_resource type="Texture2D" path="res://assets/horror/ui/menu_atmosphere.png" id="2"]
 
 [node name="Lobby" type="Control"]
 layout_mode = 3
@@ -16,7 +12,16 @@ grow_horizontal = 2
 grow_vertical = 2
 script = ExtResource("1")
 
-[node name="Background" type="TextureRect" parent="."]
+[node name="Background" type="ColorRect" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+color = Color(0.0196078, 0.00784314, 0.0117647, 1)
+
+[node name="MenuAtmosphere" type="TextureRect" parent="."]
 layout_mode = 1
 anchors_preset = 15
 anchor_right = 1.0
@@ -28,6 +33,28 @@ texture = ExtResource("2")
 expand_mode = 1
 stretch_mode = 6
 
+[node name="MansionPlaceholder" type="ColorRect" parent="."]
+visible = false
+layout_mode = 1
+anchors_preset = 15
+anchor_left = 0.42
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+color = Color(0, 0, 0, 0)
+
+[node name="Texture" type="TextureRect" parent="MansionPlaceholder"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+expand_mode = 1
+
 [node name="HomePanel" type="Control" parent="."]
 layout_mode = 1
 anchors_preset = 15
@@ -36,207 +63,6 @@ anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
 mouse_filter = 2
-script = ExtResource("3")
-
-[node name="HitboxRoot" type="Control" parent="HomePanel"]
-layout_mode = 0
-offset_right = 1280.0
-offset_bottom = 720.0
-mouse_filter = 2
-
-[node name="ModesCover" type="TextureRect" parent="HomePanel/HitboxRoot"]
-layout_mode = 0
-offset_left = 324.0
-offset_top = 214.0
-offset_right = 596.0
-offset_bottom = 668.0
-mouse_filter = 2
-texture = ExtResource("4")
-expand_mode = 1
-
-[node name="MenuButtons" type="Control" parent="HomePanel/HitboxRoot"]
-layout_mode = 0
-offset_right = 1280.0
-offset_bottom = 720.0
-mouse_filter = 2
-
-[node name="PlayButton" type="Button" parent="HomePanel/HitboxRoot/MenuButtons"]
-layout_mode = 0
-offset_left = 40.0
-offset_top = 248.0
-offset_right = 316.0
-offset_bottom = 336.0
-theme_override_colors/font_color = Color(1, 1, 1, 0)
-theme_override_colors/font_pressed_color = Color(1, 1, 1, 0)
-theme_override_colors/font_hover_color = Color(1, 1, 1, 0)
-theme_override_colors/font_focus_color = Color(1, 1, 1, 0)
-theme_override_colors/font_disabled_color = Color(1, 1, 1, 0)
-theme_override_styles/normal = SubResource("StyleBoxEmpty_hitbox")
-theme_override_styles/pressed = SubResource("StyleBoxEmpty_hitbox")
-theme_override_styles/hover = SubResource("StyleBoxEmpty_hitbox")
-theme_override_styles/disabled = SubResource("StyleBoxEmpty_hitbox")
-theme_override_styles/focus = SubResource("StyleBoxEmpty_hitbox")
-flat = true
-tooltip_text = "Play"
-
-[node name="JoinFriendsButton" type="Button" parent="HomePanel/HitboxRoot/MenuButtons"]
-layout_mode = 0
-offset_left = 40.0
-offset_top = 344.0
-offset_right = 316.0
-offset_bottom = 416.0
-theme_override_colors/font_color = Color(1, 1, 1, 0)
-theme_override_colors/font_pressed_color = Color(1, 1, 1, 0)
-theme_override_colors/font_hover_color = Color(1, 1, 1, 0)
-theme_override_colors/font_focus_color = Color(1, 1, 1, 0)
-theme_override_colors/font_disabled_color = Color(1, 1, 1, 0)
-theme_override_styles/normal = SubResource("StyleBoxEmpty_hitbox")
-theme_override_styles/pressed = SubResource("StyleBoxEmpty_hitbox")
-theme_override_styles/hover = SubResource("StyleBoxEmpty_hitbox")
-theme_override_styles/disabled = SubResource("StyleBoxEmpty_hitbox")
-theme_override_styles/focus = SubResource("StyleBoxEmpty_hitbox")
-flat = true
-tooltip_text = "Join Friends"
-
-[node name="SettingsButton" type="Button" parent="HomePanel/HitboxRoot/MenuButtons"]
-layout_mode = 0
-offset_left = 40.0
-offset_top = 424.0
-offset_right = 316.0
-offset_bottom = 496.0
-theme_override_colors/font_color = Color(1, 1, 1, 0)
-theme_override_colors/font_pressed_color = Color(1, 1, 1, 0)
-theme_override_colors/font_hover_color = Color(1, 1, 1, 0)
-theme_override_colors/font_focus_color = Color(1, 1, 1, 0)
-theme_override_colors/font_disabled_color = Color(1, 1, 1, 0)
-theme_override_styles/normal = SubResource("StyleBoxEmpty_hitbox")
-theme_override_styles/pressed = SubResource("StyleBoxEmpty_hitbox")
-theme_override_styles/hover = SubResource("StyleBoxEmpty_hitbox")
-theme_override_styles/disabled = SubResource("StyleBoxEmpty_hitbox")
-theme_override_styles/focus = SubResource("StyleBoxEmpty_hitbox")
-flat = true
-tooltip_text = "Settings"
-
-[node name="QuitButton" type="Button" parent="HomePanel/HitboxRoot/MenuButtons"]
-layout_mode = 0
-offset_left = 40.0
-offset_top = 504.0
-offset_right = 316.0
-offset_bottom = 576.0
-theme_override_colors/font_color = Color(1, 1, 1, 0)
-theme_override_colors/font_pressed_color = Color(1, 1, 1, 0)
-theme_override_colors/font_hover_color = Color(1, 1, 1, 0)
-theme_override_colors/font_focus_color = Color(1, 1, 1, 0)
-theme_override_colors/font_disabled_color = Color(1, 1, 1, 0)
-theme_override_styles/normal = SubResource("StyleBoxEmpty_hitbox")
-theme_override_styles/pressed = SubResource("StyleBoxEmpty_hitbox")
-theme_override_styles/hover = SubResource("StyleBoxEmpty_hitbox")
-theme_override_styles/disabled = SubResource("StyleBoxEmpty_hitbox")
-theme_override_styles/focus = SubResource("StyleBoxEmpty_hitbox")
-flat = true
-tooltip_text = "Quit"
-
-[node name="GameModes" type="Control" parent="HomePanel/HitboxRoot"]
-visible = false
-layout_mode = 0
-offset_right = 1280.0
-offset_bottom = 720.0
-mouse_filter = 2
-
-[node name="ClassicButton" type="Button" parent="HomePanel/HitboxRoot/GameModes"]
-layout_mode = 0
-offset_left = 348.0
-offset_top = 336.0
-offset_right = 568.0
-offset_bottom = 400.0
-theme_override_colors/font_color = Color(1, 1, 1, 0)
-theme_override_colors/font_pressed_color = Color(1, 1, 1, 0)
-theme_override_colors/font_hover_color = Color(1, 1, 1, 0)
-theme_override_colors/font_focus_color = Color(1, 1, 1, 0)
-theme_override_colors/font_disabled_color = Color(1, 1, 1, 0)
-theme_override_styles/normal = SubResource("StyleBoxEmpty_hitbox")
-theme_override_styles/pressed = SubResource("StyleBoxEmpty_hitbox")
-theme_override_styles/hover = SubResource("StyleBoxEmpty_hitbox")
-theme_override_styles/disabled = SubResource("StyleBoxEmpty_hitbox")
-theme_override_styles/focus = SubResource("StyleBoxEmpty_hitbox")
-flat = true
-tooltip_text = "Classic outdoor Host Match."
-
-[node name="HardcoreButton" type="Button" parent="HomePanel/HitboxRoot/GameModes"]
-layout_mode = 0
-offset_left = 348.0
-offset_top = 408.0
-offset_right = 568.0
-offset_bottom = 460.0
-theme_override_colors/font_color = Color(1, 1, 1, 0)
-theme_override_colors/font_pressed_color = Color(1, 1, 1, 0)
-theme_override_colors/font_hover_color = Color(1, 1, 1, 0)
-theme_override_colors/font_focus_color = Color(1, 1, 1, 0)
-theme_override_colors/font_disabled_color = Color(1, 1, 1, 0)
-theme_override_styles/normal = SubResource("StyleBoxEmpty_hitbox")
-theme_override_styles/pressed = SubResource("StyleBoxEmpty_hitbox")
-theme_override_styles/hover = SubResource("StyleBoxEmpty_hitbox")
-theme_override_styles/disabled = SubResource("StyleBoxEmpty_hitbox")
-theme_override_styles/focus = SubResource("StyleBoxEmpty_hitbox")
-flat = true
-tooltip_text = "Uses the Classic outdoor match."
-
-[node name="CustomButton" type="Button" parent="HomePanel/HitboxRoot/GameModes"]
-layout_mode = 0
-offset_left = 348.0
-offset_top = 464.0
-offset_right = 568.0
-offset_bottom = 516.0
-theme_override_colors/font_color = Color(1, 1, 1, 0)
-theme_override_colors/font_pressed_color = Color(1, 1, 1, 0)
-theme_override_colors/font_hover_color = Color(1, 1, 1, 0)
-theme_override_colors/font_focus_color = Color(1, 1, 1, 0)
-theme_override_colors/font_disabled_color = Color(1, 1, 1, 0)
-theme_override_styles/normal = SubResource("StyleBoxEmpty_hitbox")
-theme_override_styles/pressed = SubResource("StyleBoxEmpty_hitbox")
-theme_override_styles/hover = SubResource("StyleBoxEmpty_hitbox")
-theme_override_styles/disabled = SubResource("StyleBoxEmpty_hitbox")
-theme_override_styles/focus = SubResource("StyleBoxEmpty_hitbox")
-flat = true
-tooltip_text = "Uses the Classic outdoor match."
-
-[node name="PracticeButton" type="Button" parent="HomePanel/HitboxRoot/GameModes"]
-layout_mode = 0
-offset_left = 348.0
-offset_top = 516.0
-offset_right = 568.0
-offset_bottom = 568.0
-theme_override_colors/font_color = Color(1, 1, 1, 0)
-theme_override_colors/font_pressed_color = Color(1, 1, 1, 0)
-theme_override_colors/font_hover_color = Color(1, 1, 1, 0)
-theme_override_colors/font_focus_color = Color(1, 1, 1, 0)
-theme_override_colors/font_disabled_color = Color(1, 1, 1, 0)
-theme_override_styles/normal = SubResource("StyleBoxEmpty_hitbox")
-theme_override_styles/pressed = SubResource("StyleBoxEmpty_hitbox")
-theme_override_styles/hover = SubResource("StyleBoxEmpty_hitbox")
-theme_override_styles/disabled = SubResource("StyleBoxEmpty_hitbox")
-theme_override_styles/focus = SubResource("StyleBoxEmpty_hitbox")
-flat = true
-tooltip_text = "Uses the Classic outdoor match."
-
-[node name="FriendsLobbyButton" type="Button" parent="HomePanel/HitboxRoot/GameModes"]
-layout_mode = 0
-offset_left = 348.0
-offset_top = 572.0
-offset_right = 568.0
-offset_bottom = 624.0
-theme_override_colors/font_color = Color(1, 1, 1, 0)
-theme_override_colors/font_pressed_color = Color(1, 1, 1, 0)
-theme_override_colors/font_hover_color = Color(1, 1, 1, 0)
-theme_override_colors/font_focus_color = Color(1, 1, 1, 0)
-theme_override_colors/font_disabled_color = Color(1, 1, 1, 0)
-theme_override_styles/normal = SubResource("StyleBoxEmpty_hitbox")
-theme_override_styles/pressed = SubResource("StyleBoxEmpty_hitbox")
-theme_override_styles/hover = SubResource("StyleBoxEmpty_hitbox")
-theme_override_styles/disabled = SubResource("StyleBoxEmpty_hitbox")
-theme_override_styles/focus = SubResource("StyleBoxEmpty_hitbox")
-flat = true
-tooltip_text = "Uses the Classic outdoor match."
 
 [node name="PlayPanel" type="Control" parent="."]
 visible = false
@@ -255,27 +81,28 @@ anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
 mouse_filter = 2
-color = Color(0.03, 0.03, 0.04, 1)
+color = Color(0.0196078, 0.00784314, 0.0117647, 1)
 
 [node name="VBoxContainer" type="VBoxContainer" parent="PlayPanel"]
 layout_mode = 1
 anchors_preset = 8
 anchor_left = 0.5
-anchor_top = 0.0
+anchor_top = 0.5
 anchor_right = 0.5
-anchor_bottom = 0.0
+anchor_bottom = 0.5
 offset_left = -200.0
-offset_top = 72.0
+offset_top = -180.0
 offset_right = 200.0
-offset_bottom = 420.0
+offset_bottom = 180.0
 grow_horizontal = 2
+grow_vertical = 2
 theme_override_constants/separation = 10
 
 [node name="TitleLabel" type="Label" parent="PlayPanel/VBoxContainer"]
 layout_mode = 2
-theme_override_font_sizes/font_size = 26
+theme_override_font_sizes/font_size = 22
 horizontal_alignment = 1
-text = "Host or Join"
+text = "CLASSIC — HOST MATCH"
 
 [node name="HostButton" type="Button" parent="PlayPanel/VBoxContainer"]
 layout_mode = 2
@@ -300,7 +127,6 @@ text = "Start Match"
 
 [node name="StatusLabel" type="Label" parent="PlayPanel/VBoxContainer"]
 layout_mode = 2
-theme_override_colors/font_color = Color(0.6, 0.85, 0.95, 1)
 horizontal_alignment = 1
 autowrap_mode = 3
 text = "Host a match or join a friend's IP."
@@ -310,215 +136,11 @@ layout_mode = 2
 horizontal_alignment = 1
 text = "Players: 0"
 
-[node name="PlayerListBox" type="VBoxContainer" parent="PlayPanel/VBoxContainer"]
-layout_mode = 2
-
 [node name="BackButton" type="Button" parent="PlayPanel"]
-layout_mode = 1
-anchors_preset = 0
+layout_mode = 0
 offset_left = 24.0
 offset_top = 16.0
 offset_right = 184.0
 offset_bottom = 60.0
 custom_minimum_size = Vector2(160, 44)
-text = "Back"
-
-[node name="SettingsPanel" type="Control" parent="."]
-visible = false
-layout_mode = 1
-anchors_preset = 15
-anchor_right = 1.0
-anchor_bottom = 1.0
-grow_horizontal = 2
-grow_vertical = 2
-
-[node name="Dim" type="ColorRect" parent="SettingsPanel"]
-layout_mode = 1
-anchors_preset = 15
-anchor_right = 1.0
-anchor_bottom = 1.0
-grow_horizontal = 2
-grow_vertical = 2
-mouse_filter = 2
-color = Color(0.03, 0.03, 0.04, 1)
-
-[node name="TitleLabel" type="Label" parent="SettingsPanel"]
-layout_mode = 1
-anchors_preset = 8
-anchor_left = 0.5
-anchor_top = 0.0
-anchor_right = 0.5
-offset_left = -200.0
-offset_top = 20.0
-offset_right = 200.0
-offset_bottom = 56.0
-grow_horizontal = 2
-theme_override_font_sizes/font_size = 30
-horizontal_alignment = 1
-text = "Settings"
-
-[node name="ScrollContainer" type="ScrollContainer" parent="SettingsPanel"]
-layout_mode = 1
-anchors_preset = 8
-anchor_left = 0.5
-anchor_top = 0.5
-anchor_right = 0.5
-anchor_bottom = 0.5
-offset_left = -260.0
-offset_top = -230.0
-offset_right = 260.0
-offset_bottom = 190.0
-grow_horizontal = 2
-grow_vertical = 2
-
-[node name="VBoxContainer" type="VBoxContainer" parent="SettingsPanel/ScrollContainer"]
-layout_mode = 2
-size_flags_horizontal = 3
-theme_override_constants/separation = 8
-
-[node name="ControlsLabel" type="Label" parent="SettingsPanel/ScrollContainer/VBoxContainer"]
-layout_mode = 2
-theme_override_font_sizes/font_size = 18
-text = "Controls (click a key to rebind)"
-
-[node name="RemapContainer" type="VBoxContainer" parent="SettingsPanel/ScrollContainer/VBoxContainer"]
-layout_mode = 2
-theme_override_constants/separation = 4
-
-[node name="HSeparator1" type="HSeparator" parent="SettingsPanel/ScrollContainer/VBoxContainer"]
-layout_mode = 2
-
-[node name="LookLabel" type="Label" parent="SettingsPanel/ScrollContainer/VBoxContainer"]
-layout_mode = 2
-theme_override_font_sizes/font_size = 18
-text = "Look"
-
-[node name="SensitivityRow" type="HBoxContainer" parent="SettingsPanel/ScrollContainer/VBoxContainer"]
-layout_mode = 2
-
-[node name="Label" type="Label" parent="SettingsPanel/ScrollContainer/VBoxContainer/SensitivityRow"]
-layout_mode = 2
-custom_minimum_size = Vector2(150, 0)
-text = "Mouse sensitivity"
-
-[node name="Slider" type="HSlider" parent="SettingsPanel/ScrollContainer/VBoxContainer/SensitivityRow"]
-layout_mode = 2
-size_flags_horizontal = 3
-min_value = 0.1
-max_value = 4.0
-step = 0.05
-value = 1.0
-
-[node name="ValueLabel" type="Label" parent="SettingsPanel/ScrollContainer/VBoxContainer/SensitivityRow"]
-layout_mode = 2
-custom_minimum_size = Vector2(50, 0)
-text = "1.00x"
-
-[node name="HSeparator2" type="HSeparator" parent="SettingsPanel/ScrollContainer/VBoxContainer"]
-layout_mode = 2
-
-[node name="AudioLabel" type="Label" parent="SettingsPanel/ScrollContainer/VBoxContainer"]
-layout_mode = 2
-theme_override_font_sizes/font_size = 18
-text = "Audio"
-
-[node name="MasterVolumeRow" type="HBoxContainer" parent="SettingsPanel/ScrollContainer/VBoxContainer"]
-layout_mode = 2
-
-[node name="Label" type="Label" parent="SettingsPanel/ScrollContainer/VBoxContainer/MasterVolumeRow"]
-layout_mode = 2
-custom_minimum_size = Vector2(150, 0)
-text = "Master volume"
-
-[node name="Slider" type="HSlider" parent="SettingsPanel/ScrollContainer/VBoxContainer/MasterVolumeRow"]
-layout_mode = 2
-size_flags_horizontal = 3
-max_value = 1.0
-step = 0.05
-value = 1.0
-
-[node name="ValueLabel" type="Label" parent="SettingsPanel/ScrollContainer/VBoxContainer/MasterVolumeRow"]
-layout_mode = 2
-custom_minimum_size = Vector2(50, 0)
-text = "100%"
-
-[node name="SfxVolumeRow" type="HBoxContainer" parent="SettingsPanel/ScrollContainer/VBoxContainer"]
-layout_mode = 2
-
-[node name="Label" type="Label" parent="SettingsPanel/ScrollContainer/VBoxContainer/SfxVolumeRow"]
-layout_mode = 2
-custom_minimum_size = Vector2(150, 0)
-text = "SFX volume (stub)"
-
-[node name="Slider" type="HSlider" parent="SettingsPanel/ScrollContainer/VBoxContainer/SfxVolumeRow"]
-layout_mode = 2
-size_flags_horizontal = 3
-max_value = 1.0
-step = 0.05
-value = 1.0
-
-[node name="ValueLabel" type="Label" parent="SettingsPanel/ScrollContainer/VBoxContainer/SfxVolumeRow"]
-layout_mode = 2
-custom_minimum_size = Vector2(50, 0)
-text = "100%"
-
-[node name="ButtonRow" type="HBoxContainer" parent="SettingsPanel"]
-layout_mode = 1
-anchors_preset = 8
-anchor_left = 0.5
-anchor_top = 1.0
-anchor_right = 0.5
-anchor_bottom = 1.0
-offset_left = -140.0
-offset_top = -60.0
-offset_right = 140.0
-offset_bottom = -20.0
-grow_horizontal = 2
-grow_vertical = 0
-theme_override_constants/separation = 10
-
-[node name="BackButton" type="Button" parent="SettingsPanel/ButtonRow"]
-layout_mode = 2
-size_flags_horizontal = 3
-text = "Back"
-
-[node name="CharacterPanel" type="Control" parent="."]
-visible = false
-layout_mode = 1
-anchors_preset = 15
-anchor_right = 1.0
-anchor_bottom = 1.0
-grow_horizontal = 2
-grow_vertical = 2
-
-[node name="VBoxContainer" type="VBoxContainer" parent="CharacterPanel"]
-layout_mode = 1
-anchors_preset = 8
-anchor_left = 0.5
-anchor_top = 0.5
-anchor_right = 0.5
-anchor_bottom = 0.5
-offset_left = -180.0
-offset_top = -100.0
-offset_right = 180.0
-offset_bottom = 100.0
-grow_horizontal = 2
-grow_vertical = 2
-theme_override_constants/separation = 14
-
-[node name="TitleLabel" type="Label" parent="CharacterPanel/VBoxContainer"]
-layout_mode = 2
-theme_override_font_sizes/font_size = 26
-horizontal_alignment = 1
-text = "Character"
-
-[node name="StubLabel" type="Label" parent="CharacterPanel/VBoxContainer"]
-layout_mode = 2
-theme_override_colors/font_color = Color(0.7, 0.72, 0.76, 1)
-horizontal_alignment = 1
-autowrap_mode = 3
-text = "Character customization is not in this build. Faction color is assigned at match start and is never player-chosen."
-
-[node name="BackButton" type="Button" parent="CharacterPanel/VBoxContainer"]
-layout_mode = 2
 text = "Back"

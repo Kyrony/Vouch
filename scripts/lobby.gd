@@ -1,161 +1,296 @@
 extends Control
-## Lobby
-##
-## Acts as the game's "home screen": Play / Join Friends / Settings / Quit.
-## Play reveals the painted game-modes panel. Classic is the live Host Match
-## path (IP-based direct connect only for MVP). Other listed modes are
-## soft-gated. Host lobby is minimal: host / join / Start Match. Settings
-## has key-remapping, mouse sensitivity, and audio volume via SettingsManager.
+## F5 / main-scene home — Godot port of Kyle's React VouchMenu.
+## Play / Friends / Settings / Quit. Classic Host Match is the live path.
 
-const REMAP_ACTION_LABELS: Dictionary = {
-	"move_forward": "Move Forward",
-	"move_back": "Move Back",
-	"move_left": "Move Left",
-	"move_right": "Move Right",
-	"jump": "Jump",
-	"interact": "Interact",
-	"destroy": "Destroy (hold)",
-}
-
-@onready var home_panel: Control = $HomePanel
-@onready var play_panel: Control = $PlayPanel
-@onready var settings_panel: Control = $SettingsPanel
-@onready var character_panel: Control = $CharacterPanel
-
-@onready var play_button: Button = $HomePanel/HitboxRoot/MenuButtons/PlayButton
-@onready var join_friends_button: Button = $HomePanel/HitboxRoot/MenuButtons/JoinFriendsButton
-@onready var settings_button: Button = $HomePanel/HitboxRoot/MenuButtons/SettingsButton
-@onready var quit_button: Button = $HomePanel/HitboxRoot/MenuButtons/QuitButton
-@onready var mode_panel: Control = $HomePanel/HitboxRoot/GameModes
-@onready var modes_cover: Control = $HomePanel/HitboxRoot/ModesCover
-@onready var classic_button: Button = $HomePanel/HitboxRoot/GameModes/ClassicButton
-@onready var hardcore_button: Button = $HomePanel/HitboxRoot/GameModes/HardcoreButton
-@onready var custom_button: Button = $HomePanel/HitboxRoot/GameModes/CustomButton
-@onready var practice_button: Button = $HomePanel/HitboxRoot/GameModes/PracticeButton
-@onready var friends_lobby_button: Button = $HomePanel/HitboxRoot/GameModes/FriendsLobbyButton
-
-@onready var host_button: Button = $PlayPanel/VBoxContainer/HostButton
-@onready var ip_input: LineEdit = $PlayPanel/VBoxContainer/JoinRow/IPInput
-@onready var join_button: Button = $PlayPanel/VBoxContainer/JoinRow/JoinButton
-@onready var start_match_button: Button = $PlayPanel/VBoxContainer/StartMatchButton
-@onready var status_label: Label = $PlayPanel/VBoxContainer/StatusLabel
-@onready var play_back_button: Button = $PlayPanel/BackButton
-
-@onready var player_count_label: Label = $PlayPanel/VBoxContainer/PlayerCountLabel
-@onready var player_list_box: VBoxContainer = $PlayPanel/VBoxContainer/PlayerListBox
-
-@onready var remap_container: VBoxContainer = $SettingsPanel/ScrollContainer/VBoxContainer/RemapContainer
-@onready var sensitivity_slider: HSlider = $SettingsPanel/ScrollContainer/VBoxContainer/SensitivityRow/Slider
-@onready var sensitivity_value_label: Label = $SettingsPanel/ScrollContainer/VBoxContainer/SensitivityRow/ValueLabel
-@onready var master_volume_slider: HSlider = $SettingsPanel/ScrollContainer/VBoxContainer/MasterVolumeRow/Slider
-@onready var master_volume_value_label: Label = $SettingsPanel/ScrollContainer/VBoxContainer/MasterVolumeRow/ValueLabel
-@onready var sfx_volume_slider: HSlider = $SettingsPanel/ScrollContainer/VBoxContainer/SfxVolumeRow/Slider
-@onready var sfx_volume_value_label: Label = $SettingsPanel/ScrollContainer/VBoxContainer/SfxVolumeRow/ValueLabel
-@onready var settings_back_button: Button = $SettingsPanel/ButtonRow/BackButton
-
-@onready var character_back_button: Button = $CharacterPanel/VBoxContainer/BackButton
-
-const _UI: GDScript = preload("res://scripts/ui/ui_theme.gd")
+const _T: GDScript = preload("res://scripts/horror/ui/vouch_menu_theme.gd")
+const _BUILD: GDScript = preload("res://scripts/horror/ui/vouch_menu_builder.gd")
 const _NEON: GDScript = preload("res://scripts/horror/ui/neon_menu.gd")
 
-var _modes_open: bool = false
+var home_panel: Control
+var play_panel: Control
+var side_panel: Control
+var play_content: Control
+var friends_content: Control
+var settings_content: Control
+var toast_label: Label
 
-## Set while waiting for the next input event to finish a key-remap.
-var _awaiting_remap_action: String = ""
-var _remap_buttons: Dictionary = {}
+var play_button: Button
+var join_friends_button: Button
+var settings_button: Button
+var quit_button: Button
+
+var classic_button: Button
+var hardcore_button: Button
+var custom_button: Button
+var practice_button: Button
+var friends_lobby_button: Button
+var start_button: Button
+
+var lobby_code_input: LineEdit
+var friends_join_button: Button
+
+var master_volume_slider: HSlider
+var sfx_volume_slider: HSlider
+var fullscreen_toggle: CheckButton
+var save_button: Button
+
+var host_button: Button
+var ip_input: LineEdit
+var join_button: Button
+var start_match_button: Button
+var status_label: Label
+var player_count_label: Label
+var play_back_button: Button
+
+var _nav_id: String = "play"
+var _mode_id: String = "classic"
+var _toast_tween: Tween
 
 
 func _ready() -> void:
-	play_button.pressed.connect(_on_play_nav_pressed)
-	join_friends_button.pressed.connect(_on_join_friends_pressed)
-	settings_button.pressed.connect(_on_settings_pressed)
+	_BUILD.call("ensure", self)
+	_cache_nodes()
+	_connect_signals()
+	_load_settings_widgets()
+	_NEON.call("apply", self)
+	set_process_unhandled_input(true)
+	_show_home()
+	_set_nav("play")
+	_set_mode("classic")
+	_on_roster_updated(NetworkManager.lobby_roster)
+
+
+func _cache_nodes() -> void:
+	home_panel = $HomePanel
+	play_panel = $PlayPanel
+	side_panel = $HomePanel/SidePanel
+	play_content = $HomePanel/SidePanel/PlayContent
+	friends_content = $HomePanel/SidePanel/FriendsContent
+	settings_content = $HomePanel/SidePanel/SettingsContent
+	toast_label = $HomePanel/ToastLabel
+	play_button = $HomePanel/NavColumn/PlayButton
+	join_friends_button = $HomePanel/NavColumn/JoinFriendsButton
+	settings_button = $HomePanel/NavColumn/SettingsButton
+	quit_button = $HomePanel/NavColumn/QuitButton
+	classic_button = $HomePanel/SidePanel/PlayContent/ModeList/ClassicButton
+	hardcore_button = $HomePanel/SidePanel/PlayContent/ModeList/HardcoreButton
+	custom_button = $HomePanel/SidePanel/PlayContent/ModeList/CustomButton
+	practice_button = $HomePanel/SidePanel/PlayContent/ModeList/PracticeButton
+	friends_lobby_button = $HomePanel/SidePanel/PlayContent/ModeList/FriendsLobbyButton
+	start_button = $HomePanel/SidePanel/PlayContent/StartButton
+	lobby_code_input = $HomePanel/SidePanel/FriendsContent/LobbyCodeInput
+	friends_join_button = $HomePanel/SidePanel/FriendsContent/FriendsJoinButton
+	master_volume_slider = $HomePanel/SidePanel/SettingsContent/MasterVolumeRow/Slider
+	sfx_volume_slider = $HomePanel/SidePanel/SettingsContent/SfxVolumeRow/Slider
+	fullscreen_toggle = $HomePanel/SidePanel/SettingsContent/FullscreenRow/FullscreenToggle
+	save_button = $HomePanel/SidePanel/SettingsContent/SaveButton
+	host_button = $PlayPanel/VBoxContainer/HostButton
+	ip_input = $PlayPanel/VBoxContainer/JoinRow/IPInput
+	join_button = $PlayPanel/VBoxContainer/JoinRow/JoinButton
+	start_match_button = $PlayPanel/VBoxContainer/StartMatchButton
+	status_label = $PlayPanel/VBoxContainer/StatusLabel
+	player_count_label = $PlayPanel/VBoxContainer/PlayerCountLabel
+	play_back_button = $PlayPanel/BackButton
+
+
+func _connect_signals() -> void:
+	var bg := $Background as ColorRect
+	if bg and not bg.gui_input.is_connected(_on_backdrop_gui_input):
+		bg.gui_input.connect(_on_backdrop_gui_input)
+	play_button.pressed.connect(func(): _set_nav("play"))
+	join_friends_button.pressed.connect(func(): _set_nav("friends"))
+	settings_button.pressed.connect(func(): _set_nav("settings"))
 	quit_button.pressed.connect(_on_exit_pressed)
-	classic_button.pressed.connect(_on_classic_pressed)
-	hardcore_button.pressed.connect(_on_gated_mode_pressed)
-	custom_button.pressed.connect(_on_gated_mode_pressed)
-	practice_button.pressed.connect(_on_gated_mode_pressed)
-	friends_lobby_button.pressed.connect(_on_gated_mode_pressed)
-
-	play_back_button.pressed.connect(_close_play_flow)
-	settings_back_button.pressed.connect(_close_play_flow)
-	character_back_button.pressed.connect(_close_play_flow)
-
+	for btn in [play_button, join_friends_button, settings_button, quit_button]:
+		if not btn.mouse_entered.is_connected(_on_nav_hover):
+			btn.mouse_entered.connect(_on_nav_hover.bind(btn))
+	classic_button.pressed.connect(func(): _set_mode("classic"))
+	hardcore_button.pressed.connect(func(): _set_mode("hardcore"))
+	custom_button.pressed.connect(func(): _set_mode("custom"))
+	practice_button.pressed.connect(func(): _set_mode("practice"))
+	friends_lobby_button.pressed.connect(func(): _set_mode("friends-lobby"))
+	start_button.pressed.connect(_on_start_mode)
+	friends_join_button.pressed.connect(_on_friends_join)
+	lobby_code_input.text_changed.connect(_on_lobby_code_changed)
+	save_button.pressed.connect(_on_save_settings)
+	fullscreen_toggle.toggled.connect(_on_fullscreen_toggled)
+	play_back_button.pressed.connect(_close_host)
 	host_button.pressed.connect(_on_host_pressed)
 	join_button.pressed.connect(_on_join_pressed)
 	start_match_button.pressed.connect(_on_start_match_pressed)
 	start_match_button.visible = false
-
 	NetworkManager.joined_server.connect(_on_joined_server)
 	NetworkManager.join_failed.connect(_on_join_failed)
 	NetworkManager.disconnected_from_server.connect(_on_disconnected)
 	NetworkManager.lobby_roster_updated.connect(_on_roster_updated)
 
-	_build_remap_rows()
-	_setup_settings_controls()
-	_apply_ui_theme()
-	set_process_unhandled_input(true)
 
-	_show_panel(home_panel)
-	_set_modes_open(false)
-	_on_roster_updated(NetworkManager.lobby_roster)
+func _load_settings_widgets() -> void:
+	master_volume_slider.value = SettingsManager.master_volume
+	sfx_volume_slider.value = SettingsManager.sfx_volume
+	fullscreen_toggle.button_pressed = SettingsManager.fullscreen
 
 
-func _show_panel(panel: Control) -> void:
-	home_panel.visible = false
+func _show_home() -> void:
+	home_panel.visible = true
 	play_panel.visible = false
-	settings_panel.visible = false
-	character_panel.visible = false
-	panel.visible = true
 	var plate := get_node_or_null("Background") as CanvasItem
 	if plate:
-		plate.visible = panel == home_panel
-	if panel == home_panel:
-		_set_modes_open(_modes_open)
+		plate.visible = true
 
 
-func _set_modes_open(open: bool) -> void:
-	_modes_open = open
-	if mode_panel:
-		mode_panel.visible = open
-	if modes_cover:
-		modes_cover.visible = not open
-	_NEON.call("set_play_selected", home_panel, open)
+func _show_host() -> void:
+	home_panel.visible = false
+	play_panel.visible = true
 
 
-func _close_play_flow() -> void:
-	_set_modes_open(false)
-	_show_panel(home_panel)
+func _close_host() -> void:
+	_show_home()
+	_set_nav("play")
 
 
-func _on_play_nav_pressed() -> void:
-	_set_modes_open(not _modes_open)
-	_show_panel(home_panel)
+func _on_backdrop_gui_input(event: InputEvent) -> void:
+	if event is InputEventMouseButton:
+		var mouse := event as InputEventMouseButton
+		if mouse.pressed and mouse.button_index == MOUSE_BUTTON_LEFT:
+			_set_nav("")
 
 
-func _on_settings_pressed() -> void:
-	_set_modes_open(false)
-	_show_panel(settings_panel)
+func _set_nav(nav_id: String) -> void:
+	_nav_id = nav_id
+	var open := not nav_id.is_empty() and nav_id != "quit"
+	if side_panel:
+		side_panel.visible = open
+	if play_content:
+		play_content.visible = nav_id == "play"
+	if friends_content:
+		friends_content.visible = nav_id == "friends"
+	if settings_content:
+		settings_content.visible = nav_id == "settings"
+	_T.apply_nav_button(play_button, nav_id == "play")
+	_T.apply_nav_button(join_friends_button, nav_id == "friends")
+	_T.apply_nav_button(settings_button, nav_id == "settings")
+	_T.apply_nav_button(quit_button, nav_id == "quit")
+	_NEON.call("set_play_selected", home_panel, nav_id == "play")
 
 
-func _on_classic_pressed() -> void:
-	_show_panel(play_panel)
-	status_label.text = "Classic outdoor neighborhood. Host a match or join by IP."
+func _set_mode(mode_id: String) -> void:
+	_mode_id = mode_id
+	var buttons := {
+		"classic": classic_button,
+		"hardcore": hardcore_button,
+		"custom": custom_button,
+		"practice": practice_button,
+		"friends-lobby": friends_lobby_button,
+	}
+	for id in buttons:
+		_T.apply_mode_button(buttons[id], id == mode_id)
 
 
-func _on_join_friends_pressed() -> void:
-	_set_modes_open(false)
-	_show_panel(play_panel)
-	status_label.text = "Join a friend's host via direct IP."
+func _on_nav_hover(button: Button) -> void:
+	var row := button.get_node_or_null("Row") as Control
+	if row == null:
+		return
+	var tw := row.create_tween()
+	tw.tween_property(row, "position:x", 10.0, 0.045)
+	tw.tween_property(row, "position:x", -6.0, 0.05)
+	tw.tween_property(row, "position:x", 3.0, 0.04)
+	tw.tween_property(row, "position:x", 0.0, 0.05)
 
 
-func _on_gated_mode_pressed() -> void:
-	# Soft stub: stay on the Play-open home. Do not start another mode.
-	_set_modes_open(true)
-	_show_panel(home_panel)
+func _on_start_mode() -> void:
+	if _mode_id == "classic":
+		_show_host()
+		status_label.text = "Classic outdoor neighborhood. Host a match or join by IP."
+		return
+	var spec: Dictionary = _T.MODES.get(_mode_id, {})
+	var title: String = spec.get("title", _mode_id.to_upper())
+	_toast("%s is a stub in this build." % title)
+
+
+func _on_friends_join() -> void:
+	var code := lobby_code_input.text.strip_edges()
+	if code.is_empty():
+		_toast("Enter a lobby code.")
+		return
+	_toast("Lobby codes are a stub. Use Classic → Host Match to join by IP.")
+
+
+func _on_lobby_code_changed(text: String) -> void:
+	var caret := lobby_code_input.caret_column
+	var next := text.to_upper()
+	if next != text:
+		lobby_code_input.text = next
+		lobby_code_input.caret_column = caret
+
+
+func _on_fullscreen_toggled(pressed: bool) -> void:
+	SettingsManager.set_fullscreen(pressed)
+
+
+func _on_save_settings() -> void:
+	SettingsManager.set_master_volume(master_volume_slider.value)
+	SettingsManager.set_sfx_volume(sfx_volume_slider.value)
+	SettingsManager.set_fullscreen(fullscreen_toggle.button_pressed)
+	_toast("Settings saved.")
 
 
 func _on_exit_pressed() -> void:
 	get_tree().quit()
+
+
+func _toast(message: String) -> void:
+	if toast_label == null:
+		return
+	toast_label.text = message
+	toast_label.visible = true
+	toast_label.modulate.a = 1.0
+	if _toast_tween and _toast_tween.is_valid():
+		_toast_tween.kill()
+	_toast_tween = create_tween()
+	_toast_tween.tween_interval(_T.TOAST_SECONDS - 0.8)
+	_toast_tween.tween_property(toast_label, "modulate:a", 0.0, 0.8)
+	_toast_tween.tween_callback(func():
+		toast_label.visible = false
+		toast_label.modulate.a = 1.0)
+
+
+func _unhandled_input(event: InputEvent) -> void:
+	if not (event is InputEventKey and event.pressed and not event.echo):
+		return
+	var key := event as InputEventKey
+	if play_panel.visible:
+		if key.physical_keycode == KEY_ESCAPE:
+			_close_host()
+			get_viewport().set_input_as_handled()
+		return
+	if not home_panel.visible:
+		return
+	if key.physical_keycode == KEY_ESCAPE:
+		if not _nav_id.is_empty():
+			_set_nav("")
+			get_viewport().set_input_as_handled()
+		return
+	if _nav_id != "play":
+		return
+	if key.physical_keycode == KEY_UP:
+		_nudge_mode(-1)
+		get_viewport().set_input_as_handled()
+	elif key.physical_keycode == KEY_DOWN:
+		_nudge_mode(1)
+		get_viewport().set_input_as_handled()
+	elif key.physical_keycode == KEY_ENTER or key.physical_keycode == KEY_KP_ENTER:
+		_on_start_mode()
+		get_viewport().set_input_as_handled()
+
+
+func _nudge_mode(delta: int) -> void:
+	var ids: PackedStringArray = _T.MODE_IDS
+	var idx := ids.find(_mode_id)
+	if idx < 0:
+		idx = 0
+	idx = (idx + delta + ids.size()) % ids.size()
+	_set_mode(ids[idx])
 
 
 func _on_host_pressed() -> void:
@@ -196,122 +331,5 @@ func _on_disconnected() -> void:
 
 
 func _on_roster_updated(roster: Array) -> void:
-	for child in player_list_box.get_children():
-		child.queue_free()
-
-	for entry in roster:
-		var label := Label.new()
-		label.text = "\u2022 %s  (peer %d)" % [entry["name"], entry["peer_id"]]
-		player_list_box.add_child(label)
-
-	player_count_label.text = "Players connected: %d" % roster.size()
-
-
-# --- Settings: key remapping ---------------------------------------------
-
-func _build_remap_rows() -> void:
-	for action_name in SettingsManager.REMAPPABLE_ACTIONS:
-		var row := HBoxContainer.new()
-
-		var label := Label.new()
-		label.text = REMAP_ACTION_LABELS.get(action_name, action_name)
-		label.custom_minimum_size = Vector2(150, 0)
-		row.add_child(label)
-
-		var bind_button := Button.new()
-		bind_button.text = SettingsManager.get_binding_label(action_name)
-		bind_button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-		bind_button.focus_mode = Control.FOCUS_ALL
-		bind_button.pressed.connect(func(): _start_remap(action_name, bind_button))
-		row.add_child(bind_button)
-		_remap_buttons[action_name] = bind_button
-
-		var reset_button := Button.new()
-		reset_button.text = "Reset"
-		reset_button.pressed.connect(func():
-			SettingsManager.reset_action_to_default(action_name)
-			bind_button.text = SettingsManager.get_binding_label(action_name))
-		row.add_child(reset_button)
-
-		remap_container.add_child(row)
-
-
-func _start_remap(action_name: String, button: Button) -> void:
-	if not _awaiting_remap_action.is_empty():
-		return
-	_awaiting_remap_action = action_name
-	button.text = "Press any key/button..."
-	set_process_unhandled_input(true)
-
-
-func _unhandled_input(event: InputEvent) -> void:
-	if _awaiting_remap_action.is_empty():
-		if event is InputEventKey and event.pressed and not event.echo and event.physical_keycode == KEY_ESCAPE:
-			if play_panel.visible or settings_panel.visible or character_panel.visible:
-				_close_play_flow()
-				get_viewport().set_input_as_handled()
-			elif home_panel.visible and _modes_open:
-				_set_modes_open(false)
-				get_viewport().set_input_as_handled()
-		return
-
-	if event is InputEventKey and event.pressed and not event.echo:
-		if event.physical_keycode == KEY_ESCAPE:
-			_cancel_remap()
-			return
-		SettingsManager.rebind_action(_awaiting_remap_action, event)
-		_finish_remap()
-	elif event is InputEventMouseButton and event.pressed:
-		SettingsManager.rebind_action(_awaiting_remap_action, event)
-		_finish_remap()
-	elif event is InputEventJoypadButton and event.pressed:
-		SettingsManager.rebind_action(_awaiting_remap_action, event)
-		_finish_remap()
-
-
-func _cancel_remap() -> void:
-	var button: Button = _remap_buttons.get(_awaiting_remap_action)
-	if button:
-		button.text = SettingsManager.get_binding_label(_awaiting_remap_action)
-	_awaiting_remap_action = ""
-
-
-func _finish_remap() -> void:
-	var action_name := _awaiting_remap_action
-	var button: Button = _remap_buttons.get(action_name)
-	if button:
-		button.text = SettingsManager.get_binding_label(action_name)
-	_awaiting_remap_action = ""
-
-
-# --- Settings: sensitivity / audio ---------------------------------------
-
-func _setup_settings_controls() -> void:
-	sensitivity_slider.value = SettingsManager.mouse_sensitivity
-	master_volume_slider.value = SettingsManager.master_volume
-	sfx_volume_slider.value = SettingsManager.sfx_volume
-	_refresh_settings_labels()
-
-	sensitivity_slider.value_changed.connect(func(v):
-		SettingsManager.set_mouse_sensitivity(v)
-		_refresh_settings_labels())
-	master_volume_slider.value_changed.connect(func(v):
-		SettingsManager.set_master_volume(v)
-		_refresh_settings_labels())
-	sfx_volume_slider.value_changed.connect(func(v):
-		SettingsManager.set_sfx_volume(v)
-		_refresh_settings_labels())
-
-
-func _refresh_settings_labels() -> void:
-	sensitivity_value_label.text = "%.2fx" % sensitivity_slider.value
-	master_volume_value_label.text = "%d%%" % roundi(master_volume_slider.value * 100)
-	sfx_volume_value_label.text = "%d%%" % roundi(sfx_volume_slider.value * 100)
-
-
-func _apply_ui_theme() -> void:
-	var neon: GDScript = load("res://scripts/horror/ui/neon_menu.gd")
-	neon.call("apply", self)
-	if HorrorModeSettings.is_horror_mode():
-		start_match_button.text = "Start Match"
-	_UI.call("apply_label_hierarchy", status_label, "body")
+	if player_count_label:
+		player_count_label.text = "Players: %d" % roster.size()

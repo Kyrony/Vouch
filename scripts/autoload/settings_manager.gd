@@ -30,6 +30,7 @@ const REMAPPABLE_ACTIONS: Array[String] = [
 const DEFAULT_SENSITIVITY: float = 1.0
 const DEFAULT_MASTER_VOLUME: float = 1.0
 const DEFAULT_SFX_VOLUME: float = 1.0
+const DEFAULT_FULLSCREEN: bool = false
 
 ## Multiplier applied on top of Player.gd's base mouse-look sensitivity.
 var mouse_sensitivity: float = DEFAULT_SENSITIVITY
@@ -39,6 +40,7 @@ var mouse_sensitivity: float = DEFAULT_SENSITIVITY
 ## docs/MVP_GDD.md.
 var master_volume: float = DEFAULT_MASTER_VOLUME
 var sfx_volume: float = DEFAULT_SFX_VOLUME
+var fullscreen: bool = DEFAULT_FULLSCREEN
 
 
 ## action_name -> Array[InputEvent], captured at startup BEFORE any saved
@@ -53,6 +55,7 @@ func _ready() -> void:
 	_load()
 	_apply_all_bindings()
 	_apply_master_volume()
+	_apply_fullscreen()
 
 
 ## Returns the first meaningful InputEvent bound to `action_name` (skips
@@ -117,6 +120,19 @@ func set_sfx_volume(value: float) -> void:
 	sfx_volume = clampf(value, 0.0, 1.0)
 	_save()
 	volume_changed.emit("sfx", sfx_volume)
+
+
+func set_fullscreen(enabled: bool) -> void:
+	fullscreen = enabled
+	_apply_fullscreen()
+	_save()
+
+
+func _apply_fullscreen() -> void:
+	if fullscreen:
+		DisplayServer.window_set_mode(DisplayServer.WINDOW_MODE_FULLSCREEN)
+	else:
+		DisplayServer.window_set_mode(DisplayServer.WINDOW_MODE_WINDOWED)
 
 
 func _apply_master_volume() -> void:
@@ -189,6 +205,7 @@ func _save() -> void:
 	cfg.set_value("audio", "mouse_sensitivity", mouse_sensitivity)
 	cfg.set_value("audio", "master_volume", master_volume)
 	cfg.set_value("audio", "sfx_volume", sfx_volume)
+	cfg.set_value("video", "fullscreen", fullscreen)
 	var err := cfg.save(SAVE_PATH)
 	if err != OK:
 		push_warning("SettingsManager: failed to save settings (err=%s)" % err)
@@ -202,3 +219,4 @@ func _load() -> void:
 	mouse_sensitivity = cfg.get_value("audio", "mouse_sensitivity", DEFAULT_SENSITIVITY)
 	master_volume = cfg.get_value("audio", "master_volume", DEFAULT_MASTER_VOLUME)
 	sfx_volume = cfg.get_value("audio", "sfx_volume", DEFAULT_SFX_VOLUME)
+	fullscreen = cfg.get_value("video", "fullscreen", DEFAULT_FULLSCREEN)
