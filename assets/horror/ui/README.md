@@ -6,10 +6,15 @@ redrawn before Steam. Keep the same filenames so `VouchUiKit`, `VouchBanner`,
 
 ## Locked main-menu plate (hybrid)
 
-`menu_leonardo_locked.png` is the **full home visual** (1280×720). Godot only
-puts invisible hitboxes over the painted Play / Join Friends / Settings / Quit
-and Classic / Hardcore / Custom / Practice / Friends Lobby zones. Do **not**
-rebuild those buttons with StyleBoxFlat.
+F5 / `project.godot` `run/main_scene` is `res://scenes/Main.tscn`, which
+instances `res://scenes/Lobby/Lobby.tscn`. That Lobby scene **is** the boot
+home — there is no separate Home/MainMenu scene.
+
+`menu_leonardo_locked.png` is the **full home visual** (1280×720). The scene
+ships a full-rect `TextureRect` (`Background`, Keep Aspect Covered) plus
+`StyleBoxEmpty` hitboxes. Godot must not rebuild Play / Join Friends /
+Settings / Quit or the mode list with ColorRect, StyleBoxFlat, or a visible
+`NavColumn`.
 
 Logo lives in the plate: neon **V** + **OUCH** on strings only — **no X-stick**.
 If you drop a replacement plate, keep that banner form.

@@ -66,6 +66,7 @@ static func invisible_hitbox() -> StyleBoxEmpty:
 static func apply_invisible_hitbox(button: Button) -> void:
 	var empty := invisible_hitbox()
 	button.flat = true
+	button.text = ""
 	button.focus_mode = Control.FOCUS_ALL
 	button.mouse_filter = Control.MOUSE_FILTER_STOP
 	button.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND

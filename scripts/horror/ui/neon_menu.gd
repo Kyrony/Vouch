@@ -23,7 +23,31 @@ static func _apply_plate(lobby: Control) -> void:
 	var atmo := lobby.get_node_or_null("MenuAtmosphere")
 	if atmo:
 		atmo.queue_free()
+	var nav := lobby.get_node_or_null("HomePanel/NavColumn")
+	if nav:
+		nav.queue_free()
+	var banner := lobby.get_node_or_null("HomePanel/Banner")
+	if banner:
+		banner.visible = false
+		banner.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	var bg := lobby.get_node_or_null("Background")
+	if bg is ColorRect or bg == null:
+		var plate := TextureRect.new()
+		plate.name = "Background"
+		plate.set_anchors_preset(Control.PRESET_FULL_RECT)
+		plate.offset_left = 0
+		plate.offset_top = 0
+		plate.offset_right = 0
+		plate.offset_bottom = 0
+		plate.grow_horizontal = Control.GROW_DIRECTION_BOTH
+		plate.grow_vertical = Control.GROW_DIRECTION_BOTH
+		if bg:
+			bg.replace_by(plate)
+			bg.free()
+		else:
+			lobby.add_child(plate)
+			lobby.move_child(plate, 0)
+		bg = plate
 	if bg is TextureRect:
 		var plate := bg as TextureRect
 		plate.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -31,8 +55,6 @@ static func _apply_plate(lobby: Control) -> void:
 		plate.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_COVERED
 		if plate.texture == null and ResourceLoader.exists(ART):
 			plate.texture = load(ART) as Texture2D
-	elif bg is ColorRect:
-		(bg as ColorRect).visible = false
 
 
 static func _apply_home_hitboxes(home: Control) -> void:

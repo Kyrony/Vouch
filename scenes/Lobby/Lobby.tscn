@@ -1,8 +1,10 @@
-[gd_scene load_steps=4 format=3]
+[gd_scene load_steps=5 format=3]
 
 [ext_resource type="Script" path="res://scripts/lobby.gd" id="1"]
 [ext_resource type="Texture2D" path="res://assets/horror/ui/menu_leonardo_locked.png" id="2"]
 [ext_resource type="Script" path="res://scripts/horror/ui/menu_hitbox_layout.gd" id="3"]
+
+[sub_resource type="StyleBoxEmpty" id="StyleBoxEmpty_hitbox"]
 
 [node name="Lobby" type="Control"]
 layout_mode = 3
@@ -53,8 +55,18 @@ offset_left = 40.0
 offset_top = 248.0
 offset_right = 316.0
 offset_bottom = 336.0
+theme_override_colors/font_color = Color(1, 1, 1, 0)
+theme_override_colors/font_pressed_color = Color(1, 1, 1, 0)
+theme_override_colors/font_hover_color = Color(1, 1, 1, 0)
+theme_override_colors/font_focus_color = Color(1, 1, 1, 0)
+theme_override_colors/font_disabled_color = Color(1, 1, 1, 0)
+theme_override_styles/normal = SubResource("StyleBoxEmpty_hitbox")
+theme_override_styles/pressed = SubResource("StyleBoxEmpty_hitbox")
+theme_override_styles/hover = SubResource("StyleBoxEmpty_hitbox")
+theme_override_styles/disabled = SubResource("StyleBoxEmpty_hitbox")
+theme_override_styles/focus = SubResource("StyleBoxEmpty_hitbox")
 flat = true
-text = "Play"
+tooltip_text = "Play"
 
 [node name="JoinFriendsButton" type="Button" parent="HomePanel/HitboxRoot/MenuButtons"]
 layout_mode = 0
@@ -62,8 +74,18 @@ offset_left = 40.0
 offset_top = 344.0
 offset_right = 316.0
 offset_bottom = 416.0
+theme_override_colors/font_color = Color(1, 1, 1, 0)
+theme_override_colors/font_pressed_color = Color(1, 1, 1, 0)
+theme_override_colors/font_hover_color = Color(1, 1, 1, 0)
+theme_override_colors/font_focus_color = Color(1, 1, 1, 0)
+theme_override_colors/font_disabled_color = Color(1, 1, 1, 0)
+theme_override_styles/normal = SubResource("StyleBoxEmpty_hitbox")
+theme_override_styles/pressed = SubResource("StyleBoxEmpty_hitbox")
+theme_override_styles/hover = SubResource("StyleBoxEmpty_hitbox")
+theme_override_styles/disabled = SubResource("StyleBoxEmpty_hitbox")
+theme_override_styles/focus = SubResource("StyleBoxEmpty_hitbox")
 flat = true
-text = "Join Friends"
+tooltip_text = "Join Friends"
 
 [node name="SettingsButton" type="Button" parent="HomePanel/HitboxRoot/MenuButtons"]
 layout_mode = 0
@@ -71,8 +93,18 @@ offset_left = 40.0
 offset_top = 424.0
 offset_right = 316.0
 offset_bottom = 496.0
+theme_override_colors/font_color = Color(1, 1, 1, 0)
+theme_override_colors/font_pressed_color = Color(1, 1, 1, 0)
+theme_override_colors/font_hover_color = Color(1, 1, 1, 0)
+theme_override_colors/font_focus_color = Color(1, 1, 1, 0)
+theme_override_colors/font_disabled_color = Color(1, 1, 1, 0)
+theme_override_styles/normal = SubResource("StyleBoxEmpty_hitbox")
+theme_override_styles/pressed = SubResource("StyleBoxEmpty_hitbox")
+theme_override_styles/hover = SubResource("StyleBoxEmpty_hitbox")
+theme_override_styles/disabled = SubResource("StyleBoxEmpty_hitbox")
+theme_override_styles/focus = SubResource("StyleBoxEmpty_hitbox")
 flat = true
-text = "Settings"
+tooltip_text = "Settings"
 
 [node name="QuitButton" type="Button" parent="HomePanel/HitboxRoot/MenuButtons"]
 layout_mode = 0
@@ -80,8 +112,18 @@ offset_left = 40.0
 offset_top = 504.0
 offset_right = 316.0
 offset_bottom = 576.0
+theme_override_colors/font_color = Color(1, 1, 1, 0)
+theme_override_colors/font_pressed_color = Color(1, 1, 1, 0)
+theme_override_colors/font_hover_color = Color(1, 1, 1, 0)
+theme_override_colors/font_focus_color = Color(1, 1, 1, 0)
+theme_override_colors/font_disabled_color = Color(1, 1, 1, 0)
+theme_override_styles/normal = SubResource("StyleBoxEmpty_hitbox")
+theme_override_styles/pressed = SubResource("StyleBoxEmpty_hitbox")
+theme_override_styles/hover = SubResource("StyleBoxEmpty_hitbox")
+theme_override_styles/disabled = SubResource("StyleBoxEmpty_hitbox")
+theme_override_styles/focus = SubResource("StyleBoxEmpty_hitbox")
 flat = true
-text = "Quit"
+tooltip_text = "Quit"
 
 [node name="GameModes" type="Control" parent="HomePanel/HitboxRoot"]
 layout_mode = 0
@@ -95,8 +137,18 @@ offset_left = 348.0
 offset_top = 336.0
 offset_right = 568.0
 offset_bottom = 400.0
+theme_override_colors/font_color = Color(1, 1, 1, 0)
+theme_override_colors/font_pressed_color = Color(1, 1, 1, 0)
+theme_override_colors/font_hover_color = Color(1, 1, 1, 0)
+theme_override_colors/font_focus_color = Color(1, 1, 1, 0)
+theme_override_colors/font_disabled_color = Color(1, 1, 1, 0)
+theme_override_styles/normal = SubResource("StyleBoxEmpty_hitbox")
+theme_override_styles/pressed = SubResource("StyleBoxEmpty_hitbox")
+theme_override_styles/hover = SubResource("StyleBoxEmpty_hitbox")
+theme_override_styles/disabled = SubResource("StyleBoxEmpty_hitbox")
+theme_override_styles/focus = SubResource("StyleBoxEmpty_hitbox")
 flat = true
-text = "CLASSIC"
+tooltip_text = "Classic outdoor Host Match."
 
 [node name="HardcoreButton" type="Button" parent="HomePanel/HitboxRoot/GameModes"]
 layout_mode = 0
@@ -104,8 +156,18 @@ offset_left = 348.0
 offset_top = 408.0
 offset_right = 568.0
 offset_bottom = 460.0
+theme_override_colors/font_color = Color(1, 1, 1, 0)
+theme_override_colors/font_pressed_color = Color(1, 1, 1, 0)
+theme_override_colors/font_hover_color = Color(1, 1, 1, 0)
+theme_override_colors/font_focus_color = Color(1, 1, 1, 0)
+theme_override_colors/font_disabled_color = Color(1, 1, 1, 0)
+theme_override_styles/normal = SubResource("StyleBoxEmpty_hitbox")
+theme_override_styles/pressed = SubResource("StyleBoxEmpty_hitbox")
+theme_override_styles/hover = SubResource("StyleBoxEmpty_hitbox")
+theme_override_styles/disabled = SubResource("StyleBoxEmpty_hitbox")
+theme_override_styles/focus = SubResource("StyleBoxEmpty_hitbox")
 flat = true
-text = "HARDCORE"
+tooltip_text = "Uses the Classic outdoor match."
 
 [node name="CustomButton" type="Button" parent="HomePanel/HitboxRoot/GameModes"]
 layout_mode = 0
@@ -113,8 +175,18 @@ offset_left = 348.0
 offset_top = 464.0
 offset_right = 568.0
 offset_bottom = 516.0
+theme_override_colors/font_color = Color(1, 1, 1, 0)
+theme_override_colors/font_pressed_color = Color(1, 1, 1, 0)
+theme_override_colors/font_hover_color = Color(1, 1, 1, 0)
+theme_override_colors/font_focus_color = Color(1, 1, 1, 0)
+theme_override_colors/font_disabled_color = Color(1, 1, 1, 0)
+theme_override_styles/normal = SubResource("StyleBoxEmpty_hitbox")
+theme_override_styles/pressed = SubResource("StyleBoxEmpty_hitbox")
+theme_override_styles/hover = SubResource("StyleBoxEmpty_hitbox")
+theme_override_styles/disabled = SubResource("StyleBoxEmpty_hitbox")
+theme_override_styles/focus = SubResource("StyleBoxEmpty_hitbox")
 flat = true
-text = "CUSTOM"
+tooltip_text = "Uses the Classic outdoor match."
 
 [node name="PracticeButton" type="Button" parent="HomePanel/HitboxRoot/GameModes"]
 layout_mode = 0
@@ -122,8 +194,18 @@ offset_left = 348.0
 offset_top = 516.0
 offset_right = 568.0
 offset_bottom = 568.0
+theme_override_colors/font_color = Color(1, 1, 1, 0)
+theme_override_colors/font_pressed_color = Color(1, 1, 1, 0)
+theme_override_colors/font_hover_color = Color(1, 1, 1, 0)
+theme_override_colors/font_focus_color = Color(1, 1, 1, 0)
+theme_override_colors/font_disabled_color = Color(1, 1, 1, 0)
+theme_override_styles/normal = SubResource("StyleBoxEmpty_hitbox")
+theme_override_styles/pressed = SubResource("StyleBoxEmpty_hitbox")
+theme_override_styles/hover = SubResource("StyleBoxEmpty_hitbox")
+theme_override_styles/disabled = SubResource("StyleBoxEmpty_hitbox")
+theme_override_styles/focus = SubResource("StyleBoxEmpty_hitbox")
 flat = true
-text = "PRACTICE"
+tooltip_text = "Uses the Classic outdoor match."
 
 [node name="FriendsLobbyButton" type="Button" parent="HomePanel/HitboxRoot/GameModes"]
 layout_mode = 0
@@ -131,8 +213,18 @@ offset_left = 348.0
 offset_top = 572.0
 offset_right = 568.0
 offset_bottom = 624.0
+theme_override_colors/font_color = Color(1, 1, 1, 0)
+theme_override_colors/font_pressed_color = Color(1, 1, 1, 0)
+theme_override_colors/font_hover_color = Color(1, 1, 1, 0)
+theme_override_colors/font_focus_color = Color(1, 1, 1, 0)
+theme_override_colors/font_disabled_color = Color(1, 1, 1, 0)
+theme_override_styles/normal = SubResource("StyleBoxEmpty_hitbox")
+theme_override_styles/pressed = SubResource("StyleBoxEmpty_hitbox")
+theme_override_styles/hover = SubResource("StyleBoxEmpty_hitbox")
+theme_override_styles/disabled = SubResource("StyleBoxEmpty_hitbox")
+theme_override_styles/focus = SubResource("StyleBoxEmpty_hitbox")
 flat = true
-text = "FRIENDS LOBBY"
+tooltip_text = "Uses the Classic outdoor match."
 
 [node name="PlayPanel" type="Control" parent="."]
 visible = false
@@ -142,6 +234,16 @@ anchor_right = 1.0
 anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
+
+[node name="Dim" type="ColorRect" parent="PlayPanel"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+color = Color(0.03, 0.03, 0.04, 1)
 
 [node name="VBoxContainer" type="VBoxContainer" parent="PlayPanel"]
 layout_mode = 1
@@ -390,6 +492,16 @@ anchor_right = 1.0
 anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
+
+[node name="Dim" type="ColorRect" parent="SettingsPanel"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+color = Color(0.03, 0.03, 0.04, 1)
 
 [node name="TitleLabel" type="Label" parent="SettingsPanel"]
 layout_mode = 1
