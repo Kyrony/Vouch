@@ -146,6 +146,8 @@ static func validate_menu(lobby: Control) -> String:
 		return "menu builder lost the fiery VOUCH logo"
 	if not builder_src.contains("NAV_TOP"):
 		return "menu builder lost the lowered nav offset"
+	if not builder_src.contains("load_png_from_buffer"):
+		return "menu builder must decode Kyle PNGs from bytes if import cache is stale"
 	var banner_src := FileAccess.get_file_as_string("res://scripts/horror/ui/vouch_banner.gd")
 	if not banner_src.contains("BANNER_HAS_CROSSBAR := false"):
 		return "VouchBanner must keep BANNER_HAS_CROSSBAR false"
@@ -270,4 +272,6 @@ static func validate_hud() -> String:
 		return "item rail must be 5 wells"
 	if not pack.has_method("rail_texture"):
 		return "HudIconPack missing rail_texture"
+	if not hud_src.contains("MatchClockLabel") or not hud_src.contains("_on_match_clock"):
+		return "NeonHud must keep MatchClockLabel wired to MatchClock"
 	return ""

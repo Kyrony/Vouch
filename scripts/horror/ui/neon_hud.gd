@@ -59,6 +59,7 @@ var _tex_child: Texture2D
 var _tex_reticle: Texture2D
 var _tex_slot_empty: Texture2D
 var _tex_slot_selected: Texture2D
+var _clock_label: Label
 
 
 func _ready() -> void:
@@ -240,9 +241,9 @@ func _build_clock() -> void:
 	_clock_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
 	_clock_label.set_anchors_preset(PRESET_TOP_RIGHT)
 	_clock_label.offset_left = -220
-	_clock_label.offset_top = 16
+	_clock_label.offset_top = 10
 	_clock_label.offset_right = -18
-	_clock_label.offset_bottom = 44
+	_clock_label.offset_bottom = 38
 	_clock_label.mouse_filter = MOUSE_FILTER_IGNORE
 	_clock_label.add_theme_font_size_override("font_size", 18)
 	_clock_label.add_theme_color_override("font_color", _KIT.YELLOW)
@@ -350,9 +351,9 @@ func _build_top_right() -> void:
 	box.name = "TopRight"
 	box.set_anchors_preset(PRESET_TOP_RIGHT)
 	box.offset_left = -168
-	box.offset_top = 16
+	box.offset_top = 42
 	box.offset_right = -16
-	box.offset_bottom = 108
+	box.offset_bottom = 134
 	box.mouse_filter = MOUSE_FILTER_IGNORE
 	add_child(box)
 	var col := VBoxContainer.new()
@@ -432,9 +433,9 @@ func _build_rail() -> void:
 	_rail.name = "ItemRail"
 	_rail.set_anchors_preset(PRESET_TOP_RIGHT)
 	_rail.offset_left = -88
-	_rail.offset_top = 120
+	_rail.offset_top = 148
 	_rail.offset_right = -10
-	_rail.offset_bottom = 120 + RAIL_SLOTS * SLOT_PX + (RAIL_SLOTS - 1) * SLOT_GAP
+	_rail.offset_bottom = 148 + RAIL_SLOTS * SLOT_PX + (RAIL_SLOTS - 1) * SLOT_GAP
 	_rail.add_theme_constant_override("separation", SLOT_GAP)
 	_rail.mouse_filter = MOUSE_FILTER_IGNORE
 	add_child(_rail)

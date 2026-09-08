@@ -162,6 +162,11 @@ hotbar_8={
 "events": [Object(InputEventKey,"resource_local_to_scene":false,"resource_name":"","device":-1,"key_label":0,"physical_keycode":56,"unicode":56,"echo":false,"script":null)
 ]
 }
+mask_debug_cycle={
+"deadzone": 0.5,
+"events": [Object(InputEventKey,"resource_local_to_scene":false,"resource_name":"","device":-1,"key_label":0,"physical_keycode":4194339,"unicode":0,"echo":false,"script":null)
+]
+}
 
 [layer_names]
 

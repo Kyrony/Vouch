@@ -118,6 +118,39 @@ static func validate_world(world: Node3D) -> String:
 	var cycle_err := validate_day_cycle(world)
 	if not cycle_err.is_empty():
 		return cycle_err
+	var mask_err := validate_semantic_maps()
+	if not mask_err.is_empty():
+		return mask_err
+	return ""
+
+
+static func validate_semantic_maps() -> String:
+	var required := [
+		"res://assets/horror/farm/masks/building.png",
+		"res://assets/horror/farm/masks/road.png",
+		"res://assets/horror/farm/masks/no_spawn.png",
+		"res://assets/horror/farm/masks/cliff.png",
+		"res://assets/horror/farm/masks/building_type.png",
+		"res://assets/horror/farm/masks/vegetation.png",
+		"res://assets/horror/farm/masks/buildings.json",
+		"res://assets/horror/farm/masks/roads.json",
+		"res://assets/horror/farm/masks/map_transform.txt",
+		"res://scripts/horror/world/neighborhood_from_masks.gd",
+		"res://scripts/horror/world/semantic_maps.gd",
+		"res://scripts/horror/world/map_coords.gd",
+		"res://scripts/horror/world/mask_debug_view.gd",
+	]
+	for path in required:
+		if not FileAccess.file_exists(path):
+			return "semantic map input missing: %s" % path
+	var hw := FileAccess.get_file_as_string("res://scripts/horror/horror_world.gd")
+	if not hw.contains("_run_semantic_maps"):
+		return "HorrorWorld lost the semantic-map pass"
+	var gen := FileAccess.get_file_as_string("res://scripts/horror/world/neighborhood_from_masks.gd")
+	if not gen.contains("GenRoads") or not gen.contains("GenVegetation"):
+		return "neighborhood_from_masks must still emit roads and vegetation"
+	if not gen.contains("is_road_world") or not gen.contains("is_cliff_world"):
+		return "buildings must stay off roads and the east cliff"
 	return ""
 
 
@@ -474,6 +507,13 @@ static func validate_outdoor_terrain(world: Node3D) -> String:
 		return "Outdoor/Terrain is not an authored heightfield"
 	if peak_y - valley_y < 3.5:
 		return "farm height contrast %.2f is too flat — need rolling hills" % (peak_y - valley_y)
+	if not FileAccess.file_exists("res://assets/horror/farm/grass_dirt_tile.png"):
+		return "farm grass/dirt tile missing — terrain needs visible albedo"
+	var world_tscn := FileAccess.get_file_as_string("res://scenes/Horror/HorrorWorld.tscn")
+	if not world_tscn.contains("grass_dirt_tile.png"):
+		return "Mat_grass must reference grass_dirt_tile.png"
+	if not world_tscn.contains("uv1_triplanar = true"):
+		return "farm terrain must triplanar-map grass (mesh has no UVs)"
 	return ""
 
 
