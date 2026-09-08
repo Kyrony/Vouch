@@ -1,10 +1,11 @@
 extends RefCounted
 class_name HudIconPack
-## Leonardo v2 neon-horror HUD language (soft-go wiring).
+## Leonardo HUD v3 neon-horror language (soft-go wiring).
 ##
-## Phone light = yellow smartphone + LED bloom. Never a handheld torch.
+## Meters are EMPTY neon-rim tracks + chips. Eng owns fill % in Godot.
+## Phone light = yellow smartphone + LED. Never a handheld torch.
 
-const HEALTH := Color(1.0, 0.18, 0.28)
+const HEALTH := Color(1.0, 0.22, 0.32)
 const STAMINA := Color(0.22, 0.92, 1.0)
 const FEAR := Color(0.73, 0.32, 1.0)
 const PHONE_LED := Color(1.0, 0.82, 0.19)
@@ -17,9 +18,12 @@ const DIM := Color(0.16, 0.14, 0.2, 0.88)
 
 const DIR := "res://assets/horror/hud"
 
-const TEX_HEALTH := "health_heart"
-const TEX_STAMINA := "stamina_pulse"
-const TEX_FEAR := "fear_eye"
+const TEX_HEALTH := "health_bar_empty"
+const TEX_STAMINA := "stamina_bar_empty"
+const TEX_FEAR := "fear_bar_empty"
+const TEX_HEALTH_CHIP := "health_chip"
+const TEX_STAMINA_CHIP := "stamina_chip"
+const TEX_FEAR_CHIP := "fear_chip"
 const TEX_PHONE_LED := "phone_led"
 const TEX_SIGNAL_FULL := "signal_full"
 const TEX_SIGNAL_WEAK := "signal_weak"
@@ -48,9 +52,11 @@ static func signal_texture(band: String) -> Texture2D:
 		"full":
 			return texture(TEX_SIGNAL_FULL)
 		"weak":
-			return texture(TEX_SIGNAL_WEAK)
+			var weak := texture(TEX_SIGNAL_WEAK)
+			return weak if weak else texture(TEX_SIGNAL_FULL)
 		_:
-			return texture(TEX_SIGNAL_DEAD)
+			var dead := texture(TEX_SIGNAL_DEAD)
+			return dead if dead else texture(TEX_SIGNAL_FULL)
 
 
 static func signal_color(band: String) -> Color:
@@ -97,3 +103,30 @@ static func hotbar_texture(item_id: String) -> Texture2D:
 			return texture(TEX_PHONE_LED)
 		_:
 			return null
+
+
+static func make_fill_texture(color: Color, width: int, height: int, inset: int) -> ImageTexture:
+	## Programmatic meter fill. No mid/low fill PNGs — eng owns %.
+	var w := maxi(width, 8)
+	var h := maxi(height, 8)
+	var pad := clampi(inset, 2, int(h / 2) - 1)
+	var img := Image.create(w, h, false, Image.FORMAT_RGBA8)
+	img.fill(Color(0, 0, 0, 0))
+	var inner_w := w - pad * 2
+	var inner_h := h - pad * 2
+	var rad := maxf(float(inner_h) * 0.5, 1.0)
+	var hi := color.lightened(0.22)
+	var lo := color.darkened(0.08)
+	for y in range(pad, h - pad):
+		var t := float(y - pad) / float(maxi(inner_h - 1, 1))
+		var row_col := hi.lerp(lo, clampf(t, 0.0, 1.0))
+		for x in range(pad, w - pad):
+			if _in_round_rect(float(x - pad), float(y - pad), float(inner_w), float(inner_h), rad):
+				img.set_pixel(x, y, row_col)
+	return ImageTexture.create_from_image(img)
+
+
+static func _in_round_rect(x: float, y: float, w: float, h: float, r: float) -> bool:
+	var dx := maxf(absf(x - w * 0.5) - (w * 0.5 - r), 0.0)
+	var dy := maxf(absf(y - h * 0.5) - (h * 0.5 - r), 0.0)
+	return (dx * dx + dy * dy) <= (r * r + 0.35)
