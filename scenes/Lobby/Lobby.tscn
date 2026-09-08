@@ -1,7 +1,8 @@
-[gd_scene load_steps=3 format=3]
+[gd_scene load_steps=4 format=3]
 
 [ext_resource type="Script" path="res://scripts/lobby.gd" id="1"]
 [ext_resource type="Texture2D" path="res://assets/horror/ui/menu_title_bg.png" id="2"]
+[ext_resource type="Texture2D" path="res://assets/horror/ui/vouch_fiery_logo.png" id="3"]
 
 [node name="Lobby" type="Control"]
 layout_mode = 3
@@ -82,6 +83,17 @@ anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
 mouse_filter = 2
+
+[node name="MenuLogo" type="TextureRect" parent="HomePanel"]
+layout_mode = 0
+offset_left = 16.0
+offset_top = 10.0
+offset_right = 576.0
+offset_bottom = 150.0
+mouse_filter = 2
+texture = ExtResource("3")
+expand_mode = 1
+stretch_mode = 4
 
 [node name="PlayPanel" type="Control" parent="."]
 visible = false

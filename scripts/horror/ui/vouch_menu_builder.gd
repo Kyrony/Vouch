@@ -1,11 +1,15 @@
 extends RefCounted
 class_name VouchMenuBuilder
 ## Builds Kyle's React VouchMenu as Godot Controls over menu_title_bg.
-## Blank mode thumbs only — no mansion-bg.png or modes/*.png. No VOUCH / SIGNAL.
+## Fiery VOUCH MenuLogo sits top-left. Nav/sidebox sit lower so they miss it.
+## Blank mode thumbs only — no mansion-bg.png or modes/*.png. No SIGNAL.
 
 const _T: GDScript = preload("res://scripts/horror/ui/vouch_menu_theme.gd")
 const _GLYPH: GDScript = preload("res://scripts/horror/ui/nav_glyph.gd")
 const TITLE_BG := "res://assets/horror/ui/menu_title_bg.png"
+const LOGO := "res://assets/horror/ui/vouch_fiery_logo.png"
+const NAV_TOP := 320.0
+const LOGO_SIZE := Vector2(560, 140)
 
 const NAV := [
 	{"id": "play", "name": "PlayButton", "label": "PLAY", "glyph": "play"},
@@ -183,9 +187,27 @@ static func _ensure_home(lobby: Control) -> void:
 	home.offset_bottom = 0
 	home.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_hide_wordmark_and_signal(home)
+	_ensure_logo(home)
 	_ensure_nav(home)
 	_ensure_side(home)
 	_ensure_toast(home)
+
+
+static func _ensure_logo(home: Control) -> void:
+	var logo := home.get_node_or_null("MenuLogo") as TextureRect
+	if logo == null:
+		logo = TextureRect.new()
+		logo.name = "MenuLogo"
+		home.add_child(logo)
+		home.move_child(logo, 0)
+	logo.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	logo.position = Vector2(16, 10)
+	logo.size = LOGO_SIZE
+	logo.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	logo.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT
+	logo.visible = true
+	if ResourceLoader.exists(LOGO):
+		logo.texture = load(LOGO) as Texture2D
 
 
 static func _ensure_nav(home: Control) -> void:
@@ -194,7 +216,7 @@ static func _ensure_nav(home: Control) -> void:
 		nav = VBoxContainer.new()
 		nav.name = "NavColumn"
 		home.add_child(nav)
-	nav.position = Vector2(28, 36)
+	nav.position = Vector2(28, NAV_TOP)
 	nav.size = Vector2(300, 280)
 	nav.add_theme_constant_override("separation", 10)
 	nav.mouse_filter = Control.MOUSE_FILTER_STOP
@@ -248,7 +270,7 @@ static func _ensure_side(home: Control) -> void:
 		home.add_child(side)
 	side.set_anchors_preset(Control.PRESET_LEFT_WIDE)
 	side.offset_left = 348
-	side.offset_top = 36
+	side.offset_top = NAV_TOP
 	side.offset_right = 860
 	side.offset_bottom = -48
 	side.mouse_filter = Control.MOUSE_FILTER_STOP

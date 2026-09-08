@@ -27,6 +27,12 @@ func _run() -> void:
 	print("NAVCOLUMN=%s" % str(lobby.get_node_or_null("HomePanel/NavColumn") != null))
 	print("ATMOSPHERE=%s" % str(lobby.get_node_or_null("MenuAtmosphere") != null))
 	print("TITLE_BG=%s" % str(FileAccess.file_exists("res://assets/horror/ui/menu_title_bg.png")))
+	print("MENU_LOGO=%s" % str(lobby.get_node_or_null("HomePanel/MenuLogo") != null))
+	print("FIERY_LOGO=%s" % str(FileAccess.file_exists("res://assets/horror/ui/vouch_fiery_logo.png")))
+	var logo := lobby.get_node_or_null("HomePanel/MenuLogo") as Control
+	var nav := lobby.get_node_or_null("HomePanel/NavColumn") as Control
+	print("LOGO_POS=%s" % (logo.position if logo else Vector2.ZERO))
+	print("NAV_POS=%s" % (nav.position if nav else Vector2.ZERO))
 	print("BANNER_VISIBLE=%s" % str(lobby.get_node_or_null("HomePanel/Banner") != null and lobby.get_node("HomePanel/Banner").visible))
 	print("SIGNAL_VISIBLE=%s" % str(lobby.get_node_or_null("HomePanel/SignalCluster") != null and lobby.get_node("HomePanel/SignalCluster").visible))
 	print("PLAY_OPEN=%s" % str(lobby.get_node("HomePanel/SidePanel/PlayContent").visible))

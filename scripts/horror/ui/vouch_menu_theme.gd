@@ -1,7 +1,8 @@
 extends RefCounted
 class_name VouchMenuTheme
 ## Kyle React VouchMenu palette + type. Gold / blood on #050203.
-## Title art lives on MenuAtmosphere (menu_title_bg.png). Does not load mansion-bg.png or modes/*.png.
+## Title art lives on MenuAtmosphere (menu_title_bg.png). Fiery VOUCH is MenuLogo.
+## Does not load mansion-bg.png or modes/*.png.
 
 const BASE := Color(0.0196078, 0.0078431, 0.0117647, 1.0) ## #050203
 const GOLD := Color(0.941176, 0.768627, 0.227451, 1.0) ## #f0c43a

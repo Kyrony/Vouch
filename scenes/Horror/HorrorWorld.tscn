@@ -13,8 +13,9 @@ ambient_light_color = Color(0.55, 0.6, 0.58, 1)
 ambient_light_energy = 0.7
 
 [sub_resource type="StandardMaterial3D" id="Mat_grass"]
-albedo_color = Color(0.3, 0.46, 0.22, 1)
-roughness = 0.92
+albedo_color = Color(0.36, 0.43, 0.20, 1)
+roughness = 0.86
+metallic = 0.0
 cull_mode = 2
 
 [sub_resource type="StandardMaterial3D" id="Mat_asphalt"]

@@ -11,11 +11,13 @@ instances `res://scenes/Lobby/Lobby.tscn`. That Lobby scene **is** the boot
 home — there is no separate Home/MainMenu scene.
 
 The live home is a **Control layout** over Kyle’s puppet-village title plate
-`menu_title_bg.png` (full-rect TextureRect, Keep Aspect Covered). A dark
-vignette + left nav shade keep Play / Join Friends / Settings / Quit and the
-mode panel readable. Gold `#f0c43a` / `#c9a227`, blood `#c21818` / `#7a0f0f`.
-No VOUCH wordmark and no SIGNAL cluster. Play is selected on boot and opens
-the modes side panel. Clicking the backdrop sets nav to null.
+`menu_title_bg.png` (full-rect TextureRect, Keep Aspect Covered). The fiery
+`vouch_fiery_logo.png` wordmark sits as `MenuLogo` in the **top-left**. Play /
+Join Friends / Settings / Quit and the modes / settings sidebox sit **lower**
+so they do not cover the logo. A dark vignette + left nav shade keep chrome
+readable. Gold `#f0c43a` / `#c9a227`, blood `#c21818` / `#7a0f0f`. No SIGNAL
+cluster. Play is selected on boot and opens the modes side panel. Clicking the
+backdrop sets nav to null.
 
 Mode thumbnails stay **blank placeholders**. Do not require `mansion-bg.png`
 or `modes/*.png`. The old mansion ColorRect stand-in stays hidden.
