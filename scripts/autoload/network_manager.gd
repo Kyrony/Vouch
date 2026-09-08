@@ -13,6 +13,8 @@ extends Node
 ## methods here are automatically "only the host may call this" without any
 ## extra setup - a simple, sensible pattern for a host-authoritative game.
 
+const HorrorMode := preload("res://scripts/autoload/horror_mode_settings.gd")
+
 signal player_connected(peer_id: int)
 signal player_disconnected(peer_id: int)
 signal server_started
@@ -103,7 +105,7 @@ func start_match() -> void:
 	# faction pool entirely - they're a fifth, independent role. See
 	# PuppetMasterSystem / docs/MVP_GDD.md.
 	var pm_peer_id := -1
-	if HorrorModeSettings.is_horror_mode():
+	if HorrorMode.is_horror_mode():
 		if all_peer_ids.size() >= 2:
 			pm_peer_id = all_peer_ids[randi() % all_peer_ids.size()]
 			GameState.server_set_puppet_master(pm_peer_id)

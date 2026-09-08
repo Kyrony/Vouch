@@ -9,6 +9,8 @@ extends Node
 ## TODO(post-MVP): escape animations/transitions, partial-escape stats for
 ## losers, and any Outside-only interactions.
 
+const HorrorMode := preload("res://scripts/autoload/horror_mode_settings.gd")
+
 signal escaped_locally
 signal match_won(faction_id: String)
 signal escape_locked(feedback: String)
@@ -66,7 +68,7 @@ func server_handle_escape_request(peer_id: int) -> void:
 		return
 
 	var room_index: int = GameState.players[peer_id]["room_id"]
-	if HorrorModeSettings.is_horror_mode():
+	if HorrorMode.is_horror_mode():
 		pass
 	elif PuzzleSystem.server_requires_code(room_index) and not PuzzleSystem.server_is_unlocked(room_index):
 		_notify_escape_locked(peer_id)
@@ -111,7 +113,7 @@ func _notify_escaped(peer_id: int) -> void:
 
 
 func _check_for_win() -> void:
-	if HorrorModeSettings.is_horror_mode():
+	if HorrorMode.is_horror_mode():
 		_check_horror_escape_win()
 		return
 	var winning_faction_id := GameState.server_check_for_win()

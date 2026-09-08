@@ -15,8 +15,13 @@ extends Node
 ## replicated resource once lobby settings (faction count, room count,
 ## timers) need to be synced too.
 
+# Emitted from other classes (network_manager, escape_system, player_health,
+# puppet_master_system), so GDScript's same-class check flags them as unused.
+@warning_ignore("unused_signal")
 signal match_started
+@warning_ignore("unused_signal")
 signal player_escaped(peer_id: int, faction_id: String)
+@warning_ignore("unused_signal")
 signal player_eliminated(peer_id: int)
 signal return_to_lobby_requested
 

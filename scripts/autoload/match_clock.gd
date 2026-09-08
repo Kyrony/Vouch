@@ -58,7 +58,8 @@ static func clock_label_for_progress(p: float) -> String:
 	var mins_i := int(round(wrapped))
 	if mins_i >= 24 * 60:
 		mins_i = 0
-	var hour := mins_i / 60
+	@warning_ignore("integer_division")
+	var hour := mins_i / 60  # whole hours, remainder handled below
 	var minute := mins_i % 60
 	var suffix := "AM" if hour < 12 else "PM"
 	var hour12 := hour % 12
