@@ -23,16 +23,28 @@ Live markers use only:
 4. `basement` — pin 4, slightly west of the stack south end
 5. `uncle_bedroom` — east of the central stack
 6. `uncle_garage` — south-east of pin 5
-7. `family_shed` — far west circular road loop
+7. `family_shed` — far west shed path / pad (no circular ring)
 8. `storm_drain` — south of the shed, west intersection
 9. `under_porch_crawl` — SE road bend of the east loop, **no grave**
 10. `garden_well` — west of the central stack, between parallel lanes
-11. `car_trunk` — south hub three-way junction
+11. `car_trunk` — south access three-way on the QA entrance road
 
 Canonical table: [`../L2_child_rng_spawns.csv`](../L2_child_rng_spawns.csv).
 
 ## Live Host Match
 
-World: +X east, +Z south, origin = west farm-road hub. East oval loop is the old PM pad. Families spawn on outdoor pads; PM on the east courtyard pad.
+World: +X east, +Z south. Authored `HorrorWorld.tscn` only — no runtime OutdoorTerrain / road loops.
+
+Terrain is a sealed heightfield (`farm_hills.obj`): CCW-up winding, underside cap, side skirts, double-sided grass, heightmap + bed collision. Roads follow the L1b / QA Leonardo network only:
+
+- elevated rounded-rect loop around the hilltop main house
+- west exit that splits SW to House D and west past Uncle House to House B
+- second lane south of Uncle House (house sits between two paths)
+- south curve from the loop to House D
+- north branch toward Lansis
+- QA south access through `car_trunk`
+- shed path from House B (pad, not a ring)
+
+No L1 cul-de-sac `HubRing`, no inner 32 m grid, no shed circle. Families spawn on outdoor pads; PM on the east courtyard pad.
 
 `NeighborhoodV05.OUTDOOR_ONLY` is on. `GRAYBOX_NEIGHBORHOOD` is off.

@@ -264,10 +264,23 @@ static func dump_live_world(world_root: Node) -> String:
 			house != null,
 		])
 		if terrain:
-			summary.append("  authored_heightfield=%s peak_y=%s valley_y=%s" % [
+			summary.append("  authored_heightfield=%s solid_mesh=%s underside=%s winding=%s peak_y=%s valley_y=%s" % [
 				terrain.get_meta("authored_heightfield", false),
+				terrain.get_meta("solid_mesh", false),
+				terrain.get_meta("has_underside", false),
+				terrain.get_meta("winding", ""),
 				terrain.get_meta("peak_y", 0.0),
 				terrain.get_meta("valley_y", 0.0),
+			])
+		var roads := horror.get_node_or_null("Outdoor/Roads")
+		if roads:
+			summary.append("  roads_plate=%s network=%s no_arbitrary_loops=%s lanes=%d hub_ring=%s shed_ring=%s" % [
+				roads.get_meta("plate", ""),
+				roads.get_meta("network", ""),
+				roads.get_meta("no_arbitrary_loops", false),
+				_count_named_prefix(roads, "Lane_"),
+				roads.get_node_or_null("HubRing") != null,
+				roads.get_node_or_null("ShedRing") != null,
 			])
 		if house:
 			summary.append("  main_house_pos=%s on_hilltop=%s" % [
@@ -293,7 +306,22 @@ static func validate_authored_scene_geometry(world: Node3D) -> String:
 	var roads := world.get_node_or_null("Outdoor/Roads")
 	if roads and roads.get_node_or_null("Lane_00") == null:
 		return "authored Roads/Lane_00 missing — farm lanes must be scene nodes, not loop-stamped bodies"
+	if roads:
+		if roads.get_node_or_null("HubRing") != null:
+			return "HubRing is the old L1 cul-de-sac — not on the L1b/QA farm plates"
+		if roads.get_node_or_null("ShedRing") != null:
+			return "ShedRing is an arbitrary loop — L1b uses a shed path, not a ring"
+		if str(roads.get_meta("plate", "")) != "l1b_qa_v2":
+			return "Outdoor/Roads is not marked as the L1b/QA v2 Leonardo network"
 	return ""
+
+
+static func _count_named_prefix(folder: Node, prefix: String) -> int:
+	var n := 0
+	for child in folder.get_children():
+		if str(child.name).begins_with(prefix):
+			n += 1
+	return n
 
 
 static func _generated_auto_names(world: Node3D) -> PackedStringArray:
@@ -417,8 +445,19 @@ static func validate_outdoor_terrain(world: Node3D) -> String:
 	var valley_y: float = float(terrain.get_meta("valley_y", 0.0))
 	if not bool(terrain.get_meta("authored_heightfield", false)):
 		return "Outdoor/Terrain is not an authored heightfield"
+	if not bool(terrain.get_meta("solid_mesh", false)):
+		return "Outdoor/Terrain is not a sealed mesh — was see-through from play angles"
+	if not bool(terrain.get_meta("has_underside", false)):
+		return "Outdoor/Terrain is missing an underside cap"
+	if str(terrain.get_meta("winding", "")) != "ccw_up":
+		return "Outdoor/Terrain winding is not CCW-up — inverted faces cull from above"
 	if peak_y - valley_y < 3.5:
 		return "farm height contrast %.2f is too flat — need rolling hills" % (peak_y - valley_y)
+	var mesh_inst := terrain.get_node_or_null("MeshInstance3D") as MeshInstance3D
+	if mesh_inst:
+		var mat := mesh_inst.material_override as BaseMaterial3D
+		if mat and mat.cull_mode != BaseMaterial3D.CULL_DISABLED:
+			return "Outdoor/Terrain material must be double-sided (cull disabled)"
 	return ""
 
 

@@ -27,4 +27,4 @@ L2 art map labels and **duplicate art pin 4** (basement + under-porch) are not s
 
 Master sheet draws **no escape routes**. The graybox keeps a soft-gated, unmarked west-yard zone (`HorrorEscapeZone`, `soft_gated` meta). No signage.
 
-L1b farm (eng): open heightfield + farm lanes / east oval loop / west shed loop + hills. Host Match is **terrain + roads + 11 labeled Spawn Point markers** — no house / bunker / mast meshes. Families spawn on outdoor pads; PM on the east courtyard pad. L2 `spawn_id` list is unchanged. `OUTDOOR_ONLY` is on. QA v2 places pin 9 `under_porch_crawl` on the SE road bend.
+L1b farm (eng): sealed heightfield + Leonardo road network (elevated plateau loop + drawn branches; no cul-de-sac grid / shed ring) + hills. Host Match is **terrain + roads + 11 labeled Spawn Point markers** plus one hilltop main house — no extra house / bunker / mast meshes. Families spawn on outdoor pads; PM on the east courtyard pad. L2 `spawn_id` list is unchanged. `OUTDOOR_ONLY` is on. QA v2 places pin 9 `under_porch_crawl` on the SE road bend.

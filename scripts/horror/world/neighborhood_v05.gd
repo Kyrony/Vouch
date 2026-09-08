@@ -49,7 +49,7 @@ const MANSION_SIZE := Vector3(20.0, 3.2, 16.0)
 const FAMILY_HOUSES: Array[Dictionary] = [
 	{"letter": "A", "index": 0, "origin": Vector3(-12.0, 0, -14.0), "yaw": 0.45},
 	{"letter": "B", "index": 1, "origin": Vector3(-38.0, 0, -12.0), "yaw": -PI / 2.0},
-	{"letter": "C", "index": 2, "origin": Vector3(32.0, 0, 20.0), "yaw": PI},
+	{"letter": "C", "index": 2, "origin": Vector3(18.0, 0, 22.0), "yaw": PI},
 	{"letter": "D", "index": 3, "origin": Vector3(6.0, 0, 30.0), "yaw": PI},
 ]
 
@@ -74,7 +74,7 @@ const MANSION_COURTYARD := Vector3(40.0, 0.12, 10.0)
 const OUTDOOR_FAMILY_SPAWNS: Array[Vector3] = [
 	Vector3(-12.0, 0.12, -7.0),
 	Vector3(-30.0, 0.12, -12.0),
-	Vector3(32.0, 0.12, 13.0),
+	Vector3(18.0, 0.12, 22.0),
 	Vector3(6.0, 0.12, 22.0),
 ]
 const OUTDOOR_PM_SPAWN := Vector3(40.0, 0.12, 10.0)
@@ -204,19 +204,8 @@ const L2_PIN_BY_ID := {
 }
 
 ## Authored road spans baked into HorrorWorld.tscn (data SoT only).
-## West hub + family lanes, plus the east oval loop from the QA plate.
+## L1b / QA v2 Leonardo network only — plateau loop + drawn branches.
 const ROAD_SPANS: Array[Dictionary] = [
-	{"a": Vector2(-60.0, 0.0), "b": Vector2(22.0, 0.0), "r": 3.4},
-	{"a": Vector2(0.0, -42.0), "b": Vector2(0.0, 44.0), "r": 3.0},
-	{"a": Vector2(-16.0, -14.0), "b": Vector2(16.0, -14.0), "r": 2.6},
-	{"a": Vector2(-16.0, 14.0), "b": Vector2(16.0, 14.0), "r": 2.6},
-	{"a": Vector2(-16.0, -14.0), "b": Vector2(-16.0, 14.0), "r": 2.6},
-	{"a": Vector2(16.0, -14.0), "b": Vector2(16.0, 14.0), "r": 2.6},
-	{"a": Vector2(8.0, 0.0), "b": Vector2(22.0, 0.0), "r": 3.2},
-	{"a": Vector2(-12.0, -14.0), "b": Vector2(0.0, 0.0), "r": 2.4},
-	{"a": Vector2(-38.0, -12.0), "b": Vector2(-12.0, -14.0), "r": 2.4},
-	{"a": Vector2(0.0, 14.0), "b": Vector2(6.0, 26.0), "r": 2.4},
-	{"a": Vector2(-12.0, -14.0), "b": Vector2(-48.0, -38.0), "r": 2.2},
 	{"a": Vector2(28.0, -20.0), "b": Vector2(52.0, -20.0), "r": 3.0},
 	{"a": Vector2(52.0, -20.0), "b": Vector2(58.0, -14.0), "r": 3.0},
 	{"a": Vector2(58.0, -14.0), "b": Vector2(58.0, 10.0), "r": 3.0},
@@ -225,6 +214,25 @@ const ROAD_SPANS: Array[Dictionary] = [
 	{"a": Vector2(28.0, 16.0), "b": Vector2(22.0, 10.0), "r": 3.0},
 	{"a": Vector2(22.0, 10.0), "b": Vector2(22.0, -14.0), "r": 3.0},
 	{"a": Vector2(22.0, -14.0), "b": Vector2(28.0, -20.0), "r": 3.0},
+	{"a": Vector2(22.0, 0.0), "b": Vector2(10.0, 2.0), "r": 3.2},
+	{"a": Vector2(10.0, 2.0), "b": Vector2(6.0, 16.0), "r": 2.6},
+	{"a": Vector2(6.0, 16.0), "b": Vector2(6.0, 30.0), "r": 2.6},
+	{"a": Vector2(10.0, 2.0), "b": Vector2(-2.0, -2.0), "r": 2.6},
+	{"a": Vector2(-2.0, -2.0), "b": Vector2(-16.0, -8.0), "r": 2.6},
+	{"a": Vector2(-16.0, -8.0), "b": Vector2(-38.0, -12.0), "r": 2.4},
+	{"a": Vector2(22.0, 10.0), "b": Vector2(10.0, 10.0), "r": 2.4},
+	{"a": Vector2(10.0, 10.0), "b": Vector2(4.0, 8.0), "r": 2.4},
+	{"a": Vector2(28.0, 16.0), "b": Vector2(16.0, 22.0), "r": 2.6},
+	{"a": Vector2(16.0, 22.0), "b": Vector2(8.0, 28.0), "r": 2.6},
+	{"a": Vector2(8.0, 28.0), "b": Vector2(6.0, 30.0), "r": 2.4},
+	{"a": Vector2(22.0, -14.0), "b": Vector2(12.0, -24.0), "r": 2.4},
+	{"a": Vector2(12.0, -24.0), "b": Vector2(4.0, -34.0), "r": 2.4},
+	{"a": Vector2(4.0, -34.0), "b": Vector2(0.0, -42.0), "r": 2.2},
+	{"a": Vector2(4.0, 42.0), "b": Vector2(0.0, 16.0), "r": 3.0},
+	{"a": Vector2(0.0, 16.0), "b": Vector2(6.0, 6.0), "r": 2.8},
+	{"a": Vector2(6.0, 6.0), "b": Vector2(10.0, 2.0), "r": 2.6},
+	{"a": Vector2(-38.0, -12.0), "b": Vector2(-44.0, -24.0), "r": 2.2},
+	{"a": Vector2(-44.0, -24.0), "b": Vector2(-50.0, -40.0), "r": 2.2},
 ]
 
 const BUILDING_PADS: Array[Dictionary] = [
