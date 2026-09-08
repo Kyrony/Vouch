@@ -1,7 +1,8 @@
 extends Control
 class_name NeonHud
-## Leonardo HUD mock: objective banner, hearts + EKG, cyan stamina,
-## violet fear, phone LED + signal, PM ability cooldown, center E prompt.
+## Leonardo HUD v3: objective banner, shared empty neon-rim meters
+## (health / stamina / fear), phone LED + signal, PM cooldown, E prompt.
+## Fill % is eng-owned via TextureProgressBar — no mid/low fill PNGs.
 
 const _PACK: GDScript = preload("res://scripts/horror/ui/hud_icon_pack.gd")
 const _KIT: GDScript = preload("res://scripts/horror/ui/ui_kit.gd")
@@ -31,10 +32,11 @@ var interact_action: String = "INTERACT"
 var interact_sub: String = "Look / Talk"
 
 var _built: bool = false
-var _health_hearts: Array[TextureRect] = []
-var _stamina_bar: ProgressBar
+var _health_bar: TextureProgressBar
+var _stamina_bar: TextureProgressBar
+var _fear_bar: TextureProgressBar
+var _health_pct: Label
 var _stamina_pct: Label
-var _fear_bar: ProgressBar
 var _fear_pct: Label
 var _phone_icon: TextureRect
 var _phone_label: Label
@@ -48,7 +50,6 @@ var _prompt_action: Label
 var _prompt_sub: Label
 var _hotbar: HBoxContainer
 var _hotbar_cells: Array[Panel] = []
-var _tex_health: Texture2D
 var _tex_phone: Texture2D
 var _tex_ability: Texture2D
 var _tex_key: Texture2D
@@ -142,7 +143,6 @@ func set_interact_prompt(shown: bool, action: String = "INTERACT", sub: String =
 
 
 func _load_textures() -> void:
-	_tex_health = _PACK.texture(_PACK.TEX_HEALTH)
 	_tex_phone = _PACK.texture(_PACK.TEX_PHONE_LED)
 	_tex_ability = _PACK.texture(_PACK.TEX_ABILITY)
 	_tex_key = _PACK.texture(_PACK.TEX_KEY_E)
@@ -216,68 +216,83 @@ func _build_vitals() -> void:
 	box.name = "Vitals"
 	box.set_anchors_preset(PRESET_BOTTOM_LEFT)
 	box.offset_left = 16
-	box.offset_top = -210
-	box.offset_right = 340
+	box.offset_top = -236
+	box.offset_right = 456
 	box.offset_bottom = -86
 	box.mouse_filter = MOUSE_FILTER_IGNORE
-	box.add_theme_stylebox_override("panel", _KIT.panel_alert())
+	box.add_theme_stylebox_override("panel", _KIT.panel(Color(0.08, 0.07, 0.1, 0.55), 4, Color(0.03, 0.03, 0.04, 0.62)))
 	add_child(box)
 	var col := VBoxContainer.new()
+	col.name = "MeterColumn"
 	col.set_anchors_preset(PRESET_FULL_RECT)
 	col.offset_left = 10
 	col.offset_top = 8
 	col.offset_right = -10
 	col.offset_bottom = -8
-	col.add_theme_constant_override("separation", 6)
+	col.add_theme_constant_override("separation", 8)
 	box.add_child(col)
-	var health_row := HBoxContainer.new()
-	health_row.add_theme_constant_override("separation", 6)
-	col.add_child(health_row)
-	var hl := Label.new()
-	hl.text = "HEALTH"
-	hl.add_theme_color_override("font_color", _KIT.RED)
-	hl.add_theme_font_size_override("font_size", 12)
-	health_row.add_child(hl)
-	for i in 3:
-		var heart := TextureRect.new()
-		heart.custom_minimum_size = Vector2(22, 22)
-		heart.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
-		heart.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
-		heart.texture = _tex_health
-		heart.mouse_filter = MOUSE_FILTER_IGNORE
-		health_row.add_child(heart)
-		_health_hearts.append(heart)
-	_stamina_bar = _make_meter(col, "STAMINA", _KIT.CYAN, true)
-	_fear_bar = _make_meter(col, "FEAR", _KIT.VIOLET, false)
+	_health_bar = _make_track_meter(col, "HEALTH", _PACK.HEALTH, _PACK.TEX_HEALTH_CHIP, _PACK.TEX_HEALTH)
+	_stamina_bar = _make_track_meter(col, "STAMINA", _PACK.STAMINA, _PACK.TEX_STAMINA_CHIP, _PACK.TEX_STAMINA)
+	_fear_bar = _make_track_meter(col, "FEAR", _PACK.FEAR, _PACK.TEX_FEAR_CHIP, _PACK.TEX_FEAR)
 
 
-func _make_meter(parent: VBoxContainer, caption: String, color: Color, stamina: bool) -> ProgressBar:
+func _make_track_meter(parent: VBoxContainer, caption: String, color: Color, chip_stem: String, bar_stem: String) -> TextureProgressBar:
 	var row := HBoxContainer.new()
+	row.name = "%sRow" % caption.capitalize()
 	row.add_theme_constant_override("separation", 8)
 	parent.add_child(row)
+	var chip := TextureRect.new()
+	chip.name = "%sChip" % caption.capitalize()
+	chip.custom_minimum_size = Vector2(28, 28)
+	chip.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	chip.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	chip.texture = _PACK.texture(chip_stem)
+	chip.mouse_filter = MOUSE_FILTER_IGNORE
+	row.add_child(chip)
+	var bar := TextureProgressBar.new()
+	bar.name = "%sBar" % caption.capitalize()
+	bar.min_value = 0.0
+	bar.max_value = 1.0
+	bar.step = 0.001
+	bar.custom_minimum_size = Vector2(236, 28)
+	bar.size_flags_horizontal = SIZE_EXPAND_FILL
+	bar.nine_patch_stretch = true
+	var under: Texture2D = _PACK.texture(bar_stem)
+	bar.texture_under = under
+	var tw := 640
+	var th := 72
+	if under:
+		tw = under.get_width()
+		th = under.get_height()
+	var inset := maxi(int(round(float(th) * 0.28)), 8)
+	bar.texture_progress = _PACK.make_fill_texture(color, tw, th, inset)
+	var margin := maxi(int(round(float(th) * 0.42)), 12)
+	bar.stretch_margin_left = margin
+	bar.stretch_margin_right = margin
+	bar.stretch_margin_top = margin
+	bar.stretch_margin_bottom = margin
+	bar.fill_mode = TextureProgressBar.FILL_LEFT_TO_RIGHT
+	bar.mouse_filter = MOUSE_FILTER_IGNORE
+	row.add_child(bar)
 	var lab := Label.new()
 	lab.text = caption
-	lab.custom_minimum_size = Vector2(70, 0)
+	lab.custom_minimum_size = Vector2(72, 0)
 	lab.add_theme_color_override("font_color", color)
 	lab.add_theme_font_size_override("font_size", 11)
 	row.add_child(lab)
-	var bar := ProgressBar.new()
-	bar.max_value = 1.0
-	bar.show_percentage = false
-	bar.custom_minimum_size = Vector2(150, 16)
-	bar.size_flags_horizontal = SIZE_EXPAND_FILL
-	bar.add_theme_stylebox_override("background", _KIT.meter_bg(color))
-	bar.add_theme_stylebox_override("fill", _KIT.meter_fill(color))
-	row.add_child(bar)
 	var pct := Label.new()
+	pct.name = "%sPct" % caption.capitalize()
 	pct.custom_minimum_size = Vector2(40, 0)
 	pct.add_theme_color_override("font_color", color)
 	pct.add_theme_font_size_override("font_size", 11)
 	row.add_child(pct)
-	if stamina:
-		_stamina_pct = pct
-	else:
-		_fear_pct = pct
+	match caption:
+		"HEALTH":
+			_health_pct = pct
+		"STAMINA":
+			_stamina_pct = pct
+		_:
+			_fear_pct = pct
 	return bar
 
 
@@ -443,9 +458,9 @@ func _build_hotbar() -> void:
 
 
 func _refresh() -> void:
-	for i in _health_hearts.size():
-		var lit := health_ratio > (float(i) / 3.0)
-		_health_hearts[i].modulate = Color(1, 1, 1, 1 if lit else 0.22)
+	if _health_bar:
+		_health_bar.value = health_ratio
+		_health_pct.text = "%d%%" % int(round(health_ratio * 100.0))
 	if _stamina_bar:
 		_stamina_bar.value = stamina_ratio
 		_stamina_pct.text = "%d%%" % int(round(stamina_ratio * 100.0))
@@ -477,8 +492,13 @@ func _refresh_signal() -> void:
 	if band.is_empty():
 		band = _PACK.band_from_strength(tower_strength)
 	var col: Color = _PACK.signal_color(band)
-	_signal_icon.texture = _PACK.signal_texture(band)
-	_signal_icon.modulate = col
+	var tex: Texture2D = _PACK.signal_texture(band)
+	_signal_icon.texture = tex
+	var full_tex: Texture2D = _PACK.texture(_PACK.TEX_SIGNAL_FULL)
+	if band != "full" and tex == full_tex:
+		_signal_icon.modulate = col
+	else:
+		_signal_icon.modulate = Color.WHITE
 	var word := "STRONG" if band == "full" else ("WEAK" if band == "weak" else "DEAD")
 	_signal_label.text = "SIGNAL %s" % word
 	_signal_label.add_theme_color_override("font_color", col)
@@ -525,7 +545,6 @@ func _refresh_hotbar() -> void:
 
 func _draw() -> void:
 	_draw_reticle()
-	_draw_ekg_tick()
 
 
 func _draw_reticle() -> void:
@@ -537,21 +556,3 @@ func _draw_reticle() -> void:
 	draw_line(c + Vector2(0, 4), c + Vector2(0, 10), Color(1, 1, 1, 0.75), 1.2)
 	draw_line(c + Vector2(-10, 0), c + Vector2(-4, 0), Color(1, 1, 1, 0.75), 1.2)
 	draw_line(c + Vector2(4, 0), c + Vector2(10, 0), Color(1, 1, 1, 0.75), 1.2)
-
-
-func _draw_ekg_tick() -> void:
-	if not _built or _health_hearts.is_empty():
-		return
-	var last: TextureRect = _health_hearts[_health_hearts.size() - 1]
-	var origin := last.global_position - global_position + Vector2(28, 12)
-	var amp := 8.0
-	var pts := PackedVector2Array([
-		origin,
-		origin + Vector2(8, 0),
-		origin + Vector2(12, -amp),
-		origin + Vector2(16, amp),
-		origin + Vector2(20, -amp * 0.6),
-		origin + Vector2(28, 0),
-	])
-	for i in range(pts.size() - 1):
-		draw_line(pts[i], pts[i + 1], Color(1.0, 0.35, 0.38, 0.85), 1.4)
