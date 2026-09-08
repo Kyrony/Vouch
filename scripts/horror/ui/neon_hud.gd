@@ -1,11 +1,15 @@
 extends Control
 class_name NeonHud
-## Kyle-locked HUD: objective banner, stacked health-over-stamina empty
-## tracks (top-left), phone LED + signal, PM cooldown, E prompt.
-## No fear bar, no chips. Fill % is eng-owned via TextureProgressBar.
+## Kyle-locked HUD plate (1280×720): health over stamina (top-left),
+## signal + battery widgets (top-right), 5-slot item rail (right edge).
+## No bottom hotbar. Fill % is eng-owned via TextureProgressBar.
 
 const _PACK: GDScript = preload("res://scripts/horror/ui/hud_icon_pack.gd")
 const _KIT: GDScript = preload("res://scripts/horror/ui/ui_kit.gd")
+
+const RAIL_SLOTS := 5
+const SLOT_PX := 72
+const SLOT_GAP := 18
 
 var OBJECTIVE_TITLE: String = "MISSING CHILD"
 var OBJECTIVE_TAG: String = "ALIVE ONLY"
@@ -36,8 +40,8 @@ var _health_bar: TextureProgressBar
 var _stamina_bar: TextureProgressBar
 var _health_pct: Label
 var _stamina_pct: Label
-var _phone_icon: TextureRect
-var _phone_label: Label
+var _battery_bar: TextureProgressBar
+var _battery_pct: Label
 var _signal_icon: TextureRect
 var _signal_label: Label
 var _ability_panel: Panel
@@ -46,13 +50,15 @@ var _ability_bar: ProgressBar
 var _prompt_wrap: Control
 var _prompt_action: Label
 var _prompt_sub: Label
-var _hotbar: HBoxContainer
-var _hotbar_cells: Array[Panel] = []
-var _tex_phone: Texture2D
+var _rail: VBoxContainer
+var _rail_wells: Array[TextureRect] = []
+var _rail_icons: Array[TextureRect] = []
 var _tex_ability: Texture2D
 var _tex_key: Texture2D
 var _tex_child: Texture2D
 var _tex_reticle: Texture2D
+var _tex_slot_empty: Texture2D
+var _tex_slot_selected: Texture2D
 
 
 func _ready() -> void:
@@ -84,12 +90,18 @@ func set_meters(hp: float, hp_max: float, stamina: float, fear: float) -> void:
 
 
 func set_hotbar(slots: Array, selected: int) -> void:
+	## Inventory hook — first 5 item/consumable wells. Not a bottom hotbar.
 	slot_labels.clear()
 	for s in slots:
 		slot_labels.append(str(s))
 	selected_slot = selected
 	if _built:
-		_refresh_hotbar()
+		_refresh_rail()
+
+
+func apply_example_rail() -> void:
+	## Smoke fill matching rail_example_filled: key / firearm / crowbar+select / empty / empty.
+	set_hotbar(_PACK.EXAMPLE_RAIL, _PACK.EXAMPLE_RAIL_SELECTED)
 
 
 func set_steal(active: bool, duration_ratio: float, cooldown_ratio: float) -> void:
@@ -110,7 +122,7 @@ func set_tower_strength(value: float) -> void:
 func set_signal_band(band: String) -> void:
 	if band == "service":
 		band = "full"
-	if band != "full" and band != "weak":
+	if band != "full" and band != "weak" and band != "empty":
 		band = "dead"
 	signal_band = band
 	if _built:
@@ -122,7 +134,7 @@ func set_phone_device(holding: bool, battery: float, led_on: bool) -> void:
 	phone_battery = clampf(battery, 0.0, 100.0)
 	phone_led_on = led_on and holding and phone_battery >= 1.0
 	if _built:
-		_refresh_phone()
+		_refresh_battery()
 
 
 func set_utility_flags(in_cover: bool, panic_spike: bool) -> void:
@@ -141,11 +153,12 @@ func set_interact_prompt(shown: bool, action: String = "INTERACT", sub: String =
 
 
 func _load_textures() -> void:
-	_tex_phone = _PACK.texture(_PACK.TEX_PHONE_LED)
 	_tex_ability = _PACK.texture(_PACK.TEX_ABILITY)
 	_tex_key = _PACK.texture(_PACK.TEX_KEY_E)
 	_tex_child = _PACK.texture(_PACK.TEX_MISSING_CHILD)
 	_tex_reticle = _KIT.texture("reticle_white")
+	_tex_slot_empty = _PACK.texture(_PACK.TEX_SLOT_EMPTY)
+	_tex_slot_selected = _PACK.texture(_PACK.TEX_SLOT_SELECTED)
 
 
 func _build() -> void:
@@ -155,9 +168,9 @@ func _build() -> void:
 	_build_objective()
 	_build_vitals()
 	_build_prompt()
-	_build_devices()
+	_build_top_right()
+	_build_rail()
 	_build_ability()
-	_build_hotbar()
 
 
 func _build_objective() -> void:
@@ -305,61 +318,135 @@ func _build_prompt() -> void:
 	_prompt_wrap.add_child(_prompt_sub)
 
 
-func _build_devices() -> void:
-	var row := HBoxContainer.new()
-	row.name = "DeviceRow"
-	row.set_anchors_preset(PRESET_BOTTOM_RIGHT)
-	row.offset_left = -236
-	row.offset_top = -210
-	row.offset_right = -16
-	row.offset_bottom = -130
-	row.add_theme_constant_override("separation", 8)
-	row.mouse_filter = MOUSE_FILTER_IGNORE
-	add_child(row)
-	var phone := _square_device("PhonePanel", _KIT.CYAN)
-	_phone_icon = phone["icon"]
-	_phone_label = phone["label"]
-	_phone_label.text = "PHONE"
-	_phone_icon.texture = _tex_phone
-	row.add_child(phone["panel"])
-	var sig := _square_device("SignalPanel", _KIT.CYAN)
-	_signal_icon = sig["icon"]
-	_signal_label = sig["label"]
-	_signal_label.text = "SIGNAL"
-	row.add_child(sig["panel"])
-
-
-func _square_device(node_name: String, border: Color) -> Dictionary:
-	var panel := Panel.new()
-	panel.name = node_name
-	panel.custom_minimum_size = Vector2(104, 80)
-	panel.mouse_filter = MOUSE_FILTER_IGNORE
-	panel.add_theme_stylebox_override("panel", _KIT.panel(border, 2))
+func _build_top_right() -> void:
+	var box := Control.new()
+	box.name = "TopRight"
+	box.set_anchors_preset(PRESET_TOP_RIGHT)
+	box.offset_left = -168
+	box.offset_top = 16
+	box.offset_right = -16
+	box.offset_bottom = 108
+	box.mouse_filter = MOUSE_FILTER_IGNORE
+	add_child(box)
 	var col := VBoxContainer.new()
+	col.name = "SignalBattery"
 	col.set_anchors_preset(PRESET_FULL_RECT)
-	col.alignment = BoxContainer.ALIGNMENT_CENTER
-	panel.add_child(col)
-	var icon := TextureRect.new()
-	icon.custom_minimum_size = Vector2(36, 36)
-	icon.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
-	icon.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
-	icon.mouse_filter = MOUSE_FILTER_IGNORE
-	col.add_child(icon)
-	var lab := Label.new()
-	lab.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	lab.add_theme_color_override("font_color", border)
-	lab.add_theme_font_size_override("font_size", 11)
-	col.add_child(lab)
-	return {"panel": panel, "icon": icon, "label": lab}
+	col.add_theme_constant_override("separation", 6)
+	col.alignment = BoxContainer.ALIGNMENT_BEGIN
+	box.add_child(col)
+	_build_signal_widget(col)
+	_build_battery_widget(col)
+
+
+func _build_signal_widget(parent: VBoxContainer) -> void:
+	var panel := Panel.new()
+	panel.name = "SignalWidget"
+	panel.custom_minimum_size = Vector2(148, 40)
+	panel.mouse_filter = MOUSE_FILTER_IGNORE
+	panel.add_theme_stylebox_override("panel", _KIT.panel(_KIT.GREY, 6, Color(0.02, 0.02, 0.03, 0.82)))
+	parent.add_child(panel)
+	var row := HBoxContainer.new()
+	row.name = "Row"
+	row.set_anchors_preset(PRESET_FULL_RECT)
+	row.offset_left = 6
+	row.offset_right = -6
+	row.add_theme_constant_override("separation", 6)
+	panel.add_child(row)
+	_signal_icon = TextureRect.new()
+	_signal_icon.name = "SignalIcon"
+	_signal_icon.custom_minimum_size = Vector2(36, 28)
+	_signal_icon.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	_signal_icon.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	_signal_icon.mouse_filter = MOUSE_FILTER_IGNORE
+	row.add_child(_signal_icon)
+	_signal_label = Label.new()
+	_signal_label.name = "SignalLabel"
+	_signal_label.size_flags_horizontal = SIZE_EXPAND_FILL
+	_signal_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	_signal_label.add_theme_font_size_override("font_size", 10)
+	row.add_child(_signal_label)
+
+
+func _build_battery_widget(parent: VBoxContainer) -> void:
+	var wrap := HBoxContainer.new()
+	wrap.name = "BatteryRow"
+	wrap.add_theme_constant_override("separation", 6)
+	parent.add_child(wrap)
+	_battery_bar = TextureProgressBar.new()
+	_battery_bar.name = "BatteryBar"
+	_battery_bar.min_value = 0.0
+	_battery_bar.max_value = 1.0
+	_battery_bar.step = 0.001
+	_battery_bar.custom_minimum_size = Vector2(108, 36)
+	_battery_bar.size_flags_horizontal = SIZE_EXPAND_FILL
+	_battery_bar.nine_patch_stretch = false
+	var under: Texture2D = _PACK.texture(_PACK.TEX_BATTERY_EMPTY)
+	_battery_bar.texture_under = under
+	var tw := 160
+	var th := 56
+	if under:
+		tw = under.get_width()
+		th = under.get_height()
+	# Leave the nub + rim empty — fill lives inside the shell.
+	_battery_bar.texture_progress = _PACK.make_fill_texture(_PACK.BATTERY, tw, th, 14)
+	_battery_bar.fill_mode = TextureProgressBar.FILL_LEFT_TO_RIGHT
+	_battery_bar.mouse_filter = MOUSE_FILTER_IGNORE
+	wrap.add_child(_battery_bar)
+	_battery_pct = Label.new()
+	_battery_pct.name = "BatteryPct"
+	_battery_pct.custom_minimum_size = Vector2(32, 0)
+	_battery_pct.add_theme_color_override("font_color", _PACK.BATTERY)
+	_battery_pct.add_theme_font_size_override("font_size", 10)
+	wrap.add_child(_battery_pct)
+
+
+func _build_rail() -> void:
+	_rail = VBoxContainer.new()
+	_rail.name = "ItemRail"
+	_rail.set_anchors_preset(PRESET_TOP_RIGHT)
+	_rail.offset_left = -88
+	_rail.offset_top = 120
+	_rail.offset_right = -10
+	_rail.offset_bottom = 120 + RAIL_SLOTS * SLOT_PX + (RAIL_SLOTS - 1) * SLOT_GAP
+	_rail.add_theme_constant_override("separation", SLOT_GAP)
+	_rail.mouse_filter = MOUSE_FILTER_IGNORE
+	add_child(_rail)
+	for i in RAIL_SLOTS:
+		var cell := Control.new()
+		cell.name = "RailSlot%d" % (i + 1)
+		cell.custom_minimum_size = Vector2(SLOT_PX, SLOT_PX)
+		cell.mouse_filter = MOUSE_FILTER_IGNORE
+		var well := TextureRect.new()
+		well.name = "Well"
+		well.set_anchors_preset(PRESET_FULL_RECT)
+		well.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+		well.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+		well.texture = _tex_slot_empty
+		well.mouse_filter = MOUSE_FILTER_IGNORE
+		cell.add_child(well)
+		var icon := TextureRect.new()
+		icon.name = "Icon"
+		icon.set_anchors_preset(PRESET_FULL_RECT)
+		icon.offset_left = 12
+		icon.offset_top = 12
+		icon.offset_right = -12
+		icon.offset_bottom = -12
+		icon.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+		icon.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+		icon.mouse_filter = MOUSE_FILTER_IGNORE
+		cell.add_child(icon)
+		_rail.add_child(cell)
+		_rail_wells.append(well)
+		_rail_icons.append(icon)
 
 
 func _build_ability() -> void:
 	_ability_panel = Panel.new()
 	_ability_panel.name = "AbilityCooldown"
-	_ability_panel.set_anchors_preset(PRESET_BOTTOM_RIGHT)
-	_ability_panel.offset_left = -236
+	_ability_panel.set_anchors_preset(PRESET_BOTTOM_LEFT)
+	_ability_panel.offset_left = 16
 	_ability_panel.offset_top = -122
-	_ability_panel.offset_right = -16
+	_ability_panel.offset_right = 236
 	_ability_panel.offset_bottom = -20
 	_ability_panel.mouse_filter = MOUSE_FILTER_IGNORE
 	_ability_panel.visible = false
@@ -401,32 +488,6 @@ func _build_ability() -> void:
 	col.add_child(_ability_bar)
 
 
-func _build_hotbar() -> void:
-	_hotbar = HBoxContainer.new()
-	_hotbar.name = "Hotbar"
-	_hotbar.set_anchors_preset(PRESET_BOTTOM_LEFT)
-	_hotbar.offset_left = 16
-	_hotbar.offset_top = -74
-	_hotbar.offset_right = 540
-	_hotbar.offset_bottom = -16
-	_hotbar.add_theme_constant_override("separation", 6)
-	_hotbar.mouse_filter = MOUSE_FILTER_IGNORE
-	add_child(_hotbar)
-	for i in 8:
-		var cell := Panel.new()
-		cell.custom_minimum_size = Vector2(58, 48)
-		cell.add_theme_stylebox_override("panel", _KIT.panel_default())
-		var lab := Label.new()
-		lab.name = "Item"
-		lab.set_anchors_preset(PRESET_FULL_RECT)
-		lab.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-		lab.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-		lab.add_theme_font_size_override("font_size", 10)
-		cell.add_child(lab)
-		_hotbar.add_child(cell)
-		_hotbar_cells.append(cell)
-
-
 func _refresh() -> void:
 	if _health_bar:
 		_health_bar.value = health_ratio
@@ -434,26 +495,26 @@ func _refresh() -> void:
 	if _stamina_bar:
 		_stamina_bar.value = stamina_ratio
 		_stamina_pct.text = "%d%%" % int(round(stamina_ratio * 100.0))
-	_refresh_phone()
+	_refresh_battery()
 	_refresh_signal()
 	_refresh_ability()
 	_refresh_prompt()
-	_refresh_hotbar()
+	_refresh_rail()
 
 
-func _refresh_phone() -> void:
-	if _phone_label == null:
+func _refresh_battery() -> void:
+	if _battery_bar == null:
 		return
-	if has_phone:
-		_phone_label.text = "PHONE" if phone_led_on else "PHONE LED OFF"
-		_phone_icon.modulate = _PACK.PHONE_LED if phone_led_on else _PACK.PHONE_LED.darkened(0.35)
-	else:
-		_phone_label.text = "PHONE"
-		_phone_icon.modulate = Color(1, 1, 1, 0.45)
+	var ratio := clampf(phone_battery / 100.0, 0.0, 1.0)
+	_battery_bar.value = ratio
+	_battery_pct.text = "%d%%" % int(round(ratio * 100.0))
+	_battery_bar.modulate = Color.WHITE if has_phone else Color(1, 1, 1, 0.55)
+	if phone_led_on:
+		_battery_bar.modulate = Color(1.05, 1.02, 0.9)
 
 
 func _refresh_signal() -> void:
-	if _signal_label == null:
+	if _signal_icon == null:
 		return
 	var band := signal_band
 	if band.is_empty():
@@ -461,13 +522,9 @@ func _refresh_signal() -> void:
 	var col: Color = _PACK.signal_color(band)
 	var tex: Texture2D = _PACK.signal_texture(band)
 	_signal_icon.texture = tex
-	var full_tex: Texture2D = _PACK.texture(_PACK.TEX_SIGNAL_FULL)
-	if band != "full" and tex == full_tex:
-		_signal_icon.modulate = col
-	else:
-		_signal_icon.modulate = Color.WHITE
-	var word := "STRONG" if band == "full" else ("WEAK" if band == "weak" else "DEAD")
-	_signal_label.text = "SIGNAL %s" % word
+	_signal_icon.modulate = Color.WHITE
+	var word := "STRONG" if band == "full" else ("WEAK" if band == "weak" else ("EMPTY" if band == "empty" else "DEAD"))
+	_signal_label.text = word
 	_signal_label.add_theme_color_override("font_color", col)
 
 
@@ -496,18 +553,49 @@ func _refresh_prompt() -> void:
 		_prompt_sub.text = interact_sub
 
 
-func _refresh_hotbar() -> void:
-	for i in _hotbar_cells.size():
-		var cell := _hotbar_cells[i]
-		var item := slot_labels[i] if i < slot_labels.size() else ""
-		var selected := i == selected_slot
-		cell.add_theme_stylebox_override("panel", _KIT.panel_focus() if selected else _KIT.panel_default())
-		var lab := cell.get_node("Item") as Label
-		if item.is_empty():
-			lab.text = ""
-		else:
-			lab.text = _PACK.hotbar_label(item)
-			lab.add_theme_color_override("font_color", _PACK.PHONE_LED if item == "phone" else _KIT.WHITE)
+func _rail_items() -> Array[String]:
+	## First five inventory slots, items/consumables only. Phone stays off the rail.
+	var items: Array[String] = []
+	for raw in slot_labels:
+		var item := str(raw)
+		if item == "phone":
+			continue
+		items.append(item)
+		if items.size() >= RAIL_SLOTS:
+			break
+	while items.size() < RAIL_SLOTS:
+		items.append("")
+	return items
+
+
+func _rail_selected_index() -> int:
+	var compact := 0
+	for i in slot_labels.size():
+		var item := str(slot_labels[i])
+		if item == "phone":
+			continue
+		if i == selected_slot:
+			return compact
+		compact += 1
+		if compact >= RAIL_SLOTS:
+			break
+	if selected_slot >= 0 and selected_slot < RAIL_SLOTS and (selected_slot >= slot_labels.size() or str(slot_labels[selected_slot]) != "phone"):
+		return selected_slot
+	return -1
+
+
+func _refresh_rail() -> void:
+	if _rail == null:
+		return
+	var items := _rail_items()
+	var sel := _rail_selected_index()
+	for i in _rail_wells.size():
+		var item := items[i] if i < items.size() else ""
+		var selected := i == sel
+		_rail_wells[i].texture = _tex_slot_selected if selected else _tex_slot_empty
+		var icon_tex: Texture2D = _PACK.rail_texture(item) if not item.is_empty() else null
+		_rail_icons[i].texture = icon_tex
+		_rail_icons[i].visible = icon_tex != null
 
 
 func _draw() -> void:

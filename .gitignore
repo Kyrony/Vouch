@@ -12,6 +12,10 @@ export_presets.cfg
 data_*/
 mono_crash.*.json
 
+# Generated HUD/menu captures
+assets/horror/hud/_rail_capture.png
+assets/horror/ui/_boot_capture.png
+
 # System/tooling
 .DS_Store
 Thumbs.db

@@ -173,7 +173,7 @@ static func validate_hud() -> String:
 	if hud_script == null:
 		return "neon_hud.gd failed to load"
 	var hud: Object = hud_script.new()
-	for method_name in ["set_meters", "set_signal_band", "set_phone_device", "set_interact_prompt", "set_steal"]:
+	for method_name in ["set_meters", "set_signal_band", "set_phone_device", "set_interact_prompt", "set_steal", "set_hotbar", "apply_example_rail"]:
 		if not hud.has_method(method_name):
 			hud.free()
 			return "NeonHud missing %s" % method_name
@@ -205,8 +205,15 @@ static func validate_hud() -> String:
 		return "phone_led.png missing"
 	if not FileAccess.file_exists("res://assets/horror/ui/README.md"):
 		return "UI pack README missing"
-	for stem in ["health_bar_empty", "stamina_bar_empty", "phone_led", "signal_full", "signal_weak", "signal_dead"]:
-		if not ResourceLoader.exists("res://assets/horror/hud/%s.png" % stem):
+	for stem in [
+		"health_bar_empty", "stamina_bar_empty", "phone_led",
+		"signal_full", "signal_weak", "signal_dead", "signal_empty",
+		"battery_empty", "slot_empty", "slot_selected",
+		"icon_key", "icon_firearm", "icon_shovel", "icon_crowbar",
+		"icon_bandage", "icon_battery_pack", "icon_lockpick", "icon_evidence",
+		"icon_rope", "icon_fuse", "icon_medkit", "icon_flashlight",
+	]:
+		if not ResourceLoader.exists("res://assets/horror/hud/%s.png" % stem) and not FileAccess.file_exists("res://assets/horror/hud/%s.png" % stem):
 			return "%s.png missing" % stem
 	var dir := DirAccess.open("res://assets/horror/hud")
 	if dir:
@@ -231,4 +238,14 @@ static func validate_hud() -> String:
 		return "stamina track stem must be stamina_bar_empty"
 	if not pack.has_method("make_fill_texture"):
 		return "HudIconPack must generate fill textures in-engine"
+	if not hud_src.contains("ItemRail"):
+		return "NeonHud must build a right-edge ItemRail"
+	if hud_src.contains('name = "Hotbar"'):
+		return "NeonHud must not keep a bottom hotbar"
+	if not hud_src.contains("BatteryBar") or not hud_src.contains("SignalWidget"):
+		return "NeonHud missing top-right signal/battery widgets"
+	if int(pack.RAIL_SLOTS) != 5:
+		return "item rail must be 5 wells"
+	if not pack.has_method("rail_texture"):
+		return "HudIconPack missing rail_texture"
 	return ""
