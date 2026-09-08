@@ -1,10 +1,14 @@
 extends Control
 class_name NeonHud
-## Leonardo v2 neon-horror HUD: heart / cyan pulse / violet glitch-eye /
-## yellow phone LED / signal full-weak-dead. Control-node graybox + optional
-## soft-go textures from assets/horror/hud.
+## Leonardo HUD mock: objective banner, hearts + EKG, cyan stamina,
+## violet fear, phone LED + signal, PM ability cooldown, center E prompt.
 
 const _PACK: GDScript = preload("res://scripts/horror/ui/hud_icon_pack.gd")
+const _KIT: GDScript = preload("res://scripts/horror/ui/ui_kit.gd")
+
+var OBJECTIVE_TITLE: String = "MISSING CHILD"
+var OBJECTIVE_TAG: String = "ALIVE ONLY"
+var OBJECTIVE_SUB: String = "FIND HER. BRING HER HOME."
 
 var health_ratio: float = 1.0
 var stamina_ratio: float = 1.0
@@ -22,35 +26,53 @@ var phone_battery: float = 100.0
 var phone_led_on: bool = false
 var hiding: bool = false
 var panic: bool = false
+var interact_visible: bool = false
+var interact_action: String = "INTERACT"
+var interact_sub: String = "Look / Talk"
 
+var _built: bool = false
+var _health_hearts: Array[TextureRect] = []
+var _stamina_bar: ProgressBar
+var _stamina_pct: Label
+var _fear_bar: ProgressBar
+var _fear_pct: Label
+var _phone_icon: TextureRect
+var _phone_label: Label
+var _signal_icon: TextureRect
+var _signal_label: Label
+var _ability_panel: Panel
+var _ability_timer: Label
+var _ability_bar: ProgressBar
+var _prompt_wrap: Control
+var _prompt_action: Label
+var _prompt_sub: Label
+var _hotbar: HBoxContainer
+var _hotbar_cells: Array[Panel] = []
 var _tex_health: Texture2D
-var _tex_stamina: Texture2D
-var _tex_fear: Texture2D
 var _tex_phone: Texture2D
 var _tex_ability: Texture2D
-var _tex_hide: Texture2D
-var _tex_panic: Texture2D
+var _tex_key: Texture2D
+var _tex_child: Texture2D
+var _tex_reticle: Texture2D
 
 
 func _ready() -> void:
 	name = "NeonHud"
 	mouse_filter = MOUSE_FILTER_IGNORE
-	set_anchors_preset(Control.PRESET_FULL_RECT)
+	set_anchors_preset(PRESET_FULL_RECT)
 	offset_left = 0
 	offset_top = 0
 	offset_right = 0
 	offset_bottom = 0
-	_tex_health = _PACK.texture(_PACK.TEX_HEALTH)
-	_tex_stamina = _PACK.texture(_PACK.TEX_STAMINA)
-	_tex_fear = _PACK.texture(_PACK.TEX_FEAR)
-	_tex_phone = _PACK.texture(_PACK.TEX_PHONE_LED)
-	_tex_ability = _PACK.texture(_PACK.TEX_ABILITY)
-	_tex_hide = _PACK.texture(_PACK.TEX_HIDE)
-	_tex_panic = _PACK.texture(_PACK.TEX_PANIC)
+	_load_textures()
+	_build()
+	_refresh()
 
 
 func _process(_delta: float) -> void:
 	queue_redraw()
+	if _built:
+		_refresh_ability()
 
 
 func set_meters(hp: float, hp_max: float, stamina: float, fear: float) -> void:
@@ -58,6 +80,8 @@ func set_meters(hp: float, hp_max: float, stamina: float, fear: float) -> void:
 	stamina_ratio = clampf(stamina / 100.0, 0.0, 1.0)
 	fear_ratio = clampf(fear / 100.0, 0.0, 1.0)
 	panic = fear_ratio >= 0.7
+	if _built:
+		_refresh()
 
 
 func set_hotbar(slots: Array, selected: int) -> void:
@@ -65,6 +89,8 @@ func set_hotbar(slots: Array, selected: int) -> void:
 	for s in slots:
 		slot_labels.append(str(s))
 	selected_slot = selected
+	if _built:
+		_refresh_hotbar()
 
 
 func set_steal(active: bool, duration_ratio: float, cooldown_ratio: float) -> void:
@@ -72,6 +98,8 @@ func set_steal(active: bool, duration_ratio: float, cooldown_ratio: float) -> vo
 	steal_active = active
 	steal_duration_ratio = clampf(duration_ratio, 0.0, 1.0)
 	steal_cooldown_ratio = clampf(cooldown_ratio, 0.0, 1.0)
+	if _built:
+		_refresh_ability()
 
 
 func set_tower_strength(value: float) -> void:
@@ -86,12 +114,16 @@ func set_signal_band(band: String) -> void:
 	if band != "full" and band != "weak":
 		band = "dead"
 	signal_band = band
+	if _built:
+		_refresh_signal()
 
 
 func set_phone_device(holding: bool, battery: float, led_on: bool) -> void:
 	has_phone = holding
 	phone_battery = clampf(battery, 0.0, 100.0)
 	phone_led_on = led_on and holding and phone_battery >= 1.0
+	if _built:
+		_refresh_phone()
 
 
 func set_utility_flags(in_cover: bool, panic_spike: bool) -> void:
@@ -100,229 +132,426 @@ func set_utility_flags(in_cover: bool, panic_spike: bool) -> void:
 		panic = true
 
 
-func _draw() -> void:
-	_draw_panel(Rect2(12, 36, 300, 168))
-	_draw_health_heart(Vector2(54, 92), 30.0)
-	_draw_stamina_pulse(Vector2(118, 62), Rect2(150, 50, 148, 14))
-	_draw_fear_eye(Vector2(118, 96), Rect2(150, 84, 148, 14))
-	_draw_phone_led(Vector2(118, 136))
-	_draw_signal_pack(Rect2(150, 118, 148, 40))
+func set_interact_prompt(shown: bool, action: String = "INTERACT", sub: String = "Look / Talk") -> void:
+	interact_visible = shown
+	if not action.is_empty():
+		interact_action = action
+	interact_sub = sub
+	if _built:
+		_refresh_prompt()
+
+
+func _load_textures() -> void:
+	_tex_health = _PACK.texture(_PACK.TEX_HEALTH)
+	_tex_phone = _PACK.texture(_PACK.TEX_PHONE_LED)
+	_tex_ability = _PACK.texture(_PACK.TEX_ABILITY)
+	_tex_key = _PACK.texture(_PACK.TEX_KEY_E)
+	_tex_child = _PACK.texture(_PACK.TEX_MISSING_CHILD)
+	_tex_reticle = _KIT.texture("reticle_white")
+
+
+func _build() -> void:
+	if _built:
+		return
+	_built = true
+	_build_objective()
+	_build_vitals()
+	_build_prompt()
+	_build_devices()
+	_build_ability()
+	_build_hotbar()
+
+
+func _build_objective() -> void:
+	var banner := Panel.new()
+	banner.name = "ObjectiveBanner"
+	banner.set_anchors_preset(PRESET_CENTER_TOP)
+	banner.offset_left = -340
+	banner.offset_top = 16
+	banner.offset_right = 340
+	banner.offset_bottom = 64
+	banner.mouse_filter = MOUSE_FILTER_IGNORE
+	banner.add_theme_stylebox_override("panel", _KIT.panel_focus())
+	add_child(banner)
+	var row := HBoxContainer.new()
+	row.set_anchors_preset(PRESET_FULL_RECT)
+	row.offset_left = 10
+	row.offset_right = -10
+	row.add_theme_constant_override("separation", 10)
+	banner.add_child(row)
+	var icon := TextureRect.new()
+	icon.custom_minimum_size = Vector2(28, 28)
+	icon.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	icon.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	icon.texture = _tex_child
+	icon.mouse_filter = MOUSE_FILTER_IGNORE
+	row.add_child(icon)
+	var title := Label.new()
+	title.name = "Title"
+	title.text = OBJECTIVE_TITLE
+	title.add_theme_color_override("font_color", _KIT.YELLOW)
+	title.add_theme_font_size_override("font_size", 16)
+	row.add_child(title)
+	var tag := Label.new()
+	tag.name = "AliveTag"
+	tag.text = "  %s  " % OBJECTIVE_TAG
+	tag.add_theme_color_override("font_color", Color(1, 0.85, 0.85))
+	tag.add_theme_font_size_override("font_size", 11)
+	var tag_bg := StyleBoxFlat.new()
+	tag_bg.bg_color = Color(0.55, 0.08, 0.1, 0.95)
+	tag_bg.set_corner_radius_all(8)
+	tag_bg.content_margin_left = 8
+	tag_bg.content_margin_right = 8
+	tag.add_theme_stylebox_override("normal", tag_bg)
+	row.add_child(tag)
+	var sub := Label.new()
+	sub.text = OBJECTIVE_SUB
+	sub.add_theme_color_override("font_color", _KIT.WHITE)
+	sub.add_theme_font_size_override("font_size", 12)
+	row.add_child(sub)
+
+
+func _build_vitals() -> void:
+	var box := Panel.new()
+	box.name = "Vitals"
+	box.set_anchors_preset(PRESET_BOTTOM_LEFT)
+	box.offset_left = 16
+	box.offset_top = -210
+	box.offset_right = 340
+	box.offset_bottom = -86
+	box.mouse_filter = MOUSE_FILTER_IGNORE
+	box.add_theme_stylebox_override("panel", _KIT.panel_alert())
+	add_child(box)
+	var col := VBoxContainer.new()
+	col.set_anchors_preset(PRESET_FULL_RECT)
+	col.offset_left = 10
+	col.offset_top = 8
+	col.offset_right = -10
+	col.offset_bottom = -8
+	col.add_theme_constant_override("separation", 6)
+	box.add_child(col)
+	var health_row := HBoxContainer.new()
+	health_row.add_theme_constant_override("separation", 6)
+	col.add_child(health_row)
+	var hl := Label.new()
+	hl.text = "HEALTH"
+	hl.add_theme_color_override("font_color", _KIT.RED)
+	hl.add_theme_font_size_override("font_size", 12)
+	health_row.add_child(hl)
+	for i in 3:
+		var heart := TextureRect.new()
+		heart.custom_minimum_size = Vector2(22, 22)
+		heart.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+		heart.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+		heart.texture = _tex_health
+		heart.mouse_filter = MOUSE_FILTER_IGNORE
+		health_row.add_child(heart)
+		_health_hearts.append(heart)
+	_stamina_bar = _make_meter(col, "STAMINA", _KIT.CYAN, true)
+	_fear_bar = _make_meter(col, "FEAR", _KIT.VIOLET, false)
+
+
+func _make_meter(parent: VBoxContainer, caption: String, color: Color, stamina: bool) -> ProgressBar:
+	var row := HBoxContainer.new()
+	row.add_theme_constant_override("separation", 8)
+	parent.add_child(row)
+	var lab := Label.new()
+	lab.text = caption
+	lab.custom_minimum_size = Vector2(70, 0)
+	lab.add_theme_color_override("font_color", color)
+	lab.add_theme_font_size_override("font_size", 11)
+	row.add_child(lab)
+	var bar := ProgressBar.new()
+	bar.max_value = 1.0
+	bar.show_percentage = false
+	bar.custom_minimum_size = Vector2(150, 16)
+	bar.size_flags_horizontal = SIZE_EXPAND_FILL
+	bar.add_theme_stylebox_override("background", _KIT.meter_bg(color))
+	bar.add_theme_stylebox_override("fill", _KIT.meter_fill(color))
+	row.add_child(bar)
+	var pct := Label.new()
+	pct.custom_minimum_size = Vector2(40, 0)
+	pct.add_theme_color_override("font_color", color)
+	pct.add_theme_font_size_override("font_size", 11)
+	row.add_child(pct)
+	if stamina:
+		_stamina_pct = pct
+	else:
+		_fear_pct = pct
+	return bar
+
+
+func _build_prompt() -> void:
+	_prompt_wrap = Control.new()
+	_prompt_wrap.name = "InteractPrompt"
+	_prompt_wrap.set_anchors_preset(PRESET_CENTER)
+	_prompt_wrap.offset_left = -90
+	_prompt_wrap.offset_top = 28
+	_prompt_wrap.offset_right = 90
+	_prompt_wrap.offset_bottom = 88
+	_prompt_wrap.mouse_filter = MOUSE_FILTER_IGNORE
+	_prompt_wrap.visible = false
+	add_child(_prompt_wrap)
+	var row := HBoxContainer.new()
+	row.alignment = BoxContainer.ALIGNMENT_CENTER
+	row.add_theme_constant_override("separation", 8)
+	row.set_anchors_preset(PRESET_TOP_WIDE)
+	row.offset_bottom = 36
+	_prompt_wrap.add_child(row)
+	var key := TextureRect.new()
+	key.custom_minimum_size = Vector2(28, 28)
+	key.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	key.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	key.texture = _tex_key
+	key.mouse_filter = MOUSE_FILTER_IGNORE
+	row.add_child(key)
+	_prompt_action = Label.new()
+	_prompt_action.text = "INTERACT"
+	_prompt_action.add_theme_color_override("font_color", _KIT.YELLOW)
+	_prompt_action.add_theme_font_size_override("font_size", 16)
+	row.add_child(_prompt_action)
+	_prompt_sub = Label.new()
+	_prompt_sub.set_anchors_preset(PRESET_BOTTOM_WIDE)
+	_prompt_sub.offset_top = -22
+	_prompt_sub.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	_prompt_sub.add_theme_color_override("font_color", Color(0.62, 0.64, 0.68))
+	_prompt_sub.add_theme_font_size_override("font_size", 11)
+	_prompt_sub.text = "Look / Talk"
+	_prompt_wrap.add_child(_prompt_sub)
+
+
+func _build_devices() -> void:
+	var row := HBoxContainer.new()
+	row.name = "DeviceRow"
+	row.set_anchors_preset(PRESET_BOTTOM_RIGHT)
+	row.offset_left = -236
+	row.offset_top = -210
+	row.offset_right = -16
+	row.offset_bottom = -130
+	row.add_theme_constant_override("separation", 8)
+	row.mouse_filter = MOUSE_FILTER_IGNORE
+	add_child(row)
+	var phone := _square_device("PhonePanel", _KIT.CYAN)
+	_phone_icon = phone["icon"]
+	_phone_label = phone["label"]
+	_phone_label.text = "PHONE"
+	_phone_icon.texture = _tex_phone
+	row.add_child(phone["panel"])
+	var sig := _square_device("SignalPanel", _KIT.CYAN)
+	_signal_icon = sig["icon"]
+	_signal_label = sig["label"]
+	_signal_label.text = "SIGNAL"
+	row.add_child(sig["panel"])
+
+
+func _square_device(node_name: String, border: Color) -> Dictionary:
+	var panel := Panel.new()
+	panel.name = node_name
+	panel.custom_minimum_size = Vector2(104, 80)
+	panel.mouse_filter = MOUSE_FILTER_IGNORE
+	panel.add_theme_stylebox_override("panel", _KIT.panel(border, 2))
+	var col := VBoxContainer.new()
+	col.set_anchors_preset(PRESET_FULL_RECT)
+	col.alignment = BoxContainer.ALIGNMENT_CENTER
+	panel.add_child(col)
+	var icon := TextureRect.new()
+	icon.custom_minimum_size = Vector2(36, 36)
+	icon.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	icon.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	icon.mouse_filter = MOUSE_FILTER_IGNORE
+	col.add_child(icon)
+	var lab := Label.new()
+	lab.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	lab.add_theme_color_override("font_color", border)
+	lab.add_theme_font_size_override("font_size", 11)
+	col.add_child(lab)
+	return {"panel": panel, "icon": icon, "label": lab}
+
+
+func _build_ability() -> void:
+	_ability_panel = Panel.new()
+	_ability_panel.name = "AbilityCooldown"
+	_ability_panel.set_anchors_preset(PRESET_BOTTOM_RIGHT)
+	_ability_panel.offset_left = -236
+	_ability_panel.offset_top = -122
+	_ability_panel.offset_right = -16
+	_ability_panel.offset_bottom = -20
+	_ability_panel.mouse_filter = MOUSE_FILTER_IGNORE
+	_ability_panel.visible = false
+	_ability_panel.add_theme_stylebox_override("panel", _KIT.panel_violet())
+	add_child(_ability_panel)
+	var col := VBoxContainer.new()
+	col.set_anchors_preset(PRESET_FULL_RECT)
+	col.offset_left = 8
+	col.offset_right = -8
+	col.offset_top = 6
+	col.offset_bottom = -6
+	_ability_panel.add_child(col)
+	var head := Label.new()
+	head.text = "ABILITY COOLDOWN"
+	head.add_theme_color_override("font_color", _KIT.VIOLET.lightened(0.25))
+	head.add_theme_font_size_override("font_size", 11)
+	col.add_child(head)
+	var mid := HBoxContainer.new()
+	mid.add_theme_constant_override("separation", 10)
+	col.add_child(mid)
+	var icon := TextureRect.new()
+	icon.custom_minimum_size = Vector2(36, 36)
+	icon.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	icon.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	icon.texture = _tex_ability
+	icon.mouse_filter = MOUSE_FILTER_IGNORE
+	mid.add_child(icon)
+	_ability_timer = Label.new()
+	_ability_timer.text = "READY"
+	_ability_timer.add_theme_color_override("font_color", _KIT.VIOLET.lightened(0.2))
+	_ability_timer.add_theme_font_size_override("font_size", 18)
+	mid.add_child(_ability_timer)
+	_ability_bar = ProgressBar.new()
+	_ability_bar.max_value = 1.0
+	_ability_bar.show_percentage = false
+	_ability_bar.custom_minimum_size = Vector2(0, 10)
+	_ability_bar.add_theme_stylebox_override("background", _KIT.meter_bg(_KIT.VIOLET))
+	_ability_bar.add_theme_stylebox_override("fill", _KIT.meter_fill(_KIT.VIOLET))
+	col.add_child(_ability_bar)
+
+
+func _build_hotbar() -> void:
+	_hotbar = HBoxContainer.new()
+	_hotbar.name = "Hotbar"
+	_hotbar.set_anchors_preset(PRESET_BOTTOM_LEFT)
+	_hotbar.offset_left = 16
+	_hotbar.offset_top = -74
+	_hotbar.offset_right = 540
+	_hotbar.offset_bottom = -16
+	_hotbar.add_theme_constant_override("separation", 6)
+	_hotbar.mouse_filter = MOUSE_FILTER_IGNORE
+	add_child(_hotbar)
+	for i in 8:
+		var cell := Panel.new()
+		cell.custom_minimum_size = Vector2(58, 48)
+		cell.add_theme_stylebox_override("panel", _KIT.panel_default())
+		var lab := Label.new()
+		lab.name = "Item"
+		lab.set_anchors_preset(PRESET_FULL_RECT)
+		lab.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		lab.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+		lab.add_theme_font_size_override("font_size", 10)
+		cell.add_child(lab)
+		_hotbar.add_child(cell)
+		_hotbar_cells.append(cell)
+
+
+func _refresh() -> void:
+	for i in _health_hearts.size():
+		var lit := health_ratio > (float(i) / 3.0)
+		_health_hearts[i].modulate = Color(1, 1, 1, 1 if lit else 0.22)
+	if _stamina_bar:
+		_stamina_bar.value = stamina_ratio
+		_stamina_pct.text = "%d%%" % int(round(stamina_ratio * 100.0))
+	if _fear_bar:
+		_fear_bar.value = fear_ratio
+		_fear_pct.text = "%d%%" % int(round(fear_ratio * 100.0))
+	_refresh_phone()
+	_refresh_signal()
+	_refresh_ability()
+	_refresh_prompt()
+	_refresh_hotbar()
+
+
+func _refresh_phone() -> void:
+	if _phone_label == null:
+		return
 	if has_phone:
-		_draw_battery_readout(Rect2(150, 156, 148, 16))
-	_draw_neon_slots(Rect2(16, 628, 520, 56))
-	if show_steal:
-		_draw_ability_ring(Vector2(620, 58), 26.0)
-	if hiding:
-		_blit_or_draw_hide(Vector2(292, 48))
-	if panic:
-		_blit_or_draw_panic(Vector2(332, 48))
+		_phone_label.text = "PHONE" if phone_led_on else "PHONE LED OFF"
+		_phone_icon.modulate = _PACK.PHONE_LED if phone_led_on else _PACK.PHONE_LED.darkened(0.35)
+	else:
+		_phone_label.text = "PHONE"
+		_phone_icon.modulate = Color(1, 1, 1, 0.45)
 
 
-func _draw_panel(r: Rect2) -> void:
-	draw_rect(r, _PACK.PANEL)
-	draw_rect(r, _PACK.STAMINA.darkened(0.45), false, 1.5)
-	draw_line(r.position, r.position + Vector2(28, 0), _PACK.HEALTH, 2.0)
-	draw_line(r.end, r.end - Vector2(28, 0), _PACK.FEAR, 2.0)
-
-
-func _draw_health_heart(center: Vector2, scale: float) -> void:
-	if _blit(_tex_health, Rect2(center.x - 28, center.y - 30, 56, 56), Color(1, 1, 1, 0.45 + health_ratio * 0.55)):
-		_draw_ekg(center, scale * 0.55)
+func _refresh_signal() -> void:
+	if _signal_label == null:
 		return
-	var pts := PackedVector2Array()
-	for i in 36:
-		var t := float(i) * TAU / 36.0
-		var x := 16.0 * pow(sin(t), 3.0)
-		var y := 13.0 * cos(t) - 5.0 * cos(2.0 * t) - 2.0 * cos(3.0 * t) - cos(4.0 * t)
-		pts.append(center + Vector2(x, -y) * (scale / 18.0))
-	var glow := _PACK.HEALTH
-	glow.a = 0.18 + health_ratio * 0.35
-	var halo := PackedVector2Array()
-	for p in pts:
-		halo.append(center + (p - center) * 1.12)
-	draw_colored_polygon(halo, glow)
-	var fill := _PACK.HEALTH.lerp(Color(0.12, 0.02, 0.06), 1.0 - health_ratio)
-	fill.a = 0.45 + health_ratio * 0.55
-	if health_ratio < 0.28:
-		fill.a *= 0.55 + 0.45 * abs(sin(Time.get_ticks_msec() * 0.018))
-	draw_colored_polygon(pts, fill)
-	for i in pts.size():
-		draw_line(pts[i], pts[(i + 1) % pts.size()], _PACK.HEALTH.lightened(0.2), 1.8)
-	_draw_ekg(center, scale * 0.62)
-	draw_line(center + Vector2(-6, 22), center + Vector2(-4, 34), _PACK.HEALTH, 1.6)
-	draw_line(center + Vector2(2, 24), center + Vector2(3, 38), _PACK.HEALTH, 1.6)
-
-
-func _draw_ekg(center: Vector2, amp: float) -> void:
-	var pts := PackedVector2Array([
-		center + Vector2(-amp, 0),
-		center + Vector2(-amp * 0.35, 0),
-		center + Vector2(-amp * 0.12, -amp * 0.45),
-		center + Vector2(amp * 0.08, amp * 0.55),
-		center + Vector2(amp * 0.28, -amp * 0.7),
-		center + Vector2(amp * 0.48, amp * 0.2),
-		center + Vector2(amp, 0),
-	])
-	for i in range(pts.size() - 1):
-		draw_line(pts[i], pts[i + 1], Color(1.0, 0.78, 0.82, 0.9), 1.6)
-
-
-func _draw_stamina_pulse(icon_c: Vector2, bar: Rect2) -> void:
-	if not _blit(_tex_stamina, Rect2(icon_c.x - 16, icon_c.y - 16, 32, 32)):
-		draw_arc(icon_c, 13.0, 0.2, TAU * 0.22, 10, _PACK.STAMINA, 1.8, true)
-		draw_arc(icon_c, 13.0, TAU * 0.28, TAU * 0.47, 10, _PACK.STAMINA, 1.8, true)
-		draw_arc(icon_c, 13.0, TAU * 0.53, TAU * 0.72, 10, _PACK.STAMINA, 1.8, true)
-		draw_arc(icon_c, 13.0, TAU * 0.78, TAU * 0.97, 10, _PACK.STAMINA, 1.8, true)
-		var wave := PackedVector2Array()
-		for i in 10:
-			wave.append(icon_c + Vector2(-9.0 + float(i) * 2.0, sin(float(i) * 0.7) * 4.0))
-		for i in range(wave.size() - 1):
-			draw_line(wave[i], wave[i + 1], _PACK.STAMINA, 1.5)
-	draw_rect(bar, _PACK.DIM)
-	var fill := Rect2(bar.position.x + 2, bar.position.y + 2, (bar.size.x - 4) * stamina_ratio, bar.size.y - 4)
-	draw_rect(fill, _PACK.STAMINA)
-	draw_rect(bar, _PACK.STAMINA.darkened(0.2), false, 1.2)
-
-
-func _draw_fear_eye(icon_c: Vector2, bar: Rect2) -> void:
-	if not _blit(_tex_fear, Rect2(icon_c.x - 16, icon_c.y - 16, 32, 32)):
-		draw_arc(icon_c, 11.0, 0.35, PI - 0.35, 12, _PACK.FEAR, 1.7, true)
-		draw_arc(icon_c, 11.0, PI + 0.35, TAU - 0.35, 12, _PACK.FEAR, 1.7, true)
-		draw_circle(icon_c, 4.2, _PACK.FEAR.darkened(0.35))
-		draw_circle(icon_c, 1.8, Color(0.95, 0.88, 1.0))
-		var g := 0.6 + 0.4 * sin(Time.get_ticks_msec() * 0.012)
-		draw_line(icon_c + Vector2(-12, -3), icon_c + Vector2(12, -3), _PACK.FEAR.lightened(0.2), 1.2)
-		draw_line(icon_c + Vector2(-12, 3), icon_c + Vector2(12, 3 * g), _PACK.FEAR, 1.2)
-	draw_rect(bar, _PACK.DIM)
-	var fill := Rect2(bar.position.x + 2, bar.position.y + 2, (bar.size.x - 4) * fear_ratio, bar.size.y - 4)
-	draw_rect(fill, _PACK.FEAR)
-	draw_rect(bar, _PACK.FEAR.darkened(0.15), false, 1.2)
-
-
-func _draw_phone_led(center: Vector2) -> void:
-	var lit := phone_led_on
-	var col: Color = _PACK.PHONE_LED if (has_phone and phone_battery >= 1.0) else _PACK.PHONE_LED.darkened(0.55)
-	if not has_phone:
-		col.a = 0.45
-	if _blit(_tex_phone, Rect2(center.x - 16, center.y - 16, 32, 32), col):
-		if lit:
-			draw_circle(center + Vector2(8, -8), 3.5, Color(1.0, 0.95, 0.7, 0.55))
-		return
-	var body := Rect2(center.x - 7, center.y - 12, 14, 24)
-	draw_rect(body, Color(0.12, 0.1, 0.08, 0.95))
-	draw_rect(body, col, false, 1.6)
-	draw_rect(Rect2(body.position.x + 2, body.position.y + 3, 10, 16), Color(0.08, 0.02, 0.04, 0.9))
-	var led_p := Vector2(body.end.x - 3, body.position.y + 4)
-	draw_circle(led_p, 1.6, col)
-	if lit:
-		draw_line(led_p, led_p + Vector2(10, -4), col, 1.4)
-		draw_line(led_p, led_p + Vector2(12, 0), col.lightened(0.3), 1.6)
-		draw_line(led_p, led_p + Vector2(10, 4), col, 1.4)
-
-
-func _draw_signal_pack(r: Rect2) -> void:
 	var band := signal_band
 	if band.is_empty():
 		band = _PACK.band_from_strength(tower_strength)
-	var tex: Texture2D = _PACK.signal_texture(band)
 	var col: Color = _PACK.signal_color(band)
-	if tex:
-		draw_texture_rect(tex, Rect2(r.position, Vector2(40, 36)), false, col)
-		draw_string(ThemeDB.fallback_font, r.position + Vector2(44, 24), band.to_upper(), HORIZONTAL_ALIGNMENT_LEFT, 90, 12, col)
+	_signal_icon.texture = _PACK.signal_texture(band)
+	_signal_icon.modulate = col
+	var word := "STRONG" if band == "full" else ("WEAK" if band == "weak" else "DEAD")
+	_signal_label.text = "SIGNAL %s" % word
+	_signal_label.add_theme_color_override("font_color", col)
+
+
+func _refresh_ability() -> void:
+	if _ability_panel == null:
 		return
-	var bars := 5
-	var lit_count := 5 if band == "full" else (2 if band == "weak" else 0)
-	var base := Vector2(r.position.x + 2, r.end.y - 6)
-	for i in bars:
-		var h := 7.0 + float(i) * 5.5
-		var on := i < lit_count
-		var c := col if on else Color(0.22, 0.2, 0.24, 0.5)
-		if band == "weak" and on:
-			var flicker := (int(Time.get_ticks_msec() / 280) % 3) == 0 and i == 1
-			if flicker:
-				c = col.darkened(0.45)
-		draw_rect(Rect2(base.x + float(i) * 9.0, base.y - h, 7, h), c)
-	if band == "dead":
-		var mid := r.position + Vector2(26, 16)
-		draw_arc(mid, 9.0, 0.0, TAU, 18, _PACK.SIGNAL_DEAD, 1.8, true)
-		draw_line(mid + Vector2(-6, -6), mid + Vector2(6, 6), _PACK.SIGNAL_DEAD, 2.0)
-	draw_string(ThemeDB.fallback_font, r.position + Vector2(52, 24), band.to_upper(), HORIZONTAL_ALIGNMENT_LEFT, 90, 12, col)
-
-
-func _draw_battery_readout(r: Rect2) -> void:
-	var col := _PACK.PHONE_LED if phone_battery > 15.0 else _PACK.SIGNAL_DEAD
-	var body := Rect2(r.position.x, r.position.y + 3, 28, 10)
-	draw_rect(body, _PACK.DIM)
-	draw_rect(body, col, false, 1.1)
-	draw_rect(Rect2(body.end.x, body.position.y + 2, 3, 6), col)
-	var fill_w := (body.size.x - 3) * (phone_battery / 100.0)
-	draw_rect(Rect2(body.position.x + 1.5, body.position.y + 2, fill_w, 6), col)
-	var led := "LED" if phone_led_on else "LED OFF"
-	draw_string(ThemeDB.fallback_font, r.position + Vector2(36, 13), "%d%%  %s" % [int(round(phone_battery)), led], HORIZONTAL_ALIGNMENT_LEFT, 140, 11, col)
-
-
-func _draw_neon_slots(r: Rect2) -> void:
-	draw_rect(r, _PACK.PANEL)
-	var x := r.position.x + 8
-	for i in range(8):
-		var cell := Rect2(x, r.position.y + 8, 58, 40)
-		var selected := i == selected_slot
-		var item := slot_labels[i] if i < slot_labels.size() else ""
-		var border := _PACK.STAMINA if selected else Color(0.28, 0.32, 0.4, 0.8)
-		if item == "phone" and selected:
-			border = _PACK.PHONE_LED
-		draw_rect(cell, _PACK.DIM)
-		draw_rect(cell, border, false, 1.4 if selected else 1.0)
-		if not item.is_empty():
-			var icon: Texture2D = _PACK.hotbar_texture(item)
-			if icon:
-				draw_texture_rect(icon, Rect2(cell.position + Vector2(18, 4), Vector2(22, 22)), false)
-			var label: String = _PACK.hotbar_label(item)
-			var lcol := _PACK.PHONE_LED if item == "phone" else _PACK.STAMINA.lightened(0.1)
-			if item == "medkit" or item == "bandage":
-				lcol = _PACK.HEALTH
-			draw_string(ThemeDB.fallback_font, cell.position + Vector2(4, 34), label, HORIZONTAL_ALIGNMENT_LEFT, 50, 10, lcol)
-		x += 64
-
-
-func _draw_ability_ring(center: Vector2, radius: float) -> void:
+	_ability_panel.visible = show_steal
+	if not show_steal:
+		return
 	var ratio := steal_duration_ratio if steal_active else steal_cooldown_ratio
-	var col := _PACK.HEALTH if steal_active else _PACK.GOLD
-	if _tex_ability:
-		draw_texture_rect(_tex_ability, Rect2(center.x - radius, center.y - radius, radius * 2.0, radius * 2.0), false, col)
+	_ability_bar.value = ratio
+	if steal_active:
+		_ability_timer.text = "STEAL"
+	elif ratio >= 0.99:
+		_ability_timer.text = "READY"
 	else:
-		draw_arc(center, radius, 0.2, TAU * 0.22, 8, col, 2.2, true)
-		draw_arc(center, radius, TAU * 0.28, TAU * 0.47, 8, col, 2.2, true)
-		draw_arc(center, radius, TAU * 0.53, TAU * 0.72, 8, col, 2.2, true)
-		draw_arc(center, radius, TAU * 0.78, TAU * 0.97, 8, col, 2.2, true)
-		draw_circle(center, 8.0, col.darkened(0.35))
-		draw_arc(center + Vector2(-4, -1), 2.4, 0, TAU, 8, col, 1.2, true)
-		draw_arc(center + Vector2(4, -1), 2.4, 0, TAU, 8, col, 1.2, true)
-	draw_arc(center, radius + 4.0, -PI * 0.5, -PI * 0.5 + TAU * ratio, 24, col, 3.0, true)
-	var tag := "STEAL" if steal_active else "RECHARGE"
-	draw_string(ThemeDB.fallback_font, center + Vector2(-28, radius + 16), tag, HORIZONTAL_ALIGNMENT_LEFT, 64, 11, col)
+		_ability_timer.text = "RECHARGE"
 
 
-func _blit_or_draw_hide(pos: Vector2) -> void:
-	if _blit(_tex_hide, Rect2(pos, Vector2(28, 28))):
+func _refresh_prompt() -> void:
+	if _prompt_wrap == null:
 		return
-	draw_rect(Rect2(pos, Vector2(6, 2)), _PACK.STAMINA)
-	draw_rect(Rect2(pos + Vector2(22, 0), Vector2(6, 2)), _PACK.STAMINA)
-	draw_circle(pos + Vector2(14, 10), 3.2, _PACK.STAMINA)
-	draw_line(pos + Vector2(14, 13), pos + Vector2(10, 24), _PACK.STAMINA, 1.6)
+	_prompt_wrap.visible = interact_visible
+	if interact_visible:
+		_prompt_action.text = interact_action.to_upper()
+		_prompt_sub.text = interact_sub
 
 
-func _blit_or_draw_panic(pos: Vector2) -> void:
-	if _blit(_tex_panic, Rect2(pos, Vector2(28, 28))):
+func _refresh_hotbar() -> void:
+	for i in _hotbar_cells.size():
+		var cell := _hotbar_cells[i]
+		var item := slot_labels[i] if i < slot_labels.size() else ""
+		var selected := i == selected_slot
+		cell.add_theme_stylebox_override("panel", _KIT.panel_focus() if selected else _KIT.panel_default())
+		var lab := cell.get_node("Item") as Label
+		if item.is_empty():
+			lab.text = ""
+		else:
+			lab.text = _PACK.hotbar_label(item)
+			lab.add_theme_color_override("font_color", _PACK.PHONE_LED if item == "phone" else _KIT.WHITE)
+
+
+func _draw() -> void:
+	_draw_reticle()
+	_draw_ekg_tick()
+
+
+func _draw_reticle() -> void:
+	var c := size * 0.5
+	if _tex_reticle:
+		draw_texture_rect(_tex_reticle, Rect2(c - Vector2(16, 16), Vector2(32, 32)), false)
 		return
-	draw_arc(pos + Vector2(14, 14), 11.0, 0, TAU, 16, _PACK.FEAR, 1.5, true)
-	draw_line(pos + Vector2(4, 14), pos + Vector2(10, 8), _PACK.FEAR, 1.4)
-	draw_line(pos + Vector2(10, 8), pos + Vector2(16, 22), _PACK.FEAR, 1.4)
-	draw_line(pos + Vector2(16, 22), pos + Vector2(24, 12), _PACK.FEAR, 1.4)
+	draw_line(c + Vector2(0, -10), c + Vector2(0, -4), Color(1, 1, 1, 0.75), 1.2)
+	draw_line(c + Vector2(0, 4), c + Vector2(0, 10), Color(1, 1, 1, 0.75), 1.2)
+	draw_line(c + Vector2(-10, 0), c + Vector2(-4, 0), Color(1, 1, 1, 0.75), 1.2)
+	draw_line(c + Vector2(4, 0), c + Vector2(10, 0), Color(1, 1, 1, 0.75), 1.2)
 
 
-func _blit(tex: Texture2D, dest: Rect2, modulate: Color = Color.WHITE) -> bool:
-	if tex == null:
-		return false
-	draw_texture_rect(tex, dest, false, modulate)
-	return true
+func _draw_ekg_tick() -> void:
+	if not _built or _health_hearts.is_empty():
+		return
+	var last: TextureRect = _health_hearts[_health_hearts.size() - 1]
+	var origin := last.global_position - global_position + Vector2(28, 12)
+	var amp := 8.0
+	var pts := PackedVector2Array([
+		origin,
+		origin + Vector2(8, 0),
+		origin + Vector2(12, -amp),
+		origin + Vector2(16, amp),
+		origin + Vector2(20, -amp * 0.6),
+		origin + Vector2(28, 0),
+	])
+	for i in range(pts.size() - 1):
+		draw_line(pts[i], pts[i + 1], Color(1.0, 0.35, 0.38, 0.85), 1.4)

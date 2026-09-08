@@ -81,6 +81,9 @@ func _probe_horror_match() -> String:
 		if world_node.get_node_or_null(node_name) == null:
 			return "neighborhood node missing: %s" % node_name
 	var _CHECK: GDScript = load("res://scripts/horror/world/horror_soft_go_validate.gd")
+	var menu_err: String = _CHECK.call("validate_leonardo_menu", lobby)
+	if not menu_err.is_empty():
+		return menu_err
 	var pin_err: String = _CHECK.call("validate_world", world_node)
 	if not pin_err.is_empty():
 		return pin_err

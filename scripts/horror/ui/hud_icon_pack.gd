@@ -28,6 +28,11 @@ const TEX_ABILITY := "ability_skull"
 const TEX_SUPPLY := "supply_kit"
 const TEX_HIDE := "hide_stealth"
 const TEX_PANIC := "panic_warning"
+const TEX_KEY_E := "key_e"
+const TEX_MISSING_CHILD := "missing_child"
+const TEX_PICKUP := "pickup_use"
+const TEX_DOOR := "door_open"
+const TEX_HIDE_PORCH := "hide_porch"
 
 
 static func texture(stem: String) -> Texture2D:
