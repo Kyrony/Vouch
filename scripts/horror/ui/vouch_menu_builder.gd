@@ -5,17 +5,17 @@ class_name VouchMenuBuilder
 ## Blank mode thumbs only — no mansion-bg.png or modes/*.png. No SIGNAL.
 
 const _T: GDScript = preload("res://scripts/horror/ui/vouch_menu_theme.gd")
-const _GLYPH: GDScript = preload("res://scripts/horror/ui/nav_glyph.gd")
 const TITLE_BG := "res://assets/horror/ui/menu_title_bg.png"
 const LOGO := "res://assets/horror/ui/vouch_fiery_logo.png"
 const NAV_TOP := 320.0
-const LOGO_SIZE := Vector2(880, 260)
+## Previous plate was 880×260. Keep the same aspect at one-third scale.
+const LOGO_SIZE := Vector2(880.0 / 3.0, 260.0 / 3.0)
 
 const NAV := [
-	{"id": "play", "name": "PlayButton", "label": "PLAY", "glyph": "play"},
-	{"id": "friends", "name": "JoinFriendsButton", "label": "JOIN FRIENDS", "glyph": "users"},
-	{"id": "settings", "name": "SettingsButton", "label": "SETTINGS", "glyph": "settings"},
-	{"id": "quit", "name": "QuitButton", "label": "QUIT", "glyph": "quit"},
+	{"id": "play", "name": "PlayButton", "label": "PLAY"},
+	{"id": "friends", "name": "JoinFriendsButton", "label": "JOIN FRIENDS"},
+	{"id": "settings", "name": "SettingsButton", "label": "SETTINGS"},
+	{"id": "quit", "name": "QuitButton", "label": "QUIT"},
 ]
 
 const MODE_ORDER := ["classic", "hardcore", "custom", "practice", "friends-lobby"]
@@ -228,6 +228,7 @@ static func _ensure_nav(home: Control) -> void:
 		if btn == null:
 			btn = _make_nav_button(spec)
 			nav.add_child(btn)
+		_strip_nav_glyph(btn)
 		_T.apply_nav_button(btn, spec["id"] == "play")
 
 
@@ -251,11 +252,6 @@ static func _make_nav_button(spec: Dictionary) -> Button:
 	diamond.custom_minimum_size = Vector2(18, 0)
 	diamond.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	row.add_child(diamond)
-	var glyph: Control = _GLYPH.new()
-	glyph.name = "Glyph"
-	glyph.set("kind", spec["glyph"])
-	glyph.custom_minimum_size = Vector2(22, 22)
-	row.add_child(glyph)
 	var caption := Label.new()
 	caption.name = "Caption"
 	caption.text = spec["label"]
@@ -263,6 +259,14 @@ static func _make_nav_button(spec: Dictionary) -> Button:
 	caption.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	row.add_child(caption)
 	return btn
+
+
+static func _strip_nav_glyph(button: Button) -> void:
+	if button == null:
+		return
+	var glyph := button.get_node_or_null("Row/Glyph")
+	if glyph:
+		glyph.free()
 
 
 static func _ensure_side(home: Control) -> void:

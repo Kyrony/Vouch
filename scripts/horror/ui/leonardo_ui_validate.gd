@@ -31,6 +31,9 @@ static func validate_menu(lobby: Control) -> String:
 		return "hybrid plate HitboxRoot must not remain on the boot home"
 	if lobby.get_node_or_null("HomePanel/NavColumn") == null:
 		return "NavColumn missing on the Control home"
+	for nav_name in ["PlayButton", "JoinFriendsButton", "SettingsButton", "QuitButton"]:
+		if lobby.get_node_or_null("HomePanel/NavColumn/%s/Row/Glyph" % nav_name) != null:
+			return "stretched nav glyph still present on %s" % nav_name
 	var banner := lobby.get_node_or_null("HomePanel/Banner") as Control
 	if banner and banner.visible:
 		return "legacy Banner wordmark must stay off the home (use MenuLogo)"
@@ -46,6 +49,8 @@ static func validate_menu(lobby: Control) -> String:
 		return "MenuLogo has no texture"
 	if logo.position.x > 48.0 or logo.position.y > 48.0:
 		return "MenuLogo must sit in the top-left"
+	if logo.size.x > 340.0 or logo.size.y > 100.0:
+		return "MenuLogo must stay one-third of 880×260"
 	if not FileAccess.file_exists("res://assets/horror/ui/vouch_fiery_logo.png"):
 		return "vouch_fiery_logo.png missing"
 	var nav := lobby.get_node_or_null("HomePanel/NavColumn") as Control
@@ -76,10 +81,10 @@ static func validate_menu(lobby: Control) -> String:
 		"HomePanel/SidePanel/PlayContent/StartButton",
 		"HomePanel/SidePanel/FriendsContent/LobbyCodeInput",
 		"HomePanel/SidePanel/FriendsContent/FriendsJoinButton",
-		"HomePanel/SidePanel/SettingsContent/TabNav/KeybindsButton",
-		"HomePanel/SidePanel/SettingsContent/TabNav/AudioButton",
-		"HomePanel/SidePanel/SettingsContent/TabNav/VisualButton",
 		"HomePanel/SidePanel/SettingsContent/TabNav/ControlsButton",
+		"HomePanel/SidePanel/SettingsContent/TabNav/VisualButton",
+		"HomePanel/SidePanel/SettingsContent/TabNav/AudioButton",
+		"HomePanel/SidePanel/SettingsContent/TabNav/KeybindsButton",
 		"HomePanel/SidePanel/SettingsContent/KeybindsPanel",
 		"HomePanel/SidePanel/SettingsContent/MasterVolumeRow/Slider",
 		"HomePanel/SidePanel/SettingsContent/SfxVolumeRow/Slider",
@@ -109,6 +114,15 @@ static func validate_menu(lobby: Control) -> String:
 		return "mode thumbnail must not require modes/*.png"
 	if lobby.get_node_or_null("PlayPanel/MatchSettingsPanel") != null:
 		return "Host Lobby still has spawn-odds sliders"
+	var tab_nav := lobby.get_node_or_null("HomePanel/SidePanel/SettingsContent/TabNav")
+	if tab_nav == null:
+		return "settings TabNav missing"
+	var tab_order := ["ControlsButton", "VisualButton", "AudioButton", "KeybindsButton"]
+	if tab_nav.get_child_count() < tab_order.size():
+		return "settings tabs missing"
+	for i in tab_order.size():
+		if str(tab_nav.get_child(i).name) != tab_order[i]:
+			return "settings tab order must be Controls, Visual, Audio, Keybinds"
 	var classic := lobby.get_node("HomePanel/SidePanel/PlayContent/ModeList/ClassicButton") as Button
 	if classic.disabled:
 		return "Classic must stay the live Host Match path"
@@ -146,6 +160,10 @@ static func validate_menu(lobby: Control) -> String:
 		return "menu builder lost the fiery VOUCH logo"
 	if not builder_src.contains("NAV_TOP"):
 		return "menu builder lost the lowered nav offset"
+	if not builder_src.contains("880.0 / 3.0"):
+		return "MenuLogo must stay one-third of the previous 880×260 size"
+	if builder_src.contains("nav_glyph.gd") or builder_src.contains("_GLYPH"):
+		return "menu builder must not instantiate stretched nav glyphs"
 	if not builder_src.contains("load_png_from_buffer"):
 		return "menu builder must decode Kyle PNGs from bytes if import cache is stale"
 	var banner_src := FileAccess.get_file_as_string("res://scripts/horror/ui/vouch_banner.gd")
