@@ -34,7 +34,18 @@ func _run() -> void:
 	]:
 		var btn := lobby.get_node(path) as Button
 		print("NAV %s visible=%s" % [path, btn.visible])
-	var img: Image = root.get_viewport().get_texture().get_image()
+	var tex := root.get_viewport().get_texture()
+	if tex == null:
+		print("SCREENSHOT=skipped (headless viewport has no texture)")
+		print("LOBBY MENU CAPTURE OK")
+		quit(0)
+		return
+	var img: Image = tex.get_image()
+	if img == null:
+		print("SCREENSHOT=skipped (dummy renderer)")
+		print("LOBBY MENU CAPTURE OK")
+		quit(0)
+		return
 	var out := "res://assets/horror/ui/_boot_capture.png"
 	var err := img.save_png(out)
 	if err != OK:

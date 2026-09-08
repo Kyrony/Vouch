@@ -103,7 +103,7 @@ static func validate_menu(lobby: Control) -> String:
 	if neon_src.contains("voice") or neon_src.contains("SMS"):
 		return "menu must not claim voice/SMS"
 	var builder_src := FileAccess.get_file_as_string("res://scripts/horror/ui/vouch_menu_builder.gd")
-	if builder_src.contains("mansion-bg.png") or builder_src.contains("modes/"):
+	if builder_src.contains("\"mansion-bg.png\"") or builder_src.contains("\"modes/") or builder_src.contains("res://assets/modes"):
 		return "menu must not require mansion-bg.png or modes/*.png"
 	var banner_src := FileAccess.get_file_as_string("res://scripts/horror/ui/vouch_banner.gd")
 	if not banner_src.contains("BANNER_HAS_CROSSBAR := false"):

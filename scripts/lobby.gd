@@ -192,8 +192,9 @@ func _on_nav_hover(button: Button) -> void:
 	if row == null:
 		return
 	var tw := row.create_tween()
-	tw.tween_property(row, "position:x", 6.0, 0.04)
-	tw.tween_property(row, "position:x", -3.0, 0.05)
+	tw.tween_property(row, "position:x", 10.0, 0.045)
+	tw.tween_property(row, "position:x", -6.0, 0.05)
+	tw.tween_property(row, "position:x", 3.0, 0.04)
 	tw.tween_property(row, "position:x", 0.0, 0.05)
 
 

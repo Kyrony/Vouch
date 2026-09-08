@@ -11,7 +11,7 @@ const BLOOD_DIM := Color(0.478431, 0.0588235, 0.0588235, 1.0) ## #7a0f0f
 const STONE := Color(0.78, 0.74, 0.68, 1.0)
 const STONE_DIM := Color(0.52, 0.48, 0.44, 1.0)
 const PANEL := Color(0.035, 0.016, 0.02, 0.94)
-const PLACEHOLDER := Color(0.04, 0.02, 0.025, 1.0)
+const PLACEHOLDER := Color(0.0196078, 0.0078431, 0.0117647, 1.0) ## same as BASE — blank field
 const WHITE := Color(0.92, 0.90, 0.86, 1.0)
 
 const FONT_UI := "res://assets/fonts/Cinzel-Bold.ttf"
@@ -92,8 +92,11 @@ static func box(border: Color, fill: Color, border_w: int = 1, radius: int = 2, 
 
 static func apply_nav_button(button: Button, selected: bool) -> void:
 	var idle := box(Color(0, 0, 0, 0), Color(0, 0, 0, 0), 0)
-	var hover := box(GOLD, Color(GOLD.r, GOLD.g, GOLD.b, 0.08), 2, 2, true)
+	# Hover is a shake + brighter ink. Gold plate is reserved for the active nav.
+	var hover := box(Color(GOLD.r, GOLD.g, GOLD.b, 0.35), Color(GOLD.r, GOLD.g, GOLD.b, 0.04), 1, 2, false)
 	var active := box(GOLD, Color(GOLD.r, GOLD.g, GOLD.b, 0.10), 2, 2, true)
+	if selected:
+		hover = active
 	button.flat = true
 	button.focus_mode = Control.FOCUS_ALL
 	button.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
@@ -141,7 +144,7 @@ static func apply_mode_button(button: Button, selected: bool) -> void:
 		title.add_theme_color_override("font_color", GOLD if selected else STONE)
 	if desc:
 		desc.add_theme_font_override("font", stone_font())
-		desc.add_theme_font_size_override("font_size", 12)
+		desc.add_theme_font_size_override("font_size", 13)
 		desc.add_theme_color_override("font_color", STONE if selected else STONE_DIM)
 
 
