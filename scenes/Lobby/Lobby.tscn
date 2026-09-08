@@ -1,7 +1,11 @@
-[gd_scene load_steps=3 format=3]
+[gd_scene load_steps=6 format=3]
 
 [ext_resource type="Script" path="res://scripts/lobby.gd" id="1"]
-[ext_resource type="Script" path="res://scripts/horror/ui/vouch_banner.gd" id="2"]
+[ext_resource type="Texture2D" path="res://assets/horror/ui/menu_leonardo_locked.png" id="2"]
+[ext_resource type="Script" path="res://scripts/horror/ui/menu_hitbox_layout.gd" id="3"]
+[ext_resource type="Texture2D" path="res://assets/horror/ui/menu_modes_cover.png" id="4"]
+
+[sub_resource type="StyleBoxEmpty" id="StyleBoxEmpty_hitbox"]
 
 [node name="Lobby" type="Control"]
 layout_mode = 3
@@ -12,14 +16,17 @@ grow_horizontal = 2
 grow_vertical = 2
 script = ExtResource("1")
 
-[node name="Background" type="ColorRect" parent="."]
+[node name="Background" type="TextureRect" parent="."]
 layout_mode = 1
 anchors_preset = 15
 anchor_right = 1.0
 anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
-color = Color(0.07, 0.075, 0.08, 1)
+mouse_filter = 2
+texture = ExtResource("2")
+expand_mode = 1
+stretch_mode = 6
 
 [node name="HomePanel" type="Control" parent="."]
 layout_mode = 1
@@ -28,143 +35,208 @@ anchor_right = 1.0
 anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
-
-[node name="Banner" type="Control" parent="HomePanel"]
-layout_mode = 1
-anchors_preset = 0
-offset_left = 20.0
-offset_top = 8.0
-offset_right = 500.0
-offset_bottom = 132.0
 mouse_filter = 2
-script = ExtResource("2")
+script = ExtResource("3")
 
-[node name="NavColumn" type="VBoxContainer" parent="HomePanel"]
-layout_mode = 1
-anchors_preset = 0
-offset_left = 24.0
-offset_top = 148.0
-offset_right = 308.0
-offset_bottom = 420.0
-theme_override_constants/separation = 10
+[node name="HitboxRoot" type="Control" parent="HomePanel"]
+layout_mode = 0
+offset_right = 1280.0
+offset_bottom = 720.0
+mouse_filter = 2
 
-[node name="PlayButton" type="Button" parent="HomePanel/NavColumn"]
-layout_mode = 2
-custom_minimum_size = Vector2(0, 52)
-text = "Play"
-
-[node name="JoinFriendsButton" type="Button" parent="HomePanel/NavColumn"]
-layout_mode = 2
-custom_minimum_size = Vector2(0, 52)
-text = "Join Friends"
-
-[node name="SettingsButton" type="Button" parent="HomePanel/NavColumn"]
-layout_mode = 2
-custom_minimum_size = Vector2(0, 52)
-text = "Settings"
-
-[node name="QuitButton" type="Button" parent="HomePanel/NavColumn"]
-layout_mode = 2
-custom_minimum_size = Vector2(0, 52)
-text = "Quit"
-
-[node name="ModePanel" type="Panel" parent="HomePanel"]
-layout_mode = 1
-anchors_preset = 0
-offset_left = 328.0
-offset_top = 148.0
-offset_right = 608.0
-offset_bottom = 560.0
-
-[node name="Preview" type="TextureRect" parent="HomePanel/ModePanel"]
-layout_mode = 1
-anchors_preset = 0
-offset_left = 12.0
-offset_top = 12.0
-offset_right = 268.0
-offset_bottom = 108.0
+[node name="ModesCover" type="TextureRect" parent="HomePanel/HitboxRoot"]
+layout_mode = 0
+offset_left = 324.0
+offset_top = 214.0
+offset_right = 596.0
+offset_bottom = 668.0
+mouse_filter = 2
+texture = ExtResource("4")
 expand_mode = 1
-stretch_mode = 6
 
-[node name="ModeList" type="VBoxContainer" parent="HomePanel/ModePanel"]
-layout_mode = 1
-anchors_preset = 0
-offset_left = 12.0
-offset_top = 116.0
-offset_right = 268.0
+[node name="MenuButtons" type="Control" parent="HomePanel/HitboxRoot"]
+layout_mode = 0
+offset_right = 1280.0
+offset_bottom = 720.0
+mouse_filter = 2
+
+[node name="PlayButton" type="Button" parent="HomePanel/HitboxRoot/MenuButtons"]
+layout_mode = 0
+offset_left = 40.0
+offset_top = 248.0
+offset_right = 316.0
+offset_bottom = 336.0
+theme_override_colors/font_color = Color(1, 1, 1, 0)
+theme_override_colors/font_pressed_color = Color(1, 1, 1, 0)
+theme_override_colors/font_hover_color = Color(1, 1, 1, 0)
+theme_override_colors/font_focus_color = Color(1, 1, 1, 0)
+theme_override_colors/font_disabled_color = Color(1, 1, 1, 0)
+theme_override_styles/normal = SubResource("StyleBoxEmpty_hitbox")
+theme_override_styles/pressed = SubResource("StyleBoxEmpty_hitbox")
+theme_override_styles/hover = SubResource("StyleBoxEmpty_hitbox")
+theme_override_styles/disabled = SubResource("StyleBoxEmpty_hitbox")
+theme_override_styles/focus = SubResource("StyleBoxEmpty_hitbox")
+flat = true
+tooltip_text = "Play"
+
+[node name="JoinFriendsButton" type="Button" parent="HomePanel/HitboxRoot/MenuButtons"]
+layout_mode = 0
+offset_left = 40.0
+offset_top = 344.0
+offset_right = 316.0
+offset_bottom = 416.0
+theme_override_colors/font_color = Color(1, 1, 1, 0)
+theme_override_colors/font_pressed_color = Color(1, 1, 1, 0)
+theme_override_colors/font_hover_color = Color(1, 1, 1, 0)
+theme_override_colors/font_focus_color = Color(1, 1, 1, 0)
+theme_override_colors/font_disabled_color = Color(1, 1, 1, 0)
+theme_override_styles/normal = SubResource("StyleBoxEmpty_hitbox")
+theme_override_styles/pressed = SubResource("StyleBoxEmpty_hitbox")
+theme_override_styles/hover = SubResource("StyleBoxEmpty_hitbox")
+theme_override_styles/disabled = SubResource("StyleBoxEmpty_hitbox")
+theme_override_styles/focus = SubResource("StyleBoxEmpty_hitbox")
+flat = true
+tooltip_text = "Join Friends"
+
+[node name="SettingsButton" type="Button" parent="HomePanel/HitboxRoot/MenuButtons"]
+layout_mode = 0
+offset_left = 40.0
+offset_top = 424.0
+offset_right = 316.0
+offset_bottom = 496.0
+theme_override_colors/font_color = Color(1, 1, 1, 0)
+theme_override_colors/font_pressed_color = Color(1, 1, 1, 0)
+theme_override_colors/font_hover_color = Color(1, 1, 1, 0)
+theme_override_colors/font_focus_color = Color(1, 1, 1, 0)
+theme_override_colors/font_disabled_color = Color(1, 1, 1, 0)
+theme_override_styles/normal = SubResource("StyleBoxEmpty_hitbox")
+theme_override_styles/pressed = SubResource("StyleBoxEmpty_hitbox")
+theme_override_styles/hover = SubResource("StyleBoxEmpty_hitbox")
+theme_override_styles/disabled = SubResource("StyleBoxEmpty_hitbox")
+theme_override_styles/focus = SubResource("StyleBoxEmpty_hitbox")
+flat = true
+tooltip_text = "Settings"
+
+[node name="QuitButton" type="Button" parent="HomePanel/HitboxRoot/MenuButtons"]
+layout_mode = 0
+offset_left = 40.0
+offset_top = 504.0
+offset_right = 316.0
+offset_bottom = 576.0
+theme_override_colors/font_color = Color(1, 1, 1, 0)
+theme_override_colors/font_pressed_color = Color(1, 1, 1, 0)
+theme_override_colors/font_hover_color = Color(1, 1, 1, 0)
+theme_override_colors/font_focus_color = Color(1, 1, 1, 0)
+theme_override_colors/font_disabled_color = Color(1, 1, 1, 0)
+theme_override_styles/normal = SubResource("StyleBoxEmpty_hitbox")
+theme_override_styles/pressed = SubResource("StyleBoxEmpty_hitbox")
+theme_override_styles/hover = SubResource("StyleBoxEmpty_hitbox")
+theme_override_styles/disabled = SubResource("StyleBoxEmpty_hitbox")
+theme_override_styles/focus = SubResource("StyleBoxEmpty_hitbox")
+flat = true
+tooltip_text = "Quit"
+
+[node name="GameModes" type="Control" parent="HomePanel/HitboxRoot"]
+visible = false
+layout_mode = 0
+offset_right = 1280.0
+offset_bottom = 720.0
+mouse_filter = 2
+
+[node name="ClassicButton" type="Button" parent="HomePanel/HitboxRoot/GameModes"]
+layout_mode = 0
+offset_left = 348.0
+offset_top = 336.0
+offset_right = 568.0
 offset_bottom = 400.0
-theme_override_constants/separation = 6
+theme_override_colors/font_color = Color(1, 1, 1, 0)
+theme_override_colors/font_pressed_color = Color(1, 1, 1, 0)
+theme_override_colors/font_hover_color = Color(1, 1, 1, 0)
+theme_override_colors/font_focus_color = Color(1, 1, 1, 0)
+theme_override_colors/font_disabled_color = Color(1, 1, 1, 0)
+theme_override_styles/normal = SubResource("StyleBoxEmpty_hitbox")
+theme_override_styles/pressed = SubResource("StyleBoxEmpty_hitbox")
+theme_override_styles/hover = SubResource("StyleBoxEmpty_hitbox")
+theme_override_styles/disabled = SubResource("StyleBoxEmpty_hitbox")
+theme_override_styles/focus = SubResource("StyleBoxEmpty_hitbox")
+flat = true
+tooltip_text = "Classic outdoor Host Match."
 
-[node name="ClassicButton" type="Button" parent="HomePanel/ModePanel/ModeList"]
-layout_mode = 2
-custom_minimum_size = Vector2(0, 48)
-text = "CLASSIC
-Standard survival experience."
+[node name="HardcoreButton" type="Button" parent="HomePanel/HitboxRoot/GameModes"]
+layout_mode = 0
+offset_left = 348.0
+offset_top = 408.0
+offset_right = 568.0
+offset_bottom = 460.0
+theme_override_colors/font_color = Color(1, 1, 1, 0)
+theme_override_colors/font_pressed_color = Color(1, 1, 1, 0)
+theme_override_colors/font_hover_color = Color(1, 1, 1, 0)
+theme_override_colors/font_focus_color = Color(1, 1, 1, 0)
+theme_override_colors/font_disabled_color = Color(1, 1, 1, 0)
+theme_override_styles/normal = SubResource("StyleBoxEmpty_hitbox")
+theme_override_styles/pressed = SubResource("StyleBoxEmpty_hitbox")
+theme_override_styles/hover = SubResource("StyleBoxEmpty_hitbox")
+theme_override_styles/disabled = SubResource("StyleBoxEmpty_hitbox")
+theme_override_styles/focus = SubResource("StyleBoxEmpty_hitbox")
+flat = true
+tooltip_text = "Uses the Classic outdoor match."
 
-[node name="HardcoreButton" type="Button" parent="HomePanel/ModePanel/ModeList"]
-layout_mode = 2
-custom_minimum_size = Vector2(0, 48)
-disabled = true
-text = "HARDCORE
-Permadeath and extreme difficulty."
+[node name="CustomButton" type="Button" parent="HomePanel/HitboxRoot/GameModes"]
+layout_mode = 0
+offset_left = 348.0
+offset_top = 464.0
+offset_right = 568.0
+offset_bottom = 516.0
+theme_override_colors/font_color = Color(1, 1, 1, 0)
+theme_override_colors/font_pressed_color = Color(1, 1, 1, 0)
+theme_override_colors/font_hover_color = Color(1, 1, 1, 0)
+theme_override_colors/font_focus_color = Color(1, 1, 1, 0)
+theme_override_colors/font_disabled_color = Color(1, 1, 1, 0)
+theme_override_styles/normal = SubResource("StyleBoxEmpty_hitbox")
+theme_override_styles/pressed = SubResource("StyleBoxEmpty_hitbox")
+theme_override_styles/hover = SubResource("StyleBoxEmpty_hitbox")
+theme_override_styles/disabled = SubResource("StyleBoxEmpty_hitbox")
+theme_override_styles/focus = SubResource("StyleBoxEmpty_hitbox")
+flat = true
+tooltip_text = "Uses the Classic outdoor match."
 
-[node name="CustomButton" type="Button" parent="HomePanel/ModePanel/ModeList"]
-layout_mode = 2
-custom_minimum_size = Vector2(0, 48)
-disabled = true
-text = "CUSTOM
-Modify game rules and settings."
+[node name="PracticeButton" type="Button" parent="HomePanel/HitboxRoot/GameModes"]
+layout_mode = 0
+offset_left = 348.0
+offset_top = 516.0
+offset_right = 568.0
+offset_bottom = 568.0
+theme_override_colors/font_color = Color(1, 1, 1, 0)
+theme_override_colors/font_pressed_color = Color(1, 1, 1, 0)
+theme_override_colors/font_hover_color = Color(1, 1, 1, 0)
+theme_override_colors/font_focus_color = Color(1, 1, 1, 0)
+theme_override_colors/font_disabled_color = Color(1, 1, 1, 0)
+theme_override_styles/normal = SubResource("StyleBoxEmpty_hitbox")
+theme_override_styles/pressed = SubResource("StyleBoxEmpty_hitbox")
+theme_override_styles/hover = SubResource("StyleBoxEmpty_hitbox")
+theme_override_styles/disabled = SubResource("StyleBoxEmpty_hitbox")
+theme_override_styles/focus = SubResource("StyleBoxEmpty_hitbox")
+flat = true
+tooltip_text = "Uses the Classic outdoor match."
 
-[node name="PracticeButton" type="Button" parent="HomePanel/ModePanel/ModeList"]
-layout_mode = 2
-custom_minimum_size = Vector2(0, 48)
-disabled = true
-text = "PRACTICE
-Learn the mechanics safely."
-
-[node name="FriendsLobbyButton" type="Button" parent="HomePanel/ModePanel/ModeList"]
-layout_mode = 2
-custom_minimum_size = Vector2(0, 48)
-disabled = true
-text = "FRIENDS LOBBY
-Set up a private multiplayer game."
-
-[node name="SignalAccent" type="VBoxContainer" parent="HomePanel"]
-layout_mode = 1
-anchors_preset = 1
-anchor_left = 1.0
-anchor_right = 1.0
-offset_left = -120.0
-offset_top = 16.0
-offset_right = -20.0
-offset_bottom = 80.0
-grow_horizontal = 0
-theme_override_constants/separation = 2
-
-[node name="Bars" type="TextureRect" parent="HomePanel/SignalAccent"]
-layout_mode = 2
-custom_minimum_size = Vector2(80, 40)
-expand_mode = 1
-stretch_mode = 5
-
-[node name="Label" type="Label" parent="HomePanel/SignalAccent"]
-layout_mode = 2
-theme_override_font_sizes/font_size = 11
-horizontal_alignment = 1
-text = "SIGNAL"
-
-[node name="VersionLabel" type="Label" parent="HomePanel"]
-layout_mode = 1
-anchors_preset = 2
-anchor_top = 1.0
-anchor_bottom = 1.0
-offset_left = 20.0
-offset_top = -28.0
-offset_right = 80.0
-offset_bottom = -10.0
-grow_vertical = 0
-theme_override_font_sizes/font_size = 12
-text = "v1.0.0"
+[node name="FriendsLobbyButton" type="Button" parent="HomePanel/HitboxRoot/GameModes"]
+layout_mode = 0
+offset_left = 348.0
+offset_top = 572.0
+offset_right = 568.0
+offset_bottom = 624.0
+theme_override_colors/font_color = Color(1, 1, 1, 0)
+theme_override_colors/font_pressed_color = Color(1, 1, 1, 0)
+theme_override_colors/font_hover_color = Color(1, 1, 1, 0)
+theme_override_colors/font_focus_color = Color(1, 1, 1, 0)
+theme_override_colors/font_disabled_color = Color(1, 1, 1, 0)
+theme_override_styles/normal = SubResource("StyleBoxEmpty_hitbox")
+theme_override_styles/pressed = SubResource("StyleBoxEmpty_hitbox")
+theme_override_styles/hover = SubResource("StyleBoxEmpty_hitbox")
+theme_override_styles/disabled = SubResource("StyleBoxEmpty_hitbox")
+theme_override_styles/focus = SubResource("StyleBoxEmpty_hitbox")
+flat = true
+tooltip_text = "Uses the Classic outdoor match."
 
 [node name="PlayPanel" type="Control" parent="."]
 visible = false
@@ -175,6 +247,16 @@ anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
 
+[node name="Dim" type="ColorRect" parent="PlayPanel"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+color = Color(0.03, 0.03, 0.04, 1)
+
 [node name="VBoxContainer" type="VBoxContainer" parent="PlayPanel"]
 layout_mode = 1
 anchors_preset = 8
@@ -183,9 +265,9 @@ anchor_top = 0.0
 anchor_right = 0.5
 anchor_bottom = 0.0
 offset_left = -200.0
-offset_top = 40.0
+offset_top = 72.0
 offset_right = 200.0
-offset_bottom = 320.0
+offset_bottom = 420.0
 grow_horizontal = 2
 theme_override_constants/separation = 10
 
@@ -212,207 +294,34 @@ placeholder_text = "Host IP (blank = 127.0.0.1)"
 layout_mode = 2
 text = "Join"
 
-[node name="LobbyCodeRow" type="HBoxContainer" parent="PlayPanel/VBoxContainer"]
-layout_mode = 2
-theme_override_constants/separation = 8
-
-[node name="LobbyCodeLabel" type="Label" parent="PlayPanel/VBoxContainer/LobbyCodeRow"]
-layout_mode = 2
-theme_override_colors/font_color = Color(0.55, 0.62, 0.68, 1)
-text = "Lobby code"
-
-[node name="LobbyCodeInput" type="LineEdit" parent="PlayPanel/VBoxContainer/LobbyCodeRow"]
-layout_mode = 2
-size_flags_horizontal = 3
-placeholder_text = "Lobby codes not wired yet — use direct IP above"
-editable = false
-
 [node name="StartMatchButton" type="Button" parent="PlayPanel/VBoxContainer"]
 layout_mode = 2
-text = "Start Match (host only)"
+text = "Start Match"
 
 [node name="StatusLabel" type="Label" parent="PlayPanel/VBoxContainer"]
 layout_mode = 2
 theme_override_colors/font_color = Color(0.6, 0.85, 0.95, 1)
 horizontal_alignment = 1
 autowrap_mode = 3
-text = "Host to start a lobby, or join a friend's IP."
+text = "Host a match or join a friend's IP."
 
-[node name="BackButton" type="Button" parent="PlayPanel/VBoxContainer"]
+[node name="PlayerCountLabel" type="Label" parent="PlayPanel/VBoxContainer"]
 layout_mode = 2
-text = "Back"
-
-[node name="MatchSettingsClientLabel" type="Label" parent="PlayPanel"]
-visible = false
-layout_mode = 1
-anchors_preset = 12
-anchor_top = 0.4
-anchor_right = 1.0
-anchor_bottom = 0.5
-offset_left = 40.0
-offset_right = -40.0
-grow_horizontal = 2
-theme_override_colors/font_color = Color(0.55, 0.65, 0.75, 1)
 horizontal_alignment = 1
-autowrap_mode = 3
-text = "Spawn odds are set by the host before the match starts."
+text = "Players: 0"
 
-[node name="MatchSettingsPanel" type="Panel" parent="PlayPanel"]
-visible = false
+[node name="PlayerListBox" type="VBoxContainer" parent="PlayPanel/VBoxContainer"]
+layout_mode = 2
+
+[node name="BackButton" type="Button" parent="PlayPanel"]
 layout_mode = 1
-anchors_preset = 12
-anchor_top = 0.4
-anchor_right = 1.0
-anchor_bottom = 0.66
-offset_left = 40.0
-offset_top = 0.0
-offset_right = -40.0
-offset_bottom = 0.0
-grow_horizontal = 2
-grow_vertical = 2
-
-[node name="VBoxContainer" type="VBoxContainer" parent="PlayPanel/MatchSettingsPanel"]
-layout_mode = 1
-anchors_preset = 15
-anchor_right = 1.0
-anchor_bottom = 1.0
-grow_horizontal = 2
-grow_vertical = 2
-offset_left = 12.0
-offset_top = 6.0
-offset_right = -12.0
-offset_bottom = -6.0
-theme_override_constants/separation = 2
-
-[node name="TitleLabel" type="Label" parent="PlayPanel/MatchSettingsPanel/VBoxContainer"]
-layout_mode = 2
-theme_override_font_sizes/font_size = 15
-theme_override_colors/font_color = Color(0.75, 0.9, 1, 1)
-text = "Host spawn odds"
-
-[node name="SubtitleLabel" type="Label" parent="PlayPanel/MatchSettingsPanel/VBoxContainer"]
-layout_mode = 2
-theme_override_font_sizes/font_size = 11
-theme_override_colors/font_color = Color(0.55, 0.7, 0.8, 1)
-text = "Applied when the host starts the match. Clients cannot change these."
-
-[node name="HiddenHallwayRow" type="HBoxContainer" parent="PlayPanel/MatchSettingsPanel/VBoxContainer"]
-layout_mode = 2
-
-[node name="Label" type="Label" parent="PlayPanel/MatchSettingsPanel/VBoxContainer/HiddenHallwayRow"]
-layout_mode = 2
-custom_minimum_size = Vector2(180, 0)
-text = "Hidden hallway chance"
-
-[node name="Slider" type="HSlider" parent="PlayPanel/MatchSettingsPanel/VBoxContainer/HiddenHallwayRow"]
-layout_mode = 2
-size_flags_horizontal = 3
-max_value = 1.0
-step = 0.05
-value = 0.6
-
-[node name="ValueLabel" type="Label" parent="PlayPanel/MatchSettingsPanel/VBoxContainer/HiddenHallwayRow"]
-layout_mode = 2
-custom_minimum_size = Vector2(40, 0)
-text = "60%"
-
-[node name="CodeLockRow" type="HBoxContainer" parent="PlayPanel/MatchSettingsPanel/VBoxContainer"]
-layout_mode = 2
-
-[node name="Label" type="Label" parent="PlayPanel/MatchSettingsPanel/VBoxContainer/CodeLockRow"]
-layout_mode = 2
-custom_minimum_size = Vector2(180, 0)
-text = "Code-lock puzzle chance"
-
-[node name="Slider" type="HSlider" parent="PlayPanel/MatchSettingsPanel/VBoxContainer/CodeLockRow"]
-layout_mode = 2
-size_flags_horizontal = 3
-max_value = 1.0
-step = 0.05
-value = 0.6
-
-[node name="ValueLabel" type="Label" parent="PlayPanel/MatchSettingsPanel/VBoxContainer/CodeLockRow"]
-layout_mode = 2
-custom_minimum_size = Vector2(40, 0)
-text = "60%"
-
-[node name="FlamePaperRow" type="HBoxContainer" parent="PlayPanel/MatchSettingsPanel/VBoxContainer"]
-layout_mode = 2
-
-[node name="Label" type="Label" parent="PlayPanel/MatchSettingsPanel/VBoxContainer/FlamePaperRow"]
-layout_mode = 2
-custom_minimum_size = Vector2(180, 0)
-text = "Flame-paper clue (vs book)"
-
-[node name="Slider" type="HSlider" parent="PlayPanel/MatchSettingsPanel/VBoxContainer/FlamePaperRow"]
-layout_mode = 2
-size_flags_horizontal = 3
-max_value = 1.0
-step = 0.05
-value = 0.5
-
-[node name="ValueLabel" type="Label" parent="PlayPanel/MatchSettingsPanel/VBoxContainer/FlamePaperRow"]
-layout_mode = 2
-custom_minimum_size = Vector2(40, 0)
-text = "50%"
-
-[node name="FloodValveRow" type="HBoxContainer" parent="PlayPanel/MatchSettingsPanel/VBoxContainer"]
-layout_mode = 2
-
-[node name="Label" type="Label" parent="PlayPanel/MatchSettingsPanel/VBoxContainer/FloodValveRow"]
-layout_mode = 2
-custom_minimum_size = Vector2(180, 0)
-text = "Flood valve per room"
-
-[node name="Slider" type="HSlider" parent="PlayPanel/MatchSettingsPanel/VBoxContainer/FloodValveRow"]
-layout_mode = 2
-size_flags_horizontal = 3
-max_value = 1.0
-step = 0.05
-value = 0.3
-
-[node name="ValueLabel" type="Label" parent="PlayPanel/MatchSettingsPanel/VBoxContainer/FloodValveRow"]
-layout_mode = 2
-custom_minimum_size = Vector2(40, 0)
-text = "30%"
-
-[node name="PlayerListPanel" type="Panel" parent="PlayPanel"]
-layout_mode = 1
-anchors_preset = 12
-anchor_top = 0.68
-anchor_right = 1.0
-anchor_bottom = 1.0
-offset_left = 40.0
-offset_top = 0.0
-offset_right = -40.0
-offset_bottom = -30.0
-grow_horizontal = 2
-grow_vertical = 0
-
-[node name="VBoxContainer" type="VBoxContainer" parent="PlayPanel/PlayerListPanel"]
-layout_mode = 1
-anchors_preset = 15
-anchor_right = 1.0
-anchor_bottom = 1.0
-grow_horizontal = 2
-grow_vertical = 2
-offset_left = 12.0
-offset_top = 8.0
-offset_right = -12.0
-offset_bottom = -8.0
-
-[node name="PlayerCountLabel" type="Label" parent="PlayPanel/PlayerListPanel/VBoxContainer"]
-layout_mode = 2
-theme_override_font_sizes/font_size = 16
-text = "Players connected: 0"
-
-[node name="PlayerListScroll" type="ScrollContainer" parent="PlayPanel/PlayerListPanel/VBoxContainer"]
-layout_mode = 2
-size_flags_vertical = 3
-
-[node name="PlayerListBox" type="VBoxContainer" parent="PlayPanel/PlayerListPanel/VBoxContainer/PlayerListScroll"]
-layout_mode = 2
-size_flags_horizontal = 3
+anchors_preset = 0
+offset_left = 24.0
+offset_top = 16.0
+offset_right = 184.0
+offset_bottom = 60.0
+custom_minimum_size = Vector2(160, 44)
+text = "Back"
 
 [node name="SettingsPanel" type="Control" parent="."]
 visible = false
@@ -422,6 +331,16 @@ anchor_right = 1.0
 anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
+
+[node name="Dim" type="ColorRect" parent="SettingsPanel"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+color = Color(0.03, 0.03, 0.04, 1)
 
 [node name="TitleLabel" type="Label" parent="SettingsPanel"]
 layout_mode = 1
