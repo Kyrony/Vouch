@@ -10,15 +10,15 @@ F5 / `project.godot` `run/main_scene` is `res://scenes/Main.tscn`, which
 instances `res://scenes/Lobby/Lobby.tscn`. That Lobby scene **is** the boot
 home — there is no separate Home/MainMenu scene.
 
-The live home is a **Control layout** over the original creepy
-`menu_atmosphere.png` night-yard (not the painted Leonardo hybrid plate).
-Gold `#f0c43a` / `#c9a227`, blood `#c21818` / `#7a0f0f`. No VOUCH wordmark
-and no SIGNAL cluster. Left nav is Play / Join Friends / Settings / Quit
-(active gold glow + blood diamond, hover shake). Play is selected on boot
-and opens the modes side panel. Clicking the backdrop sets nav to null.
+The live home is a **Control layout** over Kyle’s puppet-village title plate
+`menu_title_bg.png` (full-rect TextureRect, Keep Aspect Covered). A dark
+vignette + left nav shade keep Play / Join Friends / Settings / Quit and the
+mode panel readable. Gold `#f0c43a` / `#c9a227`, blood `#c21818` / `#7a0f0f`.
+No VOUCH wordmark and no SIGNAL cluster. Play is selected on boot and opens
+the modes side panel. Clicking the backdrop sets nav to null.
 
-Mode thumbnail + mansion areas are **blank placeholders** (ColorRect / empty
-TextureRect). Do not require `mansion-bg.png` or `modes/*.png`.
+Mode thumbnails stay **blank placeholders**. Do not require `mansion-bg.png`
+or `modes/*.png`. The old mansion ColorRect stand-in stays hidden.
 
 **Classic → START** is the live Host Match path (Host / Join / Start / Back).
 Other modes toast a stub. Friends is a lobby-code + JOIN stub. Settings is
