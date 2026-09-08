@@ -19,7 +19,7 @@ const MODES := {
 	"PracticeButton": Rect2(348, 516, 220, 52),
 	"FriendsLobbyButton": Rect2(348, 572, 220, 52),
 }
-const MODE_COVER := Rect2(332, 236, 248, 400)
+const MODE_COVER := Rect2(324, 214, 272, 454)
 
 
 static func covered_rect(view: Vector2, design: Vector2 = DESIGN) -> Rect2:

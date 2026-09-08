@@ -26,6 +26,8 @@ func _run() -> void:
 	print("STRETCH_MODE=%s" % (bg as TextureRect).stretch_mode)
 	print("PLATE=%s" % (bg as TextureRect).texture.resource_path)
 	print("NAVCOLUMN=%s" % str(lobby.get_node_or_null("HomePanel/NavColumn") != null))
+	print("MODES_VISIBLE=%s" % str(lobby.get_node("HomePanel/HitboxRoot/GameModes").visible))
+	print("COVER_VISIBLE=%s" % str(lobby.get_node("HomePanel/HitboxRoot/ModesCover").visible))
 	for path in [
 		"HomePanel/HitboxRoot/MenuButtons/PlayButton",
 		"HomePanel/HitboxRoot/GameModes/ClassicButton",
