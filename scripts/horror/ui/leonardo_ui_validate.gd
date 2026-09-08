@@ -19,15 +19,14 @@ static func validate_menu(lobby: Control) -> String:
 	if bg.color.r > 0.05 or bg.color.g > 0.04 or bg.color.b > 0.04:
 		return "Background is not the dark #050203 base"
 	var mansion := lobby.get_node_or_null("MansionPlaceholder")
-	if mansion == null:
-		return "MansionPlaceholder missing"
-	if not (mansion is ColorRect or mansion is TextureRect):
-		return "MansionPlaceholder must be a blank ColorRect or TextureRect"
-	if mansion is TextureRect and (mansion as TextureRect).texture != null:
-		return "MansionPlaceholder must stay a blank placeholder"
-	var mansion_tex := lobby.get_node_or_null("MansionPlaceholder/Texture") as TextureRect
-	if mansion_tex and mansion_tex.texture != null:
-		return "mansion TextureRect must not require art"
+	if mansion:
+		if mansion.visible:
+			return "MansionPlaceholder must stay hidden now that title art is the background"
+		if mansion is TextureRect and (mansion as TextureRect).texture != null:
+			return "MansionPlaceholder must stay a blank placeholder"
+		var mansion_tex := lobby.get_node_or_null("MansionPlaceholder/Texture") as TextureRect
+		if mansion_tex and mansion_tex.texture != null:
+			return "mansion TextureRect must not require art"
 	if lobby.get_node_or_null("HomePanel/HitboxRoot") != null:
 		return "hybrid plate HitboxRoot must not remain on the boot home"
 	if lobby.get_node_or_null("HomePanel/NavColumn") == null:
@@ -40,9 +39,16 @@ static func validate_menu(lobby: Control) -> String:
 		return "SIGNAL cluster must stay off the home"
 	var atmo := lobby.get_node_or_null("MenuAtmosphere")
 	if atmo == null:
-		return "MenuAtmosphere creepy background missing"
-	if atmo is TextureRect and (atmo as TextureRect).texture == null:
+		return "MenuAtmosphere title background missing"
+	if not (atmo is TextureRect):
+		return "MenuAtmosphere must be a TextureRect"
+	var atmo_tex := atmo as TextureRect
+	if atmo_tex.texture == null:
 		return "MenuAtmosphere has no texture"
+	if atmo_tex.stretch_mode != TextureRect.STRETCH_KEEP_ASPECT_COVERED:
+		return "title background must use Keep Aspect Covered"
+	if not FileAccess.file_exists("res://assets/horror/ui/menu_title_bg.png"):
+		return "menu_title_bg.png missing"
 	for path in [
 		"HomePanel/NavColumn/PlayButton",
 		"HomePanel/NavColumn/JoinFriendsButton",
@@ -130,11 +136,13 @@ static func _validate_boot_scene_file() -> String:
 	if tscn.contains("menu_leonardo_locked.png"):
 		return "Lobby.tscn still references the Leonardo plate"
 	if tscn.contains('[node name="Background" type="TextureRect"'):
-		return "Lobby.tscn boot background is still the plate TextureRect"
+		return "Lobby.tscn click-catcher Background must stay a ColorRect, not the plate"
 	if not tscn.contains('[node name="Background" type="ColorRect"'):
 		return "Lobby.tscn must ship a ColorRect named Background"
-	if not tscn.contains("menu_atmosphere.png"):
-		return "Lobby.tscn must reference the creepy menu_atmosphere background"
+	if not tscn.contains("menu_title_bg.png"):
+		return "Lobby.tscn must reference menu_title_bg.png as the title art"
+	if not tscn.contains('[node name="MenuAtmosphere" type="TextureRect"'):
+		return "Lobby.tscn must ship MenuAtmosphere as a TextureRect"
 	if tscn.contains("MatchSettingsPanel") or tscn.contains("HiddenHallwayRow"):
 		return "Lobby.tscn Host Lobby still has spawn-odds sliders"
 	if tscn.contains("mansion-bg.png") or tscn.contains("modes/"):

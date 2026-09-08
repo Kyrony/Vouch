@@ -1,11 +1,11 @@
 extends RefCounted
 class_name VouchMenuBuilder
-## Builds Kyle's React VouchMenu as Godot Controls over menu_atmosphere.
+## Builds Kyle's React VouchMenu as Godot Controls over menu_title_bg.
 ## Blank mode thumbs only — no mansion-bg.png or modes/*.png. No VOUCH / SIGNAL.
 
 const _T: GDScript = preload("res://scripts/horror/ui/vouch_menu_theme.gd")
 const _GLYPH: GDScript = preload("res://scripts/horror/ui/nav_glyph.gd")
-const ATMOSPHERE := "res://assets/horror/ui/menu_atmosphere.png"
+const TITLE_BG := "res://assets/horror/ui/menu_title_bg.png"
 
 const NAV := [
 	{"id": "play", "name": "PlayButton", "label": "PLAY", "glyph": "play"},
@@ -28,6 +28,7 @@ static func ensure(lobby: Control) -> void:
 	_strip_plate(lobby)
 	_ensure_background(lobby)
 	_ensure_atmosphere(lobby)
+	_ensure_vignette(lobby)
 	_ensure_mansion(lobby)
 	_ensure_home(lobby)
 	_ensure_host(lobby)
@@ -88,11 +89,46 @@ static func _ensure_atmosphere(lobby: Control) -> void:
 	tex.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	tex.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 	tex.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_COVERED
-	if ResourceLoader.exists(ATMOSPHERE):
-		tex.texture = load(ATMOSPHERE) as Texture2D
+	if ResourceLoader.exists(TITLE_BG):
+		tex.texture = load(TITLE_BG) as Texture2D
 	var bg := lobby.get_node_or_null("Background")
 	if bg:
 		lobby.move_child(tex, bg.get_index() + 1)
+
+
+static func _ensure_vignette(lobby: Control) -> void:
+	var dim := lobby.get_node_or_null("MenuVignette") as ColorRect
+	if dim == null:
+		dim = ColorRect.new()
+		dim.name = "MenuVignette"
+		lobby.add_child(dim)
+	dim.set_anchors_preset(Control.PRESET_FULL_RECT)
+	dim.offset_left = 0
+	dim.offset_top = 0
+	dim.offset_right = 0
+	dim.offset_bottom = 0
+	dim.grow_horizontal = Control.GROW_DIRECTION_BOTH
+	dim.grow_vertical = Control.GROW_DIRECTION_BOTH
+	dim.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	# Soft full-screen dim so gold nav / mode panel stay readable over the art.
+	dim.color = Color(0.012, 0.004, 0.01, 0.38)
+	var atmo := lobby.get_node_or_null("MenuAtmosphere")
+	if atmo:
+		lobby.move_child(dim, atmo.get_index() + 1)
+	var shade := lobby.get_node_or_null("MenuNavShade") as ColorRect
+	if shade == null:
+		shade = ColorRect.new()
+		shade.name = "MenuNavShade"
+		lobby.add_child(shade)
+	shade.set_anchors_preset(Control.PRESET_LEFT_WIDE)
+	shade.anchor_right = 0.36
+	shade.offset_left = 0
+	shade.offset_top = 0
+	shade.offset_right = 0
+	shade.offset_bottom = 0
+	shade.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	shade.color = Color(0.012, 0.004, 0.01, 0.22)
+	lobby.move_child(shade, dim.get_index() + 1)
 
 
 static func _hide_wordmark_and_signal(home: Control) -> void:
