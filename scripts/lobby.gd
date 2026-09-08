@@ -43,7 +43,7 @@ const REMAP_ACTION_LABELS: Dictionary = {
 @onready var join_button: Button = $PlayPanel/VBoxContainer/JoinRow/JoinButton
 @onready var start_match_button: Button = $PlayPanel/VBoxContainer/StartMatchButton
 @onready var status_label: Label = $PlayPanel/VBoxContainer/StatusLabel
-@onready var play_back_button: Button = $PlayPanel/VBoxContainer/BackButton
+@onready var play_back_button: Button = $PlayPanel/BackButton
 
 @onready var player_count_label: Label = $PlayPanel/PlayerListPanel/VBoxContainer/PlayerCountLabel
 @onready var player_list_box: VBoxContainer = $PlayPanel/PlayerListPanel/VBoxContainer/PlayerListScroll/PlayerListBox
@@ -110,6 +110,7 @@ func _ready() -> void:
 	_setup_settings_controls()
 	_setup_match_settings_controls()
 	_apply_ui_theme()
+	set_process_unhandled_input(true)
 
 	_show_panel(home_panel)
 	_on_roster_updated(NetworkManager.lobby_roster)
@@ -298,6 +299,10 @@ func _start_remap(action_name: String, button: Button) -> void:
 
 func _unhandled_input(event: InputEvent) -> void:
 	if _awaiting_remap_action.is_empty():
+		if event is InputEventKey and event.pressed and not event.echo and event.physical_keycode == KEY_ESCAPE:
+			if play_panel.visible or settings_panel.visible or character_panel.visible:
+				_show_panel(home_panel)
+				get_viewport().set_input_as_handled()
 		return
 
 	if event is InputEventKey and event.pressed and not event.echo:

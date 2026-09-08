@@ -126,7 +126,9 @@ static func _style_play(play: Control) -> void:
 	for child in play.get_children():
 		if child is Button:
 			_KIT.apply_button(child as Button, "normal")
-	var back := play.get_node_or_null("VBoxContainer/BackButton") as Button
+	var back := play.get_node_or_null("BackButton") as Button
+	if back == null:
+		back = play.get_node_or_null("VBoxContainer/BackButton") as Button
 	if back:
 		_KIT.apply_button(back, "normal")
 	var join := play.get_node_or_null("VBoxContainer/JoinRow/JoinButton") as Button

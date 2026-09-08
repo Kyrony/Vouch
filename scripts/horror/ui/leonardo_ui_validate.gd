@@ -30,6 +30,7 @@ static func validate_menu(lobby: Control) -> String:
 		"HomePanel/HitboxRoot/MenuButtons/QuitButton",
 		"HomePanel/HitboxRoot/GameModes/ClassicButton",
 		"PlayPanel/VBoxContainer/HostButton",
+		"PlayPanel/BackButton",
 	]:
 		if lobby.get_node_or_null(path) == null:
 			return "menu node missing: %s" % path
@@ -72,11 +73,17 @@ static func validate_menu(lobby: Control) -> String:
 		return "menu must not claim voice/SMS"
 	if not ResourceLoader.exists("res://assets/horror/ui/menu_leonardo_locked.png"):
 		return "locked menu plate missing"
-	var plate := Image.new()
-	if plate.load("res://assets/horror/ui/menu_leonardo_locked.png") != OK:
-		return "menu_leonardo_locked.png failed to load as an image"
+	var plate := load("res://assets/horror/ui/menu_leonardo_locked.png") as Texture2D
+	if plate == null:
+		return "menu_leonardo_locked.png failed to load as a texture"
 	if plate.get_width() != 1280 or plate.get_height() != 720:
 		return "menu plate must be 1280x720"
+	var png := FileAccess.open("res://assets/horror/ui/menu_leonardo_locked.png", FileAccess.READ)
+	if png == null:
+		return "menu_leonardo_locked.png unreadable"
+	var magic := png.get_buffer(8)
+	if magic != PackedByteArray([0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A]):
+		return "menu_leonardo_locked.png is not a PNG"
 	var banner_src := FileAccess.get_file_as_string("res://scripts/horror/ui/vouch_banner.gd")
 	if not banner_src.contains("BANNER_HAS_CROSSBAR := false"):
 		return "VouchBanner must keep BANNER_HAS_CROSSBAR false"
