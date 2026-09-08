@@ -26,9 +26,9 @@ const EXPECTED_PIN_COUNT: int = 11
 ## L1b playable span target (building origins, not the outer terrain).
 const NEIGHBORHOOD_SPAN_M: float = 80.0
 
-## PR #27 sealed interiors underground. Host Match is a playable graybox farm.
-const OUTDOOR_ONLY: bool = false
-const GRAYBOX_NEIGHBORHOOD: bool = true
+## Kyle redirect: Host Match is open farm terrain + roads. No building shells.
+const OUTDOOR_ONLY: bool = true
+const GRAYBOX_NEIGHBORHOOD: bool = false
 
 const HUB := Vector3(0, 0, 0)
 ## Kept so older callers compile; L1b has a road hub, not a 9 m ring.
@@ -78,6 +78,24 @@ const OUTDOOR_FAMILY_SPAWNS: Array[Vector3] = [
 ]
 const OUTDOOR_PM_SPAWN := Vector3(40.0, 0.12, 10.0)
 const OUTDOOR_SPAWN_Y_MIN: float = -0.35
+
+## L2 footprint pins — QA plate (terrain/roads/markers) is visual SoT.
+## World +X east, +Z south. East oval loop around the old PM pad.
+## CSV snake_case wins over plate camelCase. Pin 9 is omitted on the QA
+## plate — keep it at House A porch so the 11-id SoT is complete.
+const L2_WORLD_MARKERS := {
+	"pm_attic": Vector3(30.0, 0, -14.0),
+	"master_bedroom": Vector3(30.0, 0, -7.0),
+	"bunker_utility": Vector3(30.0, 0, 0.0),
+	"basement": Vector3(30.0, 0, 7.0),
+	"uncle_bedroom": Vector3(50.0, 0, -14.0),
+	"uncle_garage": Vector3(50.0, 0, -5.0),
+	"family_shed": Vector3(-50.0, 0, -40.0),
+	"storm_drain": Vector3(2.0, 0, 8.0),
+	"under_porch_crawl": Vector3(-12.0, 0, -8.0),
+	"garden_well": Vector3(14.0, 0, -2.0),
+	"car_trunk": Vector3(40.0, 0, 20.0),
+}
 
 const PM_L4_ROOMS: Array[String] = [
 	"Attic",
@@ -159,6 +177,7 @@ const L2_LONG_FORM_IDS: Array[String] = [
 	"under_porch_crawlspace",
 	"garden_well_crawlspace",
 	"car_trunk_curb",
+	"hsr_trunk",
 ]
 
 ## Eng pin numbers (CSV). Art may stamp pin 4 on both basement and under-porch —
@@ -178,21 +197,27 @@ const L2_PIN_BY_ID := {
 }
 
 ## Shared by OutdoorBuilder (meshes) and OutdoorTerrain (flatten).
+## West hub + family lanes, plus the east oval loop from the QA plate.
 const ROAD_SPANS: Array[Dictionary] = [
-	{"a": Vector2(-60.0, 0.0), "b": Vector2(58.0, 0.0), "r": 3.4},
+	{"a": Vector2(-60.0, 0.0), "b": Vector2(22.0, 0.0), "r": 3.4},
 	{"a": Vector2(0.0, -42.0), "b": Vector2(0.0, 44.0), "r": 3.0},
 	{"a": Vector2(-16.0, -14.0), "b": Vector2(16.0, -14.0), "r": 2.6},
 	{"a": Vector2(-16.0, 14.0), "b": Vector2(16.0, 14.0), "r": 2.6},
 	{"a": Vector2(-16.0, -14.0), "b": Vector2(-16.0, 14.0), "r": 2.6},
 	{"a": Vector2(16.0, -14.0), "b": Vector2(16.0, 14.0), "r": 2.6},
-	{"a": Vector2(8.0, 0.0), "b": Vector2(40.0, -6.0), "r": 3.2},
-	{"a": Vector2(40.0, -6.0), "b": Vector2(40.0, 10.0), "r": 3.0},
+	{"a": Vector2(8.0, 0.0), "b": Vector2(22.0, 0.0), "r": 3.2},
 	{"a": Vector2(-12.0, -14.0), "b": Vector2(0.0, 0.0), "r": 2.4},
 	{"a": Vector2(-38.0, -12.0), "b": Vector2(-12.0, -14.0), "r": 2.4},
-	{"a": Vector2(32.0, 20.0), "b": Vector2(40.0, 10.0), "r": 2.4},
 	{"a": Vector2(0.0, 14.0), "b": Vector2(6.0, 26.0), "r": 2.4},
 	{"a": Vector2(-12.0, -14.0), "b": Vector2(-48.0, -38.0), "r": 2.2},
-	{"a": Vector2(40.0, -6.0), "b": Vector2(56.0, -6.0), "r": 2.4},
+	{"a": Vector2(28.0, -20.0), "b": Vector2(52.0, -20.0), "r": 3.0},
+	{"a": Vector2(52.0, -20.0), "b": Vector2(58.0, -14.0), "r": 3.0},
+	{"a": Vector2(58.0, -14.0), "b": Vector2(58.0, 10.0), "r": 3.0},
+	{"a": Vector2(58.0, 10.0), "b": Vector2(52.0, 16.0), "r": 3.0},
+	{"a": Vector2(52.0, 16.0), "b": Vector2(28.0, 16.0), "r": 3.0},
+	{"a": Vector2(28.0, 16.0), "b": Vector2(22.0, 10.0), "r": 3.0},
+	{"a": Vector2(22.0, 10.0), "b": Vector2(22.0, -14.0), "r": 3.0},
+	{"a": Vector2(22.0, -14.0), "b": Vector2(28.0, -20.0), "r": 3.0},
 ]
 
 const BUILDING_PADS: Array[Dictionary] = [
@@ -230,6 +255,12 @@ static func is_forbidden_spawn_id(spawn_id: String) -> bool:
 
 static func l2_pin_number(spawn_id: String) -> int:
 	return int(L2_PIN_BY_ID.get(spawn_id, -1))
+
+
+static func l2_world_pos(spawn_id: String) -> Vector3:
+	if L2_WORLD_MARKERS.has(spawn_id):
+		return L2_WORLD_MARKERS[spawn_id]
+	return Vector3.ZERO
 
 
 static func stamp_child_pin(marker: Marker3D, spawn_id: String) -> void:

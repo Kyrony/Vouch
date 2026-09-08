@@ -71,15 +71,19 @@ func _probe_horror_match() -> String:
 		return "HorrorWorld missing"
 	var spawn_count: int = world_node.call("get_spawn_point_count")
 	if spawn_count < 4:
-		return "expected >= 4 graybox family spawns, got %d" % spawn_count
+		return "expected >= 4 outdoor family pads, got %d" % spawn_count
 	if world_node.get_node_or_null("Outdoor/Terrain") == null:
 		return "Outdoor/Terrain missing"
+	if world_node.get_node_or_null("Outdoor/Roads") == null:
+		return "Outdoor/Roads missing"
+	if world_node.get_node_or_null("L2SpawnMarkers") == null:
+		return "L2SpawnMarkers missing"
 	var pickups := world_node.get_node_or_null("Pickups")
 	if pickups == null or pickups.get_child_count() < 1:
 		return "no pickups"
-	for node_name in ["FamilyHouses", "PMMansion", "UncleHouse", "Outdoor"]:
-		if world_node.get_node_or_null(node_name) == null:
-			return "neighborhood node missing: %s" % node_name
+	for node_name in ["FamilyHouses", "PMMansion", "UncleHouse", "RadioTowers"]:
+		if world_node.get_node_or_null(node_name) != null:
+			return "forbidden shell still loaded: %s" % node_name
 	var _CHECK: GDScript = load("res://scripts/horror/world/horror_soft_go_validate.gd")
 	var menu_err: String = _CHECK.call("validate_leonardo_menu", lobby)
 	if not menu_err.is_empty():

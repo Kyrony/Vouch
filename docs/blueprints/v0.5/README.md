@@ -27,4 +27,4 @@ L2 art map labels and **duplicate art pin 4** (basement + under-porch) are not s
 
 Master sheet draws **no escape routes**. The graybox keeps a soft-gated, unmarked west-yard zone (`HorrorEscapeZone`, `soft_gated` meta). No signage.
 
-L1b graybox farm (eng): open heightfield + farm lanes + hills, playable house / uncle / PM graybox with door cuts. Host Match families spawn on house porches (walk into the house or out to the yard). PM spawns on the mansion courtyard / foyer with an open front door. L2 `spawn_id` list is unchanged. `OUTDOOR_ONLY` is off.
+L1b farm (eng): open heightfield + farm lanes / east oval loop + hills. Host Match is **terrain + roads + 11 labeled Spawn Point markers** — no house / bunker / mast meshes. Families spawn on outdoor pads; PM on the east courtyard pad. L2 `spawn_id` list is unchanged. `OUTDOOR_ONLY` is on. Pin 9 stays at the House A porch pad even when the QA plate omits it.

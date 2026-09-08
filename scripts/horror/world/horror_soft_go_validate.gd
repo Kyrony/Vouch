@@ -1,8 +1,23 @@
 extends RefCounted
 class_name HorrorSoftGoValidate
-## Shared headless checks for L2 CSV spawn_ids + v0.5 footprints + towers.
+## Shared headless checks: L2 snake_case pins on open farm terrain + roads.
 
 const _V05: GDScript = preload("res://scripts/horror/world/neighborhood_v05.gd")
+
+const FORBIDDEN_SHELLS: Array[String] = [
+	"FamilyHouses",
+	"PMMansion",
+	"UncleHouse",
+	"UncleGarage",
+	"RadioTowers",
+	"SignalPhones",
+	"FamilyShed",
+	"ParkedCar",
+	"GardenWell",
+	"StormDrain",
+	"StreetLamps",
+	"FarmDressing",
+]
 
 
 static func _child_rng() -> Node:
@@ -51,23 +66,15 @@ static func validate_world(world: Node3D) -> String:
 	var pin_err := validate_l2_pin_homes(world)
 	if not pin_err.is_empty():
 		return pin_err
-
-	var candidates: Array = world.get_tree().get_nodes_in_group("tower_candidates")
-	if candidates.size() < 8:
-		return "expected many tower candidates (>=8), got %d" % candidates.size()
-	if world.get_node_or_null("RadioTowers") == null:
-		return "RadioTowers root missing"
-	if world.get_node_or_null("SignalPhones") == null:
-		return "SignalPhones root missing"
-	var phones: Array = world.get_tree().get_nodes_in_group("signal_phones")
-	if phones.size() < 3:
-		return "expected signal phones, got %d" % phones.size()
+	var shell_err := validate_no_building_shells(world)
+	if not shell_err.is_empty():
+		return shell_err
+	var tower_err := validate_no_towers(world)
+	if not tower_err.is_empty():
+		return tower_err
 	var layout_err := validate_v05_layout(world)
 	if not layout_err.is_empty():
 		return layout_err
-	var kit_err := validate_kit_graybox(world)
-	if not kit_err.is_empty():
-		return kit_err
 	var outdoor_err := validate_outdoor_terrain(world)
 	if not outdoor_err.is_empty():
 		return outdoor_err
@@ -93,6 +100,16 @@ static func validate_l2_pin_homes(world: Node3D) -> String:
 			return "child marker %s l2_pin=%s != eng pin %d for %s" % [
 				n3.name, n3.get_meta("l2_pin", -1), want_pin, sid,
 			]
+		var label_err := _require_spawn_point_label(n3)
+		if not label_err.is_empty():
+			return label_err
+		var want: Vector3 = _V05.call("l2_world_pos", sid)
+		var xz := Vector2(n3.global_position.x, n3.global_position.z)
+		var want_xz := Vector2(want.x, want.z)
+		if xz.distance_to(want_xz) > 4.0:
+			return "child marker %s xz=%s not on L2 footprint %s" % [sid, xz, want_xz]
+		if n3.global_position.y < _V05.OUTDOOR_SPAWN_Y_MIN:
+			return "child marker %s is underground y=%.2f" % [sid, n3.global_position.y]
 		if sid == "basement":
 			basement = n3
 		elif sid == "under_porch_crawl":
@@ -101,65 +118,55 @@ static func validate_l2_pin_homes(world: Node3D) -> String:
 		return "basement marker missing"
 	if crawl == null:
 		return "under_porch_crawl marker missing"
-	if not _has_ancestor_named(basement, "Basement"):
-		return "basement (pin 4) must live in PM Basement — do not follow art pin 4 on the porch"
-	if not _has_ancestor_named(crawl, "UnderPorchCrawl"):
-		return "under_porch_crawl (pin 9) must live under House A porch — art pin 4 there is wrong"
-	if _has_ancestor_named(crawl, "Basement"):
-		return "under_porch_crawl was parented under Basement (art pin-4 collision)"
-	if basement.global_position.y > -1.5:
-		return "basement pin is not in the PM basement volume (y=%.2f)" % basement.global_position.y
-	if crawl.global_position.y < -0.5:
-		return "under_porch_crawl sank like a basement pin (y=%.2f)" % crawl.global_position.y
+	if int(basement.get_meta("l2_pin", -1)) != 4:
+		return "basement must be pin 4"
+	if int(crawl.get_meta("l2_pin", -1)) != 9:
+		return "under_porch_crawl must be pin 9 — do not collapse onto basement"
 	if basement.global_position.distance_to(crawl.global_position) < 12.0:
 		return "basement and under_porch_crawl markers collapsed — place by eng id, not art pin 4"
 	return ""
 
 
-static func _has_ancestor_named(node: Node, want: String) -> bool:
-	var walk: Node = node
-	while walk:
-		if walk.name == want:
-			return true
-		walk = walk.get_parent()
-	return false
+static func _require_spawn_point_label(marker: Node) -> String:
+	var site: Node = marker.get_parent()
+	if site == null:
+		return "spawn marker %s has no parent site" % marker.name
+	var label: Label3D = site.get_node_or_null("Label") as Label3D
+	if label == null:
+		label = marker.get_node_or_null("Label") as Label3D
+	if label == null:
+		return "spawn marker %s missing Label3D saying Spawn Point" % marker.name
+	if str(label.text) != "Spawn Point":
+		return "spawn marker %s label is '%s' — must say Spawn Point" % [marker.name, label.text]
+	if str(marker.get_meta("visible_label", "")) != "Spawn Point":
+		return "spawn marker %s missing visible_label meta" % marker.name
+	if site.get_node_or_null("Box") == null:
+		return "spawn marker %s missing visible Box" % marker.name
+	return ""
+
+
+static func validate_no_building_shells(world: Node3D) -> String:
+	for node_name in FORBIDDEN_SHELLS:
+		if world.find_child(node_name, true, false) != null:
+			return "forbidden shell still in world: %s" % node_name
+	for piece in ["HouseBody", "Bunker", "UtilityCloset", "UnderPorchCrawl", "DuctSystem"]:
+		if world.find_child(piece, true, false) != null:
+			return "forbidden kit piece still in world: %s" % piece
+	var exits: Array = world.get_tree().get_nodes_in_group("walkable_exits")
+	if not exits.is_empty():
+		return "walkable_exits still present (%d) — building shells should be gone" % exits.size()
+	return ""
+
+
+static func validate_kit_graybox(world: Node3D) -> String:
+	return validate_no_building_shells(world)
 
 
 static func validate_v05_layout(world: Node3D) -> String:
-	var mansion := world.get_node_or_null("PMMansion") as Node3D
-	if mansion == null:
-		return "PMMansion missing"
-	if mansion.global_position.x < 20.0:
-		return "PM mansion is not east/center-right on L1b (x=%.1f)" % mansion.global_position.x
-	var families := world.get_node_or_null("FamilyHouses")
-	if families == null:
-		return "FamilyHouses missing"
-	for letter in ["A", "B", "C", "D"]:
-		if families.get_node_or_null("FamilyHouse_%s" % letter) == null:
-			return "FamilyHouse_%s missing from L1b farm parcels" % letter
-	if world.get_node_or_null("UncleHouse") == null:
-		return "UncleHouse missing"
-	if world.get_node_or_null("UncleGarage") == null and world.get_node_or_null("UncleHouse/UncleGarage") == null:
-		return "Uncle garage missing"
-	for room_name in _V05.PM_L4_ROOMS:
-		if mansion.find_child(room_name, true, false) == null:
-			return "L4 PM room missing: %s" % room_name
-	var ducts: Node = mansion.find_child("DuctSystem", true, false)
-	if ducts == null:
-		return "L4 DuctSystem missing"
-	for link in _V05.PM_L4_DUCT_LINKS:
-		var want_a: String = str(link["a"])
-		var want_b: String = str(link["b"])
-		var found_link := false
-		for child in ducts.get_children():
-			if str(child.get_meta("duct_a", "")) == want_a and str(child.get_meta("duct_b", "")) == want_b:
-				found_link = true
-				break
-		if not found_link:
-			return "L4 duct link missing: %s-%s" % [want_a, want_b]
-	var roads := world.get_node_or_null("Outdoor/Roads")
-	if roads == null:
+	if world.get_node_or_null("Outdoor/Roads") == null:
 		return "Outdoor/Roads (farm lanes / curbs) missing"
+	if world.get_node_or_null("Outdoor/Fields") == null:
+		return "Outdoor/Fields (L1b footprint) missing"
 	var escape := world.get_node_or_null("Outdoor/HorrorEscapeZone")
 	if escape == null:
 		return "soft-gated HorrorEscapeZone missing"
@@ -167,62 +174,28 @@ static func validate_v05_layout(world: Node3D) -> String:
 		return "escape zone is not soft-gated"
 	if escape.get_node_or_null("Sign") != null:
 		return "escape signage present — master sheet has no escape routes"
+	if world.get_node_or_null("L2SpawnMarkers") == null:
+		return "L2SpawnMarkers root missing"
+	if not bool(_V05.OUTDOOR_ONLY):
+		return "OUTDOOR_ONLY must stay on — Host Match is terrain+roads only"
+	if bool(_V05.GRAYBOX_NEIGHBORHOOD):
+		return "GRAYBOX_NEIGHBORHOOD must stay off — no house/bunker shells"
 	var min_x := INF
 	var max_x := -INF
 	var min_z := INF
 	var max_z := -INF
-	for letter in ["A", "B", "C", "D"]:
-		var h: Node3D = families.get_node("FamilyHouse_%s" % letter)
-		min_x = minf(min_x, h.global_position.x)
-		max_x = maxf(max_x, h.global_position.x)
-		min_z = minf(min_z, h.global_position.z)
-		max_z = maxf(max_z, h.global_position.z)
-	min_x = minf(min_x, mansion.global_position.x)
-	max_x = maxf(max_x, mansion.global_position.x)
-	min_z = minf(min_z, mansion.global_position.z)
-	max_z = maxf(max_z, mansion.global_position.z)
-	var uncle: Node3D = world.get_node("UncleHouse")
-	min_x = minf(min_x, uncle.global_position.x)
-	max_x = maxf(max_x, uncle.global_position.x)
-	min_z = minf(min_z, uncle.global_position.z)
-	max_z = maxf(max_z, uncle.global_position.z)
+	for node in world.get_tree().get_nodes_in_group("child_spawn_points"):
+		if not (node is Node3D):
+			continue
+		var p: Vector3 = (node as Node3D).global_position
+		min_x = minf(min_x, p.x)
+		max_x = maxf(max_x, p.x)
+		min_z = minf(min_z, p.z)
+		max_z = maxf(max_z, p.z)
 	var span_x: float = max_x - min_x
 	var span_z: float = max_z - min_z
 	if span_x < 56.0 or span_x > 150.0 or span_z < 40.0 or span_z > 130.0:
-		return "neighborhood span %.1fx%.1f not L1b farm (~80m+)" % [span_x, span_z]
-	var min_house_d := INF
-	for i in 4:
-		var ha: Node3D = families.get_node("FamilyHouse_%s" % ["A", "B", "C", "D"][i])
-		for j in range(i + 1, 4):
-			var hb: Node3D = families.get_node("FamilyHouse_%s" % ["A", "B", "C", "D"][j])
-			min_house_d = minf(min_house_d, ha.global_position.distance_to(hb.global_position))
-	if min_house_d < 18.0:
-		return "family houses too tight (min %.1fm) — L1b wants spaced parcels" % min_house_d
-	var exits: Array = world.get_tree().get_nodes_in_group("walkable_exits")
-	if exits.size() < 6:
-		return "expected walkable door exits on graybox buildings, got %d" % exits.size()
-	if bool(_V05.OUTDOOR_ONLY):
-		return "OUTDOOR_ONLY is still on — Host Match should use the graybox farm"
-	var house_a: Node3D = families.get_node("FamilyHouse_A")
-	var house_b: Node3D = families.get_node("FamilyHouse_B")
-	var house_c: Node3D = families.get_node("FamilyHouse_C")
-	if world.has_method("get_family_spawn_transform"):
-		var fam0_xf: Transform3D = world.call("get_family_spawn_transform", 0)
-		if fam0_xf.origin.distance_to(house_a.global_position) > 16.0:
-			return "family 0 spawn is not on house A parcel"
-	if world.has_method("get_pm_spawn_transform"):
-		var pm_xf: Transform3D = world.call("get_pm_spawn_transform")
-		if pm_xf.origin.distance_to(mansion.global_position) > 22.0:
-			return "PM spawn is not at mansion approach / foyer"
-		if pm_xf.origin.z + 0.5 < mansion.global_position.z:
-			return "PM courtyard is not south of the mansion (L1 farm)"
-	if house_b.global_position.x >= house_a.global_position.x:
-		return "Family House B should sit west of House A (L1 farm)"
-	if house_c.global_position.z <= mansion.global_position.z:
-		return "Family House C should sit south of the PM approach (L1 farm)"
-	var garage: Node3D = world.get_node_or_null("UncleGarage") as Node3D
-	if garage and garage.global_position.x <= mansion.global_position.x:
-		return "Uncle garage should sit east of the PM mansion (L1 farm)"
+		return "L2 footprint span %.1fx%.1f not L1b farm (~80m+)" % [span_x, span_z]
 	return ""
 
 
@@ -261,10 +234,6 @@ static func validate_outdoor_terrain(world: Node3D) -> String:
 	var perr: String = _spawn_must_be_outdoor(pm_xf.origin, "PM")
 	if not perr.is_empty():
 		return perr
-	var bunker: Node3D = world.find_child("Bunker", true, false) as Node3D
-	if bunker != null and pm_xf.origin.distance_to(bunker.global_position) < 5.0:
-		if absf(pm_xf.origin.y - bunker.global_position.y) < 2.5:
-			return "PM spawn is inside the bunker"
 	return ""
 
 
@@ -272,77 +241,25 @@ static func _spawn_must_be_outdoor(origin: Vector3, label: String) -> String:
 	if origin.y < _V05.OUTDOOR_SPAWN_Y_MIN:
 		return "%s spawn is underground y=%.2f" % [label, origin.y]
 	if origin.y > 6.5:
-		return "%s spawn is not on walkable graybox / yard (y=%.2f)" % [label, origin.y]
+		return "%s spawn is not on walkable farm terrain (y=%.2f)" % [label, origin.y]
 	return ""
 
 
-static func validate_kit_graybox(world: Node3D) -> String:
-	var house_a: Node = world.get_node_or_null("FamilyHouses/FamilyHouse_A")
-	if house_a == null:
-		return "FamilyHouse_A missing"
-	for piece in ["Foundation", "Porch", "Stairs", "HouseBody", "UnderPorchCrawl"]:
-		if house_a.get_node_or_null(piece) == null:
-			return "FamilyHouse_A missing modular piece %s" % piece
-	var crawl: Node = house_a.get_node("UnderPorchCrawl")
-	if crawl.get_node_or_null("ChildSpawn_under_porch_crawl") == null:
-		return "under_porch_crawl marker is not inside UnderPorchCrawl"
-	if crawl.find_child("CrawlMood", true, false) == null:
-		return "under-porch crawl missing mood light"
-	var bedroom: Node = house_a.find_child("Bedroom", true, false)
-	if bedroom == null:
-		return "FamilyHouse_A missing Bedroom (kit floor plan)"
-	var mansion: Node = world.get_node_or_null("PMMansion")
-	if mansion == null:
-		return "PMMansion missing"
-	var bunker: Node = mansion.find_child("Bunker", true, false)
-	if bunker == null:
-		return "Bunker missing"
-	for piece in ["Pipes", "NeonStrips", "Fluorescent", "Workbench", "UtilityCloset"]:
-		if bunker.get_node_or_null(piece) == null:
-			return "Bunker missing kit piece %s" % piece
-	var util: Node = bunker.get_node("UtilityCloset")
-	if util.get_node_or_null("Shelves") == null:
-		return "UtilityCloset missing shelves"
-	if util.find_child("ChildSpawn_bunker_utility", true, false) == null:
-		return "bunker_utility marker missing from UtilityCloset"
-	if mansion.find_child("Basement", true, false) == null:
-		return "Basement missing"
+static func validate_no_towers(world: Node3D) -> String:
+	var candidates: Array = world.get_tree().get_nodes_in_group("tower_candidates")
+	if not candidates.is_empty():
+		return "tower candidates still in world (%d) — no masts" % candidates.size()
+	var live: Array = world.get_tree().get_nodes_in_group("active_towers")
+	if not live.is_empty():
+		return "active_towers still in world (%d)" % live.size()
+	if world.find_child("RadioTowers", true, false) != null:
+		return "RadioTowers root still present"
 	return ""
 
 
 static func validate_tower_roll(world: Node3D) -> String:
-	## James / L3: 3 active per match, 1 forced near the PM.
-	var rules := _towers()
-	if rules == null:
-		return "TowerRules autoload missing"
-	var service: float = float(rules.call("service_radius"))
-	var weak: float = float(rules.call("weak_radius"))
-	if service <= 0.0 or weak <= service:
-		return "service/weak radii invalid (service=%.1f weak=%.1f)" % [service, weak]
-	var active: Array = rules.call("server_roll", world, 42)
-	var want: int = int(rules.call("active_count"))
-	if want != 3:
-		return "L3 lock: active tower count must be 3, got %d" % want
-	if active.size() != want:
-		return "expected %d active towers, got %d (%s)" % [want, active.size(), active]
-	var live: Array = world.get_tree().get_nodes_in_group("active_towers")
-	if live.size() != want:
-		return "active_towers group size %d != %d" % [live.size(), want]
-	var forced: String = str(rules.call("get_forced_id"))
-	if forced.is_empty():
-		return "forced near-PM tower id empty"
-	var pm: Vector3 = world.call("get_pm_spawn_transform").origin
-	var forced_node: Node3D = null
-	for node in live:
-		if str(node.get_meta("tower_id", "")) == forced:
-			forced_node = node
-			break
-	if forced_node == null:
-		return "forced tower %s not in active_towers" % forced
-	var max_d: float = float(rules.call("near_pm_max"))
-	if forced_node.global_position.distance_to(pm) > max_d:
-		return "forced tower %s too far from PM (%.1f)" % [forced, forced_node.global_position.distance_to(pm)]
-	return ""
+	## Kept name for probe callers. Kyle: no masts in the live farm.
+	return validate_no_towers(world)
 
 
 static func validate_phone_hud(world: Node3D) -> String:
@@ -355,7 +272,6 @@ static func validate_phone_hud(world: Node3D) -> String:
 		return "smartphone production id mismatch"
 	var led_min: float = float(pd.LED_DRAIN_PER_SEC) * 60.0
 	var passive_min: float = float(pd.PASSIVE_DRAIN_PER_SEC) * 60.0
-	# Sheet listed ~15%/min LED and ~2%/min passive as concept — eng owns the live numbers.
 	if is_equal_approx(led_min, 15.0) or is_equal_approx(passive_min, 2.0):
 		return "phone drain locked to Leonardo sheet marketing numbers — use eng tunables"
 	if led_min <= 0.0 or passive_min < 0.0:

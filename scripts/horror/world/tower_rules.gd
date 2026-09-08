@@ -33,7 +33,7 @@ func server_roll(world: Node3D, rng_seed: int = -1) -> Array[String]:
 	reset()
 	var candidates: Array[Node3D] = _collect_candidates(world)
 	if candidates.is_empty():
-		push_error("[TowerRules] no tower candidates in world")
+		## Live farm has no mast geometry. Empty roll is expected.
 		return []
 	var pm_origin := _pm_origin(world)
 	var forced: Node3D = _nearest(candidates, pm_origin)

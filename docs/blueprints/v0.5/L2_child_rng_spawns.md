@@ -22,4 +22,4 @@ All 11 pins are **alive-only**. Pin 9 is an under-porch crawl / dirt hide — no
 | 10 | `garden_well` | GARDEN WELL / CRAWLSPACE | Garden well or crawlspace |
 | 11 | `car_trunk` | CAR TRUNK (CURB) | Parked car trunk at curb |
 
-Host RNG picks **one** pin per match. Place markers on the matching L1 / L4 rooms, not on mislabeled L2 art numbers.
+Host RNG picks **one** pin per match. Live farm places a labeled **Spawn Point** box at each eng id on the QA terrain/roads footprint. Pin 9 stays at the House A porch pad when the QA plate omits it. Do not follow mislabeled L2 art numbers.

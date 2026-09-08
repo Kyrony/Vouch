@@ -1,8 +1,9 @@
 extends Node3D
 class_name HorrorWorld
-## Procedural graybox horror neighborhood: family houses, PM mansion, uncle house, yard.
+## Host Match farm: walkable terrain + roads + labeled L2 spawn markers.
 
 const _LAYOUT: GDScript = preload("res://scripts/horror/world/neighborhood_layout.gd")
+const _TERRAIN: GDScript = preload("res://scripts/horror/environment/outdoor_terrain.gd")
 const _PICKUP_SCENE: PackedScene = preload("res://scenes/Horror/WorldPickup.tscn")
 
 var _family_spawns: Array[Marker3D] = []
@@ -21,8 +22,8 @@ func _ready() -> void:
 	var pm = built.get("pm_spawn")
 	_pm_spawn = pm if pm is Marker3D else null
 	_scatter_pickups()
-	print("[HorrorWorld] neighborhood built families=%d graybox_spawns=%d terrain=l1b_farm" % [
-		built["family_count"], _family_spawns.size(),
+	print("[HorrorWorld] farm terrain+roads built family_pads=%d l2_markers=%d" % [
+		_family_spawns.size(), get_tree().get_nodes_in_group("child_spawn_points").size(),
 	])
 
 
@@ -41,7 +42,7 @@ func server_init_match(player_count: int) -> void:
 		return
 	var seed_base := player_count + int(Time.get_ticks_usec() % 9973)
 	ChildSpawnRNG.server_roll(self, seed_base)
-	TowerRules.server_roll(self, seed_base + 17)
+	## Kyle: no masts / tower meshes in the live farm world.
 
 
 func get_family_spawn_transform(family_index: int) -> Transform3D:
@@ -96,12 +97,14 @@ func _scatter_pickups() -> void:
 	pickups.name = "Pickups"
 	add_child(pickups)
 	var defs := [
-		{"id": "medkit", "pos": Vector3(-34.0, 0.9, -12.0)},
-		{"id": "phone", "pos": Vector3(2.0, 0.5, 2.0)},
-		{"id": "bandage", "pos": Vector3(40.0, 0.5, 10.0)},
-		{"id": "battery", "pos": Vector3(-50.0, 0.5, -40.0)},
-		{"id": "crowbar", "pos": Vector3(6.0, 0.9, 24.0)},
-		{"id": "keycard", "pos": Vector3(10.0, 0.5, 6.0)},
+		{"id": "medkit", "xz": Vector2(-34.0, -12.0)},
+		{"id": "phone", "xz": Vector2(2.0, 2.0)},
+		{"id": "bandage", "xz": Vector2(40.0, 10.0)},
+		{"id": "battery", "xz": Vector2(-50.0, -40.0)},
+		{"id": "crowbar", "xz": Vector2(6.0, 24.0)},
+		{"id": "keycard", "xz": Vector2(10.0, 6.0)},
 	]
 	for d in defs:
-		_spawn_pickup_local(d["id"], d["pos"])
+		var xz: Vector2 = d["xz"]
+		var y: float = float(_TERRAIN.call("height_at", xz.x, xz.y))
+		_spawn_pickup_local(d["id"], Vector3(xz.x, maxf(y, 0.0), xz.y))

@@ -117,6 +117,9 @@ static func _pad_weight(x: float, z: float) -> float:
 	for spec in _V05.BUILDING_PADS:
 		var p: Vector2 = spec["pos"]
 		w = maxf(w, _disk_weight(Vector2(x, z), p, float(spec["r"]), 3.0))
+	for spawn_id in _V05.SPAWN_IDS:
+		var pin: Vector3 = _V05.call("l2_world_pos", spawn_id)
+		w = maxf(w, _disk_weight(Vector2(x, z), Vector2(pin.x, pin.z), 3.5, 2.0))
 	return clampf(w, 0.0, 1.0)
 
 
