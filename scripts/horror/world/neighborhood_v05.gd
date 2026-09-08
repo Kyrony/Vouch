@@ -1,11 +1,10 @@
 extends RefCounted
 class_name NeighborhoodV05
-## Leonardo L1b — BASE ARCHITECTURE (FARM COUNTRY).
-## World: +X east, +Z south. Origin = central farm-road crossing.
+## Kyle greybox SoT — layout `kyle_greybox_layout` + height `kyle_T0_height_97x81`.
+## World: +X east, +Z south. Origin = center of the 144×120 heightfield.
 ##
 ## L2 eng short ids, L3 tower rules, and L4 PM room names stay SoT.
-## Layout / spacing follows L1b (open parcels, ~80 m scale), not the old
-## tight cul-de-sac ring.
+## Family A–D lower west, Uncle+garage north of the hilltop mansion, east cliff.
 
 ## Leonardo L2 SoT — eng short ids (docs/blueprints/v0.5/L2_child_rng_spawns.csv).
 const SPAWN_IDS: Array[String] = [
@@ -45,60 +44,58 @@ const UNCLE_HOUSE_SIZE := Vector3(10.0, 2.8, 8.0)
 const UNCLE_GARAGE_SIZE := Vector3(6.4, 2.7, 7.2)
 const MANSION_SIZE := Vector3(20.0, 3.2, 16.0)
 
-## L1 farm parcels — hub between A/B/D, long drive east to PM, courtyard south.
+## Kyle greybox pads — Family A–D lower west, Uncle+garage north of mansion.
 const FAMILY_HOUSES: Array[Dictionary] = [
-	{"letter": "A", "index": 0, "origin": Vector3(-12.0, 0, -14.0), "yaw": 0.45},
-	{"letter": "B", "index": 1, "origin": Vector3(-38.0, 0, -12.0), "yaw": -PI / 2.0},
-	{"letter": "C", "index": 2, "origin": Vector3(32.0, 0, 20.0), "yaw": PI},
-	{"letter": "D", "index": 3, "origin": Vector3(6.0, 0, 30.0), "yaw": PI},
+	{"letter": "A", "index": 0, "origin": Vector3(-38.0, 0, -18.0), "yaw": 0.0},
+	{"letter": "B", "index": 1, "origin": Vector3(-38.0, 0, 2.0), "yaw": 0.0},
+	{"letter": "C", "index": 2, "origin": Vector3(-38.0, 0, 24.0), "yaw": 0.0},
+	{"letter": "D", "index": 3, "origin": Vector3(-14.0, 0, 24.0), "yaw": 0.0},
 ]
 
-const UNCLE_ORIGIN := Vector3(10.0, 0, 6.0)
-const UNCLE_YAW: float = -PI / 2.0
+const UNCLE_ORIGIN := Vector3(16.0, 0, -28.0)
+const UNCLE_YAW: float = 0.0
 
-## L1: garage sits east of the PM mansion, not glued to the uncle house.
-const UNCLE_GARAGE_ORIGIN := Vector3(56.0, 0, -6.0)
-const UNCLE_GARAGE_YAW: float = PI / 2.0
+## Garage sits east of Uncle, still north of the hilltop mansion.
+const UNCLE_GARAGE_ORIGIN := Vector3(28.0, 0, -28.0)
+const UNCLE_GARAGE_YAW: float = 0.0
 
-const MANSION_ORIGIN := Vector3(40.0, 0, -6.0)
+const MANSION_ORIGIN := Vector3(22.0, 0, -6.0)
 const MANSION_YAW: float = 0.0
 
-const FAMILY_SHED_POS := Vector3(-50.0, 0, -40.0)
-const STORM_DRAIN_POS := Vector3(2.2, 0, 4.0)
-const GARDEN_WELL_POS := Vector3(-22.0, 0, -28.0)
-const CAR_TRUNK_POS := Vector3(18.0, 0, 3.4)
-const SOFT_ESCAPE_POS := Vector3(-62.0, 0.5, 12.0)
-const MANSION_COURTYARD := Vector3(40.0, 0.12, 10.0)
+const FAMILY_SHED_POS := Vector3(-52.0, 0, -36.0)
+const STORM_DRAIN_POS := Vector3(-40.0, 0, -8.0)
+const GARDEN_WELL_POS := Vector3(4.0, 0, -8.0)
+const CAR_TRUNK_POS := Vector3(0.0, 0, 20.0)
+const SOFT_ESCAPE_POS := Vector3(-58.0, 0.5, 12.0)
+const MANSION_COURTYARD := Vector3(22.0, 0.12, 1.0)
 
-## Fallback Host Match pads (builders write the live porch / courtyard markers).
+## Fallback Host Match pads (authored scene writes the live markers).
 const OUTDOOR_FAMILY_SPAWNS: Array[Vector3] = [
-	Vector3(-12.0, 0.12, -7.0),
-	Vector3(-30.0, 0.12, -12.0),
-	Vector3(32.0, 0.12, 13.0),
-	Vector3(6.0, 0.12, 22.0),
+	Vector3(-38.0, 0.12, -10.5),
+	Vector3(-30.5, 0.12, 2.0),
+	Vector3(-38.0, 0.12, 16.5),
+	Vector3(-14.0, 0.12, 16.5),
 ]
-const OUTDOOR_PM_SPAWN := Vector3(40.0, 0.12, 10.0)
+const OUTDOOR_PM_SPAWN := Vector3(22.0, 0.12, 1.0)
 const OUTDOOR_SPAWN_Y_MIN: float = -0.35
 
-## L2 footprint pins — QA v2 plate (terrain/roads/markers) is visual SoT.
-## World +X east, +Z south. East oval loop + west shed loop.
-## CSV snake_case wins over plate typos (master_become, unclebecome, …).
-## Art may stamp a second "1" in the north clearing — only one pm_attic.
+## L2 footprint pins — Kyle greybox pads (terrain/roads/markers) are visual SoT.
+## World +X east, +Z south. CSV snake_case wins over plate typos.
 const L2_WORLD_MARKERS := {
-	"pm_attic": Vector3(30.0, 0, -14.0),
-	"master_bedroom": Vector3(30.0, 0, -7.0),
-	"bunker_utility": Vector3(30.0, 0, 0.0),
-	"basement": Vector3(28.0, 0, 7.0),
-	"uncle_bedroom": Vector3(50.0, 0, -12.0),
-	"uncle_garage": Vector3(52.0, 0, -2.0),
-	"family_shed": Vector3(-50.0, 0, -40.0),
-	"storm_drain": Vector3(-40.0, 0, -18.0),
-	"under_porch_crawl": Vector3(50.0, 0, 16.0),
-	"garden_well": Vector3(16.0, 0, -6.0),
-	"car_trunk": Vector3(0.0, 0, 16.0),
+	"pm_attic": Vector3(20.0, 0, -16.0),
+	"master_bedroom": Vector3(20.0, 0, -8.0),
+	"bunker_utility": Vector3(20.0, 0, -1.0),
+	"basement": Vector3(16.0, 0, 5.0),
+	"uncle_bedroom": Vector3(16.0, 0, -28.0),
+	"uncle_garage": Vector3(28.0, 0, -26.0),
+	"family_shed": Vector3(-52.0, 0, -36.0),
+	"storm_drain": Vector3(-40.0, 0, -8.0),
+	"under_porch_crawl": Vector3(42.0, 0, 18.0),
+	"garden_well": Vector3(4.0, 0, -8.0),
+	"car_trunk": Vector3(0.0, 0, 20.0),
 }
 
-const SHED_LOOP := Vector2(-50.0, -40.0)
+const SHED_LOOP := Vector2(-52.0, -36.0)
 const SHED_LOOP_RADIUS: float = 4.8
 
 const PM_L4_ROOMS: Array[String] = [
@@ -118,28 +115,28 @@ const PM_L4_ROOMS: Array[String] = [
 ]
 
 const TOWER_CANDIDATES: Array[Dictionary] = [
-	{"id": "pm_gate", "pos": Vector3(38.0, 0, 8.0)},
-	{"id": "pm_east", "pos": Vector3(54.0, 0, -6.0)},
-	{"id": "pm_north", "pos": Vector3(40.0, 0, -20.0)},
-	{"id": "pm_south", "pos": Vector3(40.0, 0, 14.0)},
+	{"id": "pm_gate", "pos": Vector3(22.0, 0, 1.0)},
+	{"id": "pm_east", "pos": Vector3(50.0, 0, -6.0)},
+	{"id": "pm_north", "pos": Vector3(22.0, 0, -22.0)},
+	{"id": "pm_south", "pos": Vector3(22.0, 0, 16.0)},
 	{"id": "hub", "pos": Vector3(0, 0, 0)},
-	{"id": "house_a", "pos": Vector3(-10.0, 0, -10.0)},
-	{"id": "house_b", "pos": Vector3(-34.0, 0, -12.0)},
-	{"id": "house_c", "pos": Vector3(30.0, 0, 16.0)},
-	{"id": "house_d", "pos": Vector3(8.0, 0, 26.0)},
-	{"id": "uncle_yard", "pos": Vector3(8.0, 0, 6.0)},
-	{"id": "shed_hill", "pos": Vector3(-46.0, 0, -36.0)},
-	{"id": "garden", "pos": Vector3(-20.0, 0, -26.0)},
-	{"id": "field_west", "pos": Vector3(-36.0, 0, 18.0)},
-	{"id": "field_nw", "pos": Vector3(-28.0, 0, -36.0)},
-	{"id": "lane_north", "pos": Vector3(0.0, 0, -22.0)},
+	{"id": "house_a", "pos": Vector3(-38.0, 0, -18.0)},
+	{"id": "house_b", "pos": Vector3(-38.0, 0, 2.0)},
+	{"id": "house_c", "pos": Vector3(-38.0, 0, 24.0)},
+	{"id": "house_d", "pos": Vector3(-14.0, 0, 24.0)},
+	{"id": "uncle_yard", "pos": Vector3(16.0, 0, -28.0)},
+	{"id": "shed_hill", "pos": Vector3(-52.0, 0, -36.0)},
+	{"id": "garden", "pos": Vector3(4.0, 0, -8.0)},
+	{"id": "field_west", "pos": Vector3(-38.0, 0, 36.0)},
+	{"id": "field_nw", "pos": Vector3(-50.0, 0, -18.0)},
+	{"id": "lane_north", "pos": Vector3(8.0, 0, -28.0)},
 ]
 
 const PHONE_SPOTS: Array[Dictionary] = [
-	{"id": "house_a_porch", "pos": Vector3(-10.4, 0.2, -8.2)},
-	{"id": "house_b_porch", "pos": Vector3(-32.0, 0.2, -12.0)},
-	{"id": "uncle_phone", "pos": Vector3(14.0, 0.2, 6.0)},
-	{"id": "mansion_gate_phone", "pos": Vector3(38.0, 0.2, 8.5)},
+	{"id": "house_a_porch", "pos": Vector3(-38.0, 0.2, -10.5)},
+	{"id": "house_b_porch", "pos": Vector3(-30.5, 0.2, 2.0)},
+	{"id": "uncle_phone", "pos": Vector3(16.0, 0.2, -24.0)},
+	{"id": "mansion_gate_phone", "pos": Vector3(22.0, 0.2, 1.0)},
 ]
 
 ## L4 duct graph (art connections). Names match PM_L4_ROOMS.
@@ -204,39 +201,32 @@ const L2_PIN_BY_ID := {
 }
 
 ## Authored road spans baked into HorrorWorld.tscn (data SoT only).
-## West hub + family lanes, plus the east oval loop from the QA plate.
+## Kyle connectors: west family run, uncle north of mansion, south-then-east to cliff.
 const ROAD_SPANS: Array[Dictionary] = [
-	{"a": Vector2(-60.0, 0.0), "b": Vector2(22.0, 0.0), "r": 3.4},
-	{"a": Vector2(0.0, -42.0), "b": Vector2(0.0, 44.0), "r": 3.0},
-	{"a": Vector2(-16.0, -14.0), "b": Vector2(16.0, -14.0), "r": 2.6},
-	{"a": Vector2(-16.0, 14.0), "b": Vector2(16.0, 14.0), "r": 2.6},
-	{"a": Vector2(-16.0, -14.0), "b": Vector2(-16.0, 14.0), "r": 2.6},
-	{"a": Vector2(16.0, -14.0), "b": Vector2(16.0, 14.0), "r": 2.6},
-	{"a": Vector2(8.0, 0.0), "b": Vector2(22.0, 0.0), "r": 3.2},
-	{"a": Vector2(-12.0, -14.0), "b": Vector2(0.0, 0.0), "r": 2.4},
-	{"a": Vector2(-38.0, -12.0), "b": Vector2(-12.0, -14.0), "r": 2.4},
-	{"a": Vector2(0.0, 14.0), "b": Vector2(6.0, 26.0), "r": 2.4},
-	{"a": Vector2(-12.0, -14.0), "b": Vector2(-48.0, -38.0), "r": 2.2},
-	{"a": Vector2(28.0, -20.0), "b": Vector2(52.0, -20.0), "r": 3.0},
-	{"a": Vector2(52.0, -20.0), "b": Vector2(58.0, -14.0), "r": 3.0},
-	{"a": Vector2(58.0, -14.0), "b": Vector2(58.0, 10.0), "r": 3.0},
-	{"a": Vector2(58.0, 10.0), "b": Vector2(52.0, 16.0), "r": 3.0},
-	{"a": Vector2(52.0, 16.0), "b": Vector2(28.0, 16.0), "r": 3.0},
-	{"a": Vector2(28.0, 16.0), "b": Vector2(22.0, 10.0), "r": 3.0},
-	{"a": Vector2(22.0, 10.0), "b": Vector2(22.0, -14.0), "r": 3.0},
-	{"a": Vector2(22.0, -14.0), "b": Vector2(28.0, -20.0), "r": 3.0},
+	{"a": Vector2(-60.0, -18.0), "b": Vector2(-30.0, -18.0), "r": 2.6},
+	{"a": Vector2(-38.0, -18.0), "b": Vector2(-38.0, 24.0), "r": 2.4},
+	{"a": Vector2(-38.0, 24.0), "b": Vector2(-8.0, 24.0), "r": 2.4},
+	{"a": Vector2(-14.0, 24.0), "b": Vector2(8.0, 6.0), "r": 2.5},
+	{"a": Vector2(8.0, 6.0), "b": Vector2(22.0, -6.0), "r": 2.6},
+	{"a": Vector2(-38.0, -18.0), "b": Vector2(16.0, -28.0), "r": 2.4},
+	{"a": Vector2(16.0, -28.0), "b": Vector2(30.0, -28.0), "r": 2.3},
+	{"a": Vector2(22.0, -6.0), "b": Vector2(22.0, -28.0), "r": 2.3},
+	{"a": Vector2(22.0, -6.0), "b": Vector2(50.0, -6.0), "r": 2.6},
+	{"a": Vector2(22.0, -6.0), "b": Vector2(22.0, 22.0), "r": 2.5},
+	{"a": Vector2(22.0, 22.0), "b": Vector2(50.0, 22.0), "r": 2.6},
+	{"a": Vector2(8.0, 6.0), "b": Vector2(-4.0, 24.0), "r": 2.3},
 ]
 
 const BUILDING_PADS: Array[Dictionary] = [
-	{"pos": Vector2(-12.0, -14.0), "r": 11.0},
-	{"pos": Vector2(-38.0, -12.0), "r": 11.0},
-	{"pos": Vector2(32.0, 20.0), "r": 11.0},
-	{"pos": Vector2(6.0, 30.0), "r": 11.0},
-	{"pos": Vector2(10.0, 6.0), "r": 9.0},
-	{"pos": Vector2(40.0, -6.0), "r": 14.0},
-	{"pos": Vector2(56.0, -6.0), "r": 6.0},
-	{"pos": Vector2(-50.0, -40.0), "r": 4.5},
-	{"pos": Vector2(40.0, 10.0), "r": 8.0},
+	{"pos": Vector2(-38.0, -18.0), "r": 11.0},
+	{"pos": Vector2(-38.0, 2.0), "r": 11.0},
+	{"pos": Vector2(-38.0, 24.0), "r": 11.0},
+	{"pos": Vector2(-14.0, 24.0), "r": 11.0},
+	{"pos": Vector2(16.0, -28.0), "r": 9.0},
+	{"pos": Vector2(28.0, -28.0), "r": 6.0},
+	{"pos": Vector2(22.0, -6.0), "r": 14.0},
+	{"pos": Vector2(-52.0, -36.0), "r": 4.5},
+	{"pos": Vector2(22.0, 1.0), "r": 8.0},
 ]
 
 

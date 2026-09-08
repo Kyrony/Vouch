@@ -27,4 +27,4 @@ L2 art map labels and **duplicate art pin 4** (basement + under-porch) are not s
 
 Master sheet draws **no escape routes**. The graybox keeps a soft-gated, unmarked west-yard zone (`HorrorEscapeZone`, `soft_gated` meta). No signage.
 
-L1b farm (eng): open heightfield + farm lanes / east oval loop / west shed loop + hills. Host Match is **terrain + roads + 11 labeled Spawn Point markers** — no house / bunker / mast meshes. Families spawn on outdoor pads; PM on the east courtyard pad. L2 `spawn_id` list is unchanged. `OUTDOOR_ONLY` is on. QA v2 places pin 9 `under_porch_crawl` on the SE road bend.
+Kyle greybox farm (eng): open 97×81 heightfield + connecting roads + hills + east cliff. Host Match is **terrain + roads + greybox pads + 11 labeled Spawn Point markers** — no house / bunker / mast meshes. Families spawn on west outdoor pads; PM on the hilltop courtyard. L2 `spawn_id` list is unchanged. `OUTDOOR_ONLY` is on. Pin 9 `under_porch_crawl` is on the SE road toward the cliff.

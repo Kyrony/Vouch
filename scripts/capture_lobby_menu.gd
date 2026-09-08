@@ -26,10 +26,14 @@ func _run() -> void:
 	print("BACKGROUND_COLOR=%s" % (bg as ColorRect).color)
 	print("NAVCOLUMN=%s" % str(lobby.get_node_or_null("HomePanel/NavColumn") != null))
 	print("ATMOSPHERE=%s" % str(lobby.get_node_or_null("MenuAtmosphere") != null))
+	print("TITLE_BG=%s" % str(FileAccess.file_exists("res://assets/horror/ui/menu_title_bg.png")))
 	print("BANNER_VISIBLE=%s" % str(lobby.get_node_or_null("HomePanel/Banner") != null and lobby.get_node("HomePanel/Banner").visible))
 	print("SIGNAL_VISIBLE=%s" % str(lobby.get_node_or_null("HomePanel/SignalCluster") != null and lobby.get_node("HomePanel/SignalCluster").visible))
 	print("PLAY_OPEN=%s" % str(lobby.get_node("HomePanel/SidePanel/PlayContent").visible))
-	print("MANSION_BLANK=%s" % str(lobby.get_node("MansionPlaceholder/Texture").texture == null))
+	var mansion_tex := lobby.get_node_or_null("MansionPlaceholder/Texture") as TextureRect
+	var mansion := lobby.get_node_or_null("MansionPlaceholder") as Control
+	print("MANSION_HIDDEN=%s" % str(mansion == null or not mansion.visible))
+	print("MANSION_BLANK=%s" % str(mansion_tex == null or mansion_tex.texture == null))
 	print("THUMB_BLANK=%s" % str(lobby.get_node("HomePanel/SidePanel/PlayContent/ModeThumb/Texture").texture == null))
 	for path in [
 		"HomePanel/NavColumn/PlayButton",

@@ -1,11 +1,11 @@
 extends RefCounted
 class_name VouchMenuBuilder
-## Builds Kyle's React VouchMenu as Godot Controls over menu_atmosphere.
+## Builds Kyle's React VouchMenu as Godot Controls over menu_title_bg.
 ## Blank mode thumbs only — no mansion-bg.png or modes/*.png. No VOUCH / SIGNAL.
 
 const _T: GDScript = preload("res://scripts/horror/ui/vouch_menu_theme.gd")
 const _GLYPH: GDScript = preload("res://scripts/horror/ui/nav_glyph.gd")
-const ATMOSPHERE := "res://assets/horror/ui/menu_atmosphere.png"
+const TITLE_BG := "res://assets/horror/ui/menu_title_bg.png"
 
 const NAV := [
 	{"id": "play", "name": "PlayButton", "label": "PLAY", "glyph": "play"},
@@ -28,6 +28,7 @@ static func ensure(lobby: Control) -> void:
 	_strip_plate(lobby)
 	_ensure_background(lobby)
 	_ensure_atmosphere(lobby)
+	_ensure_vignette(lobby)
 	_ensure_mansion(lobby)
 	_ensure_home(lobby)
 	_ensure_host(lobby)
@@ -88,11 +89,46 @@ static func _ensure_atmosphere(lobby: Control) -> void:
 	tex.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	tex.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 	tex.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_COVERED
-	if ResourceLoader.exists(ATMOSPHERE):
-		tex.texture = load(ATMOSPHERE) as Texture2D
+	if ResourceLoader.exists(TITLE_BG):
+		tex.texture = load(TITLE_BG) as Texture2D
 	var bg := lobby.get_node_or_null("Background")
 	if bg:
 		lobby.move_child(tex, bg.get_index() + 1)
+
+
+static func _ensure_vignette(lobby: Control) -> void:
+	var dim := lobby.get_node_or_null("MenuVignette") as ColorRect
+	if dim == null:
+		dim = ColorRect.new()
+		dim.name = "MenuVignette"
+		lobby.add_child(dim)
+	dim.set_anchors_preset(Control.PRESET_FULL_RECT)
+	dim.offset_left = 0
+	dim.offset_top = 0
+	dim.offset_right = 0
+	dim.offset_bottom = 0
+	dim.grow_horizontal = Control.GROW_DIRECTION_BOTH
+	dim.grow_vertical = Control.GROW_DIRECTION_BOTH
+	dim.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	# Soft full-screen dim so gold nav / mode panel stay readable over the art.
+	dim.color = Color(0.012, 0.004, 0.01, 0.38)
+	var atmo := lobby.get_node_or_null("MenuAtmosphere")
+	if atmo:
+		lobby.move_child(dim, atmo.get_index() + 1)
+	var shade := lobby.get_node_or_null("MenuNavShade") as ColorRect
+	if shade == null:
+		shade = ColorRect.new()
+		shade.name = "MenuNavShade"
+		lobby.add_child(shade)
+	shade.set_anchors_preset(Control.PRESET_LEFT_WIDE)
+	shade.anchor_right = 0.36
+	shade.offset_left = 0
+	shade.offset_top = 0
+	shade.offset_right = 0
+	shade.offset_bottom = 0
+	shade.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	shade.color = Color(0.012, 0.004, 0.01, 0.22)
+	lobby.move_child(shade, dim.get_index() + 1)
 
 
 static func _hide_wordmark_and_signal(home: Control) -> void:
@@ -213,7 +249,7 @@ static func _ensure_side(home: Control) -> void:
 	side.set_anchors_preset(Control.PRESET_LEFT_WIDE)
 	side.offset_left = 348
 	side.offset_top = 36
-	side.offset_right = 778
+	side.offset_right = 860
 	side.offset_bottom = -48
 	side.mouse_filter = Control.MOUSE_FILTER_STOP
 	side.add_theme_stylebox_override("panel", _T.box(_T.GOLD, _T.PANEL, 1, 2, true))
@@ -375,80 +411,9 @@ static func _ensure_settings_content(side: Control) -> void:
 		settings.name = "SettingsContent"
 		side.add_child(settings)
 	settings.visible = false
-	settings.set_anchors_preset(Control.PRESET_FULL_RECT)
-	settings.offset_left = 18
-	settings.offset_top = 18
-	settings.offset_right = -18
-	settings.offset_bottom = -18
-	var heading := settings.get_node_or_null("Heading") as Label
-	if heading == null:
-		heading = Label.new()
-		heading.name = "Heading"
-		settings.add_child(heading)
-	heading.text = "SETTINGS"
-	heading.position = Vector2(0, 0)
-	heading.size = Vector2(380, 28)
-	_T.apply_label(heading, "ui")
-	_ensure_volume_row(settings, "MasterVolumeRow", "MASTER VOLUME", 44)
-	_ensure_volume_row(settings, "SfxVolumeRow", "SFX VOLUME", 110)
-	var full_row := settings.get_node_or_null("FullscreenRow") as HBoxContainer
-	if full_row == null:
-		full_row = HBoxContainer.new()
-		full_row.name = "FullscreenRow"
-		settings.add_child(full_row)
-	full_row.position = Vector2(0, 176)
-	full_row.size = Vector2(380, 36)
-	var full_label := full_row.get_node_or_null("Label") as Label
-	if full_label == null:
-		full_label = Label.new()
-		full_label.name = "Label"
-		full_row.add_child(full_label)
-	full_label.text = "FULLSCREEN"
-	full_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	_T.apply_label(full_label, "ui")
-	var toggle := full_row.get_node_or_null("FullscreenToggle") as CheckButton
-	if toggle == null:
-		toggle = CheckButton.new()
-		toggle.name = "FullscreenToggle"
-		full_row.add_child(toggle)
-	var save := settings.get_node_or_null("SaveButton") as Button
-	if save == null:
-		save = Button.new()
-		save.name = "SaveButton"
-		settings.add_child(save)
-	save.text = "SAVE"
-	save.position = Vector2(0, 230)
-	save.size = Vector2(380, 44)
-	_T.apply_action_button(save, "gold")
-
-
-static func _ensure_volume_row(settings: Control, node_name: String, caption: String, y: float) -> void:
-	var row := settings.get_node_or_null(node_name) as VBoxContainer
-	if row == null:
-		row = VBoxContainer.new()
-		row.name = node_name
-		settings.add_child(row)
-	row.position = Vector2(0, y)
-	row.size = Vector2(380, 56)
-	row.add_theme_constant_override("separation", 4)
-	var label := row.get_node_or_null("Label") as Label
-	if label == null:
-		label = Label.new()
-		label.name = "Label"
-		row.add_child(label)
-	label.text = caption
-	_T.apply_label(label, "ui")
-	label.add_theme_font_size_override("font_size", 13)
-	var slider := row.get_node_or_null("Slider") as HSlider
-	if slider == null:
-		slider = HSlider.new()
-		slider.name = "Slider"
-		row.add_child(slider)
-	slider.min_value = 0.0
-	slider.max_value = 1.0
-	slider.step = 0.05
-	slider.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	_T.apply_slider(slider)
+	var box: GDScript = load("res://scripts/horror/ui/settings_sidebox.gd")
+	if box:
+		box.call("ensure", settings)
 
 
 static func _ensure_toast(home: Control) -> void:

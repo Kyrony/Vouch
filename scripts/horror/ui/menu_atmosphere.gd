@@ -15,7 +15,9 @@ func _ready() -> void:
 	offset_top = 0
 	offset_right = 0
 	offset_bottom = 0
-	_tex = _KIT.texture("menu_atmosphere")
+	_tex = _KIT.texture("menu_title_bg")
+	if _tex == null:
+		_tex = _KIT.texture("menu_atmosphere")
 	queue_redraw()
 
 

@@ -18,6 +18,7 @@ extends Node
 signal match_started
 signal player_escaped(peer_id: int, faction_id: String)
 signal player_eliminated(peer_id: int)
+signal return_to_lobby_requested
 
 enum Phase { LOBBY, IN_MATCH, MATCH_OVER }
 
@@ -64,6 +65,19 @@ var local_player_node: Node3D = null
 ## EscapeSystem (server-side) can validate the same thing without an
 ## extra registry. See BrokenPipe.gd.
 var room_water_levels: Dictionary = {}
+
+
+## Always restore a usable cursor + unpause when leaving gameplay.
+func restore_menu_input() -> void:
+	Input.mouse_mode = Input.MOUSE_MODE_VISIBLE
+	var tree := get_tree()
+	if tree:
+		tree.paused = false
+
+
+func request_return_to_lobby() -> void:
+	restore_menu_input()
+	return_to_lobby_requested.emit()
 
 
 func reset_for_new_match() -> void:

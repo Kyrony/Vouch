@@ -69,6 +69,7 @@ const _TEST_PROJECTILE_SCRIPT: Script = preload("res://scripts/interactables/tes
 var _gravity: float = ProjectSettings.get_setting("physics/3d/default_gravity")
 var _active_modal: Modal = Modal.NONE
 var _eliminated: bool = false
+var _spectating: bool = false
 var _keypad_room_index: int = -1
 var _keypad_digits: String = ""
 var _renaming_line_id: String = ""
@@ -172,6 +173,7 @@ func _ready() -> void:
 			PlayerEffects.local_meters_changed.connect(_on_local_meters_changed)
 			PhoneDevice.local_phone_state.connect(_on_local_phone_state)
 		_pause_menu = get_node_or_null("/root/Main/PauseMenu")
+		_wire_lose_overlay()
 	else:
 		camera.current = false
 		hud.visible = false
@@ -180,7 +182,10 @@ func _ready() -> void:
 
 
 func _unhandled_input(event: InputEvent) -> void:
-	if not is_multiplayer_authority() or _eliminated:
+	if not is_multiplayer_authority():
+		return
+	if _eliminated:
+		_handle_eliminated_input(event)
 		return
 
 	if event.is_action_pressed("ui_cancel"):
@@ -1057,7 +1062,10 @@ func apply_eliminated_visual() -> void:
 	if _eliminated:
 		return
 	_eliminated = true
-	visible = false
+	_spectating = false
+	var mesh := get_node_or_null("MeshInstance3D")
+	if mesh:
+		mesh.visible = false
 	for child in get_children():
 		if child is CollisionShape3D:
 			child.disabled = true
@@ -1068,7 +1076,113 @@ func apply_eliminated_visual() -> void:
 		keypad_panel.visible = false
 		_set_interact_prompt(false)
 		destroy_progress_bar.visible = false
-		eliminated_overlay.visible = true
+		if is_instance_valid(_pause_menu) and _pause_menu.visible:
+			if _pause_menu.has_method("dismiss_for_exit"):
+				_pause_menu.dismiss_for_exit()
+			else:
+				_pause_menu.visible = false
+				get_tree().paused = false
+		_show_lose_overlay()
+
+
+func _wire_lose_overlay() -> void:
+	if eliminated_overlay == null:
+		return
+	_ensure_lose_buttons()
+	var exit_btn := eliminated_overlay.get_node_or_null("ButtonRow/ExitButton") as Button
+	var spec_btn := eliminated_overlay.get_node_or_null("ButtonRow/SpectateButton") as Button
+	if exit_btn and not exit_btn.pressed.is_connected(_on_lose_exit_pressed):
+		exit_btn.pressed.connect(_on_lose_exit_pressed)
+	if spec_btn and not spec_btn.pressed.is_connected(_on_lose_spectate_pressed):
+		spec_btn.pressed.connect(_on_lose_spectate_pressed)
+
+
+func _ensure_lose_buttons() -> void:
+	if eliminated_overlay == null:
+		return
+	var title := eliminated_overlay.get_node_or_null("Label") as Label
+	if title:
+		title.text = "YOU LOST"
+		title.offset_top = -90
+		title.offset_bottom = -30
+	var sub := eliminated_overlay.get_node_or_null("SubLabel") as Label
+	if sub == null:
+		sub = Label.new()
+		sub.name = "SubLabel"
+		eliminated_overlay.add_child(sub)
+		sub.set_anchors_preset(Control.PRESET_CENTER)
+		sub.offset_left = -240
+		sub.offset_top = -24
+		sub.offset_right = 240
+		sub.offset_bottom = 16
+	sub.text = "The neighborhood keeps moving without you."
+	sub.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	sub.add_theme_font_size_override("font_size", 16)
+	sub.add_theme_color_override("font_color", Color(0.78, 0.74, 0.68, 1))
+	var row := eliminated_overlay.get_node_or_null("ButtonRow") as HBoxContainer
+	if row == null:
+		row = HBoxContainer.new()
+		row.name = "ButtonRow"
+		eliminated_overlay.add_child(row)
+		row.set_anchors_preset(Control.PRESET_CENTER)
+		row.offset_left = -200
+		row.offset_top = 36
+		row.offset_right = 200
+		row.offset_bottom = 88
+		row.add_theme_constant_override("separation", 16)
+		row.alignment = BoxContainer.ALIGNMENT_CENTER
+	var exit_btn := row.get_node_or_null("ExitButton") as Button
+	if exit_btn == null:
+		exit_btn = Button.new()
+		exit_btn.name = "ExitButton"
+		row.add_child(exit_btn)
+	exit_btn.text = "EXIT"
+	exit_btn.custom_minimum_size = Vector2(180, 46)
+	var spec_btn := row.get_node_or_null("SpectateButton") as Button
+	if spec_btn == null:
+		spec_btn = Button.new()
+		spec_btn.name = "SpectateButton"
+		row.add_child(spec_btn)
+	spec_btn.text = "SPECTATE"
+	spec_btn.custom_minimum_size = Vector2(180, 46)
+	var theme: GDScript = load("res://scripts/horror/ui/vouch_menu_theme.gd")
+	if theme:
+		theme.call("apply_action_button", exit_btn, "blood")
+		theme.call("apply_action_button", spec_btn, "gold")
+
+
+func _show_lose_overlay() -> void:
+	_ensure_lose_buttons()
+	eliminated_overlay.visible = true
+	Input.mouse_mode = Input.MOUSE_MODE_VISIBLE
+
+
+func _handle_eliminated_input(event: InputEvent) -> void:
+	if event.is_action_pressed("ui_cancel"):
+		if _spectating:
+			_spectating = false
+			_show_lose_overlay()
+		return
+	if not _spectating:
+		return
+	if event is InputEventMouseMotion and Input.mouse_mode == Input.MOUSE_MODE_CAPTURED:
+		var sensitivity := MOUSE_SENSITIVITY * SettingsManager.mouse_sensitivity
+		rotate_y(-event.relative.x * sensitivity)
+		head.rotate_x(-event.relative.y * sensitivity)
+		head.rotation.x = clamp(head.rotation.x, -1.3, 1.3)
+
+
+func _on_lose_exit_pressed() -> void:
+	Input.mouse_mode = Input.MOUSE_MODE_VISIBLE
+	get_tree().paused = false
+	GameState.request_return_to_lobby()
+
+
+func _on_lose_spectate_pressed() -> void:
+	_spectating = true
+	eliminated_overlay.visible = false
+	Input.mouse_mode = Input.MOUSE_MODE_CAPTURED
+	_show_toast("Spectating — Esc returns to the end screen.")
 
 
 # --- Toast (brief on-screen text for clue reveals, lock feedback, ...) --
