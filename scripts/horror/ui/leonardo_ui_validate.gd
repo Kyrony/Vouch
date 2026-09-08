@@ -167,11 +167,7 @@ static func validate_hud() -> String:
 		return "phone_led.png missing"
 	if not FileAccess.file_exists("res://assets/horror/ui/README.md"):
 		return "UI pack README missing"
-	for stem in [
-		"health_bar_empty", "stamina_bar_empty", "fear_bar_empty",
-		"health_chip", "stamina_chip", "fear_chip",
-		"signal_full", "signal_weak", "signal_dead",
-	]:
+	for stem in ["health_bar_empty", "stamina_bar_empty", "phone_led", "signal_full", "signal_weak", "signal_dead"]:
 		if not ResourceLoader.exists("res://assets/horror/hud/%s.png" % stem):
 			return "%s.png missing" % stem
 	var dir := DirAccess.open("res://assets/horror/hud")
@@ -185,12 +181,16 @@ static func validate_hud() -> String:
 	var hud_src := FileAccess.get_file_as_string("res://scripts/horror/ui/neon_hud.gd")
 	if hud_src.contains("_health_hearts") or hud_src.contains("health_heart"):
 		return "NeonHud still uses ornate heart health"
+	if hud_src.contains("_fear_bar") or hud_src.contains("TEX_FEAR") or hud_src.contains("FearRow"):
+		return "NeonHud must not show a fear bar"
+	if hud_src.contains("TEX_HEALTH_CHIP") or hud_src.contains("HealthChip"):
+		return "NeonHud must not show meter chips"
 	if not hud_src.contains("TextureProgressBar"):
 		return "NeonHud must fill empty tracks with TextureProgressBar"
 	if str(pack.TEX_HEALTH) != "health_bar_empty":
 		return "health track stem must be health_bar_empty"
-	if str(pack.TEX_STAMINA) != "stamina_bar_empty" or str(pack.TEX_FEAR) != "fear_bar_empty":
-		return "stamina/fear must share empty-track shape language"
+	if str(pack.TEX_STAMINA) != "stamina_bar_empty":
+		return "stamina track stem must be stamina_bar_empty"
 	if not pack.has_method("make_fill_texture"):
 		return "HudIconPack must generate fill textures in-engine"
 	return ""

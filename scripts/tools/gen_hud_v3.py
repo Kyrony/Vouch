@@ -17,9 +17,13 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[2]
 HUD = ROOT / "assets" / "horror" / "hud"
 SOT_DIRS = [
+    Path("/workspace/leonardo-hud-kyle-locked"),
     Path("/workspace/leonardo-hud-v3"),
     Path("/workspace/leonardo-hud-pngs"),
 ]
+TEAL = (56, 210, 200)
+STAMINA_GOLD = (255, 179, 0)
+VIAL_RED = (168, 28, 36)
 
 RED = (255, 56, 82)
 CYAN = (56, 230, 255)
@@ -177,6 +181,57 @@ class Canvas:
         return path
 
 
+def health_vial_empty() -> None:
+    """Horror-vial empty track: dark red rim, ECG etch, crack, drip."""
+    if copy_sot("health_bar_empty.png"):
+        return
+    w, h = 640, 52
+    c = Canvas(w, h)
+    x0, y0, x1, y1 = 14.0, 12.0, 626.0, 42.0
+    c.fill_round_rect(x0 + 2, y0 + 2, x1 - 2, y1 - 2, 5, (10, 8, 10), 0.96)
+    c.stroke_round_rect(x0, y0, x1, y1, 5, VIAL_RED, 4.5, 0.35)
+    c.stroke_round_rect(x0, y0, x1, y1, 5, VIAL_RED, 1.6, 1.0)
+    # Faint ECG through the empty well.
+    mid_y = (y0 + y1) * 0.5
+    x = x0 + 10
+    pts = []
+    while x < x1 - 10:
+        pts.extend([(x, mid_y), (x + 8, mid_y), (x + 12, mid_y - 7), (x + 16, mid_y + 8), (x + 20, mid_y - 3), (x + 26, mid_y)])
+        x += 32
+    for a, b in zip(pts, pts[1:]):
+        if a[0] < x1 - 8 and b[0] < x1 - 8:
+            c.line(a[0], a[1], b[0], b[1], (110, 22, 28), 1.15, 0.55)
+    # Teal mount above top-left + V crack.
+    c.fill_round_rect(16, 4, 34, 10, 1, TEAL, 0.95)
+    c.line(22, 12, 28, 18, (190, 190, 195), 1.4, 0.9)
+    c.line(28, 18, 34, 12, (190, 190, 195), 1.4, 0.9)
+    # Bottom-center drip + bottom-right slash.
+    c.line(320, 42, 316, 48, VIAL_RED, 1.6, 1.0)
+    c.line(320, 42, 324, 48, VIAL_RED, 1.6, 1.0)
+    c.line(600, 38, 620, 48, VIAL_RED, 1.8, 0.95)
+    c.line(608, 48, 624, 48, VIAL_RED, 1.4, 0.9)
+    write_import(c.save("health_bar_empty.png"))
+
+
+def stamina_yellow_empty() -> None:
+    """Yellow empty track with tick notches and red/cyan corner tabs."""
+    if copy_sot("stamina_bar_empty.png"):
+        return
+    w, h = 640, 52
+    c = Canvas(w, h)
+    x0, y0, x1, y1 = 14.0, 12.0, 626.0, 42.0
+    c.fill_round_rect(x0 + 2, y0 + 2, x1 - 2, y1 - 2, 5, (8, 8, 8), 0.96)
+    c.stroke_round_rect(x0, y0, x1, y1, 5, STAMINA_GOLD, 4.2, 0.32)
+    c.stroke_round_rect(x0, y0, x1, y1, 5, STAMINA_GOLD, 1.6, 1.0)
+    ticks = 25
+    for i in range(1, ticks):
+        x = x0 + 8 + (x1 - x0 - 16) * i / ticks
+        c.line(x, y0 + 6, x, y1 - 6, (70, 70, 74), 0.8, 0.45)
+    c.fill_round_rect(16, 4, 34, 10, 1, RED, 0.95)
+    c.fill_round_rect(606, 44, 624, 50, 1, CYAN, 0.95)
+    write_import(c.save("stamina_bar_empty.png"))
+
+
 def empty_bar(name: str, color: tuple[int, int, int]) -> None:
     w, h = 640, 72
     c = Canvas(w, h)
@@ -274,16 +329,8 @@ def signal_dead() -> None:
 
 def main() -> None:
     HUD.mkdir(parents=True, exist_ok=True)
-    empty_bar("health_bar_empty.png", RED)
-    empty_bar("stamina_bar_empty.png", CYAN)
-    empty_bar("fear_bar_empty.png", VIOLET)
-    chip("health_chip.png", RED)
-    chip("stamina_chip.png", CYAN)
-    chip("fear_chip.png", VIOLET)
-    phone_led()
-    signal_full()
-    signal_weak()
-    signal_dead()
+    health_vial_empty()
+    stamina_yellow_empty()
     print("ok")
 
 

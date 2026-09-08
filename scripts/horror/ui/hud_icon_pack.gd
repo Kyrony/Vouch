@@ -1,12 +1,11 @@
 extends RefCounted
 class_name HudIconPack
-## Leonardo HUD v3 neon-horror language (soft-go wiring).
-##
-## Meters are EMPTY neon-rim tracks + chips. Eng owns fill % in Godot.
+## Kyle-locked HUD meters: horror-vial health over yellow stamina.
+## EMPTY tracks only. Eng owns fill % in Godot. Fill examples are color refs.
 ## Phone light = yellow smartphone + LED. Never a handheld torch.
 
-const HEALTH := Color(1.0, 0.22, 0.32)
-const STAMINA := Color(0.22, 0.92, 1.0)
+const HEALTH := Color(0.55, 0.06, 0.10)
+const STAMINA := Color(1.0, 0.70, 0.0)
 const FEAR := Color(0.73, 0.32, 1.0)
 const PHONE_LED := Color(1.0, 0.82, 0.19)
 const SIGNAL_FULL := Color(0.25, 0.92, 0.38)
