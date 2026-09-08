@@ -4,23 +4,21 @@ Leonardo’s approved UI language — **not Steam-final art**. Files here may be
 redrawn before Steam. Keep the same filenames so `VouchUiKit`, `VouchBanner`,
 `NeonMenu`, and `NeonHud` keep loading them.
 
-## Locked main-menu banner
+## Locked main-menu plate (hybrid)
 
-`banner_vouch.png` is **banner form only**:
+`menu_leonardo_locked.png` is the **full home visual** (1280×720). Godot only
+puts invisible hitboxes over the painted Play / Join Friends / Settings / Quit
+and Classic / Hardcore / Custom / Practice / Friends Lobby zones. Do **not**
+rebuild those buttons with StyleBoxFlat.
 
-- Yellow outer / red inner neon **V**
-- **OUCH** hanging from thin puppet **strings**
-- **No puppet X, no crossbar, no thick stick** above or through the V
+Logo lives in the plate: neon **V** + **OUCH** on strings only — **no X-stick**.
+If you drop a replacement plate, keep that banner form.
 
-`scripts/horror/ui/vouch_banner.gd` draws the same rule procedurally if the
-texture is missing. Do not drop a lockup that puts an X-stick through the V.
+`banner_vouch.png` is a leftover wordmark stand-in (same no-stick rule). The
+live home does not draw a separate banner node.
 
-## Layout (home)
-
-Left nav: Play (focus), Join Friends, Settings, Quit. Play opens the compact
-mode panel (fog-gate preview + Classic / Hardcore / Custom / Practice /
-Friends Lobby). **Classic** is the live Host Match path. Other modes are
-visible but soft-gated.
+**Classic** is the live Host Match path. Other painted modes are clickable
+soft stubs and do not start extra mode systems.
 
 ## HUD / prompts
 

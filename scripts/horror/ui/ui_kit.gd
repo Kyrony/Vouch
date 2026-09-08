@@ -59,6 +59,32 @@ static func button_style(border: Color, fill: Color = PANEL_DIM) -> StyleBoxFlat
 	return box
 
 
+static func invisible_hitbox() -> StyleBoxEmpty:
+	return StyleBoxEmpty.new()
+
+
+static func apply_invisible_hitbox(button: Button) -> void:
+	var empty := invisible_hitbox()
+	button.flat = true
+	button.focus_mode = Control.FOCUS_ALL
+	button.mouse_filter = Control.MOUSE_FILTER_STOP
+	button.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
+	button.icon = null
+	button.add_theme_stylebox_override("normal", empty)
+	button.add_theme_stylebox_override("hover", empty)
+	button.add_theme_stylebox_override("pressed", empty)
+	button.add_theme_stylebox_override("focus", empty)
+	button.add_theme_stylebox_override("disabled", empty)
+	var clear := Color(1, 1, 1, 0)
+	button.add_theme_color_override("font_color", clear)
+	button.add_theme_color_override("font_hover_color", clear)
+	button.add_theme_color_override("font_pressed_color", clear)
+	button.add_theme_color_override("font_focus_color", clear)
+	button.add_theme_color_override("font_disabled_color", clear)
+	button.add_theme_color_override("icon_normal_color", clear)
+	button.add_theme_color_override("icon_hover_color", clear)
+
+
 static func apply_button(button: Button, kind: String = "normal") -> void:
 	var normal := button_style(GREY)
 	var hover := button_style(YELLOW, Color(0.08, 0.07, 0.04, 0.95))
