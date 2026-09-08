@@ -13,6 +13,12 @@ const _GEOM: GDScript = preload("res://scripts/rooms/geometry_util.gd")
 
 
 func _ready() -> void:
+	## Live Classic Host Match is HorrorWorld (terrain/roads/markers).
+	## This courtyard + mountain graybox must not share the viewport.
+	if HorrorModeSettings.is_horror_mode():
+		visible = false
+		process_mode = Node.PROCESS_MODE_DISABLED
+		return
 	_build_mountain_graybox()
 	_gate_test_range()
 	if has_node("Ground"):

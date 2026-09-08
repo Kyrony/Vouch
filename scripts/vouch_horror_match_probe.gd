@@ -17,6 +17,9 @@ func _run() -> void:
 	_running = true
 	await process_frame
 	var err: String = await _probe()
+	var net: Node = root.get_node_or_null("NetworkManager")
+	if net and net.has_method("leave_game"):
+		net.call("leave_game")
 	if err.is_empty():
 		print("HORROR MATCH PROBE OK")
 		quit(0)
@@ -43,18 +46,33 @@ func _probe() -> String:
 	if not match_node.is_node_ready():
 		await match_node.ready
 
-	var horror_script: GDScript = load("res://scripts/horror/match_horror.gd") as GDScript
-	if horror_script == null:
+	## Same path as F5 → Play → Classic → Host Match → Start Match.
+	var net: Node = root.get_node_or_null("NetworkManager")
+	if net == null:
 		main.queue_free()
-		return "match_horror.gd failed to load"
-	horror_script.call("build_world_all_peers", match_node)
+		return "NetworkManager autoload missing — live Start Match path unavailable"
+	var host_err: Error = net.call("host_game", 19829)
+	if host_err != OK:
+		main.queue_free()
+		return "host_game failed err=%s" % host_err
+	net.call("start_match")
 	await process_frame
 	await physics_frame
+	await process_frame
+
+	var world_root: Node = main.get_node_or_null("World")
+	var live_err: String = ui_check.call("validate_live_start_match_world", world_root)
+	print(ui_check.call("dump_live_world", world_root))
+	if not live_err.is_empty():
+		net.call("leave_game")
+		main.queue_free()
+		return live_err
 
 	var world := match_node.get_node_or_null("HorrorWorld")
 	if world == null:
+		net.call("leave_game")
 		main.queue_free()
-		return "HorrorWorld missing after build_world_all_peers"
+		return "HorrorWorld missing after Start Match"
 
 	var spawn_count: int = world.call("get_spawn_point_count")
 	if spawn_count < 4:

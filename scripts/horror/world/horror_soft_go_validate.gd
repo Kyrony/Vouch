@@ -6,6 +6,10 @@ const _V05: GDScript = preload("res://scripts/horror/world/neighborhood_v05.gd")
 
 const FORBIDDEN_SHELLS: Array[String] = [
 	"FamilyHouses",
+	"FamilyHouse_A",
+	"FamilyHouse_B",
+	"FamilyHouse_C",
+	"FamilyHouse_D",
 	"PMMansion",
 	"UncleHouse",
 	"UncleGarage",
@@ -17,6 +21,10 @@ const FORBIDDEN_SHELLS: Array[String] = [
 	"StormDrain",
 	"StreetLamps",
 	"FarmDressing",
+	"CrawlLabel",
+	"UnderPorchCrawl",
+	"MountainTerrain",
+	"Mast",
 ]
 
 
@@ -148,6 +156,66 @@ static func _require_spawn_point_label(marker: Node) -> String:
 	if site.get_node_or_null("Box") == null:
 		return "spawn marker %s missing visible Box" % marker.name
 	return ""
+
+
+## Full Main/World after Play → Classic → Host → Start Match.
+static func validate_live_start_match_world(world_root: Node) -> String:
+	if world_root == null:
+		return "Main/World missing"
+	var outside := world_root.get_node_or_null("Outside")
+	if outside and outside.visible:
+		return "World/Outside is still visible — Start Match leaked the courtyard/mountain graybox"
+	if outside and outside.get_node_or_null("MountainTerrain") != null:
+		return "World/Outside/MountainTerrain still in the live tree"
+	var horror := world_root.get_node_or_null("Match/HorrorWorld") as Node3D
+	if horror == null:
+		return "Match/HorrorWorld missing after Start Match — live path did not load the farm"
+	for node_name in FORBIDDEN_SHELLS:
+		if world_root.find_child(node_name, true, false) != null:
+			return "forbidden node in live World: %s" % node_name
+	for node in world_root.get_tree().get_nodes_in_group("tower_candidates"):
+		return "tower/mast candidate still in live tree: %s" % node.name
+	for node in world_root.get_tree().get_nodes_in_group("walkable_exits"):
+		return "house door exit still in live tree: %s" % node.name
+	for node in world_root.find_children("*", "Label3D", true, false):
+		var text := str(node.text).strip_edges()
+		if text == "CRAWL" or text.contains("CRAWL"):
+			return "floating CRAWL label still in live tree"
+		if text != "Spawn Point" and text != "" and not _V05.SPAWN_IDS.has(text):
+			if str(node.name) == "Label" or str(node.name) == "CrawlLabel":
+				return "unexpected Label3D '%s' on %s" % [text, node.get_path()]
+	var shell_err := validate_no_building_shells(horror)
+	if not shell_err.is_empty():
+		return shell_err
+	return validate_world(horror)
+
+
+static func dump_live_world(world_root: Node) -> String:
+	var lines: PackedStringArray = PackedStringArray()
+	var type_counts: Dictionary = {}
+	_dump_walk(world_root, 0, lines, type_counts)
+	var types: Array = type_counts.keys()
+	types.sort()
+	var summary: PackedStringArray = PackedStringArray()
+	summary.append("LIVE START MATCH WORLD DUMP")
+	summary.append("node_count=%d" % lines.size())
+	for t in types:
+		summary.append("  type %s = %d" % [t, type_counts[t]])
+	summary.append("TREE:")
+	for line in lines:
+		summary.append(line)
+	return "\n".join(summary)
+
+
+static func _dump_walk(node: Node, depth: int, lines: PackedStringArray, type_counts: Dictionary) -> void:
+	var cls := node.get_class()
+	type_counts[cls] = int(type_counts.get(cls, 0)) + 1
+	var extra := ""
+	if node is Label3D:
+		extra = " text='%s'" % str((node as Label3D).text)
+	lines.append("%s%s [%s]%s" % ["  ".repeat(depth), node.name, cls, extra])
+	for child in node.get_children():
+		_dump_walk(child, depth + 1, lines, type_counts)
 
 
 static func validate_no_building_shells(world: Node3D) -> String:

@@ -13,6 +13,8 @@ var _tick_accum: float = 0.0
 
 func _ready() -> void:
 	add_to_group("horror_world")
+	_suppress_parallel_worlds()
+	_install_farm_environment()
 	var built: Dictionary = _LAYOUT.call("build", self, 4)
 	_family_spawns.clear()
 	var spawned = built.get("family_spawns", [])
@@ -35,6 +37,41 @@ func _process(delta: float) -> void:
 		_tick_accum = 0.0
 		PlayerEffects.server_tick(0.1)
 		PhoneDevice.server_tick(0.1)
+
+
+func _suppress_parallel_worlds() -> void:
+	## Main.tscn always instances World/Outside beside Match. That courtyard
+	## + mountain CSG was still visible after Start Match (Kyle fail).
+	var match_node := get_parent()
+	if match_node == null:
+		return
+	var we := match_node.get_node_or_null("WorldEnvironment") as WorldEnvironment
+	if we:
+		we.environment = null
+	var world_root := match_node.get_parent()
+	if world_root == null:
+		return
+	var outside := world_root.get_node_or_null("Outside")
+	if outside is Node3D:
+		outside.visible = false
+		outside.process_mode = Node.PROCESS_MODE_DISABLED
+		var mountain := outside.get_node_or_null("MountainTerrain")
+		if mountain:
+			mountain.queue_free()
+
+
+func _install_farm_environment() -> void:
+	var env_node := WorldEnvironment.new()
+	env_node.name = "FarmSky"
+	var env := Environment.new()
+	env.background_mode = Environment.BG_COLOR
+	env.background_color = Color(0.55, 0.68, 0.82)
+	env.ambient_light_source = Environment.AMBIENT_SOURCE_COLOR
+	env.ambient_light_color = Color(0.55, 0.6, 0.58)
+	env.ambient_light_energy = 0.7
+	env.fog_enabled = false
+	env_node.environment = env
+	add_child(env_node)
 
 
 func server_init_match(player_count: int) -> void:

@@ -96,8 +96,8 @@ Layout SoT is Leonardo’s **farm-country** plates plus the QA **v2** sheet (ter
 
 1. Open `project.godot` in Godot 4.3+, let it import, press **F5**.
 2. Home → **Play** → **Host Match** → **Start Match** (one player is enough).
-3. You should stand on **open farm terrain** (not inside a house or bunker). See rolling hills, farm lanes / the east road loop, and **11 labeled Spawn Point boxes**.
-4. No building shells or radio masts. Phone LED is the only flashlight (`R` while holding the phone).
+3. You should stand on **open farm terrain** (not inside a house or bunker). See rolling hills, farm lanes / the east road loop, and **11 labeled Spawn Point boxes**. The old `World/Outside` courtyard / mountain graybox stays hidden.
+4. No house frames, CRAWL labels, utility poles, or radio masts. Phone LED is the only flashlight (`R` while holding the phone).
 5. Optional second instance: **Play → Join** (blank IP) — host-authoritative outdoor pads should match for the joiner.
 
 Legacy sealed-room / tunnel modes: `VOUCH_BUNKER_ONLY=1` or `VOUCH_ESCAPE_PATH=1`.
