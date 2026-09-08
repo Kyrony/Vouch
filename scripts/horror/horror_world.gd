@@ -14,9 +14,48 @@ func _ready() -> void:
 	add_to_group("horror_world")
 	_suppress_parallel_worlds()
 	_bind_authored_spawns()
+	_ensure_placeholder_gun()
 	print("[HorrorWorld] loaded authored farm scene family_pads=%d l2_markers=%d" % [
 		_family_spawns.size(), get_tree().get_nodes_in_group("child_spawn_points").size(),
 	])
+
+
+func _ensure_placeholder_gun() -> void:
+	if get_node_or_null("PlaceholderGun") != null:
+		return
+	var mat := StandardMaterial3D.new()
+	mat.albedo_color = Color(0.48, 0.49, 0.52, 1)
+	mat.roughness = 0.55
+	mat.metallic = 0.35
+	var gun := Node3D.new()
+	gun.name = "PlaceholderGun"
+	var spawn := get_family_spawn_transform(0).origin
+	gun.position = spawn + Vector3(1.75, 0.06, 0.55)
+	gun.rotation_degrees = Vector3(8.0, 32.0, 86.0)
+	_add_named_mesh(gun, "Receiver", BoxMesh.new(), Vector3(0.28, 0.085, 0.055), Vector3.ZERO, Vector3.ZERO, mat)
+	_add_named_mesh(gun, "Barrel", CylinderMesh.new(), Vector3(0.016, 0.30, 0.016), Vector3(0.26, 0.01, 0.0), Vector3(0, 0, 90), mat)
+	_add_named_mesh(gun, "Grip", BoxMesh.new(), Vector3(0.07, 0.15, 0.045), Vector3(-0.04, -0.09, 0.0), Vector3(18, 0, 0), mat)
+	_add_named_mesh(gun, "Mag", BoxMesh.new(), Vector3(0.06, 0.09, 0.03), Vector3(0.02, -0.07, 0.0), Vector3(8, 0, 0), mat)
+	add_child(gun)
+
+
+func _add_named_mesh(parent: Node3D, node_name: String, mesh: Mesh, size: Vector3, pos: Vector3, rot_deg: Vector3, mat: Material) -> void:
+	if mesh is BoxMesh:
+		(mesh as BoxMesh).size = size
+	elif mesh is CylinderMesh:
+		var cyl := mesh as CylinderMesh
+		cyl.top_radius = size.x
+		cyl.bottom_radius = size.x
+		cyl.height = size.y
+	if mesh is PrimitiveMesh:
+		(mesh as PrimitiveMesh).material = mat
+	var inst := MeshInstance3D.new()
+	inst.name = node_name
+	inst.mesh = mesh
+	inst.material_override = mat
+	inst.position = pos
+	inst.rotation_degrees = rot_deg
+	parent.add_child(inst)
 
 
 func _bind_authored_spawns() -> void:

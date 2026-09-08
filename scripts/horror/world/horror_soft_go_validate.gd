@@ -227,6 +227,8 @@ static func validate_live_start_match_world(world_root: Node) -> String:
 	var shell_err := validate_no_building_shells(horror)
 	if not shell_err.is_empty():
 		return shell_err
+	if horror.get_node_or_null("PlaceholderGun") == null:
+		return "PlaceholderGun missing near outdoor spawn"
 	return validate_world(horror)
 
 
