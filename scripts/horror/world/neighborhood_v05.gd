@@ -26,6 +26,7 @@ const EXPECTED_PIN_COUNT: int = 11
 const NEIGHBORHOOD_SPAN_M: float = 80.0
 
 ## Host Match is authored farm terrain + roads + one hilltop main house.
+## Semantic masks (assets/horror/farm/masks) dress roads/vegetation on top.
 ## No neighborhood of extra houses / bunkers / masts.
 const OUTDOOR_ONLY: bool = true
 const GRAYBOX_NEIGHBORHOOD: bool = false

@@ -17,6 +17,7 @@ func _ready() -> void:
 	_bind_authored_spawns()
 	_ensure_placeholder_gun()
 	_ensure_terrain_texture()
+	_run_semantic_maps()
 	var clock := get_node_or_null("/root/MatchClock")
 	if clock and clock.has_method("apply_to_world"):
 		clock.call("apply_to_world", self)
@@ -86,6 +87,16 @@ func _ensure_terrain_texture() -> void:
 	mat.emission_enabled = true
 	mat.emission = Color(0.16, 0.20, 0.09, 1)
 	mat.emission_energy_multiplier = 0.22
+
+
+func _run_semantic_maps() -> void:
+	## Heightmap stays authored. Masks place roads / pads / vegetation on top.
+	var script: GDScript = load("res://scripts/horror/world/neighborhood_from_masks.gd")
+	if script == null:
+		return
+	var gen: Object = script.new()
+	if gen.has_method("run"):
+		gen.call("run", self)
 
 
 func _load_png(path: String) -> Texture2D:
