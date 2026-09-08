@@ -60,7 +60,12 @@ func _load_img(fname: String) -> Image:
 	var buf := fa.get_buffer(int(fa.get_length()))
 	fa.close()
 	var img := Image.new()
-	if img.load_png_from_buffer(buf) != OK:
+	var loaded: Variant = img.load_png_from_buffer(buf)
+	if loaded is Image:
+		return loaded
+	if loaded != OK:
+		return null
+	if img.get_width() < 2 or img.get_height() < 2:
 		return null
 	return img
 

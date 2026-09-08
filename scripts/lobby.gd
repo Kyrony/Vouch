@@ -117,7 +117,7 @@ func _connect_signals() -> void:
 	host_button.pressed.connect(_on_host_pressed)
 	join_button.pressed.connect(_on_join_pressed)
 	start_match_button.pressed.connect(_on_start_match_pressed)
-	start_match_button.visible = false
+	start_match_button.visible = true
 	NetworkManager.joined_server.connect(_on_joined_server)
 	NetworkManager.join_failed.connect(_on_join_failed)
 	NetworkManager.disconnected_from_server.connect(_on_disconnected)
@@ -305,6 +305,12 @@ func _on_join_pressed() -> void:
 
 
 func _on_start_match_pressed() -> void:
+	if not NetworkManager.is_server():
+		var err := NetworkManager.host_game()
+		if err != OK:
+			status_label.text = "Failed to host (error %s)." % err
+			return
+		status_label.text = "Hosting on port %d. Starting match..." % NetworkManager.DEFAULT_PORT
 	NetworkManager.start_match()
 
 
@@ -318,7 +324,7 @@ func _on_join_failed(reason: String) -> void:
 
 func _on_disconnected() -> void:
 	status_label.text = "Disconnected from host."
-	start_match_button.visible = false
+	start_match_button.visible = true
 
 
 func _on_roster_updated(roster: Array) -> void:
