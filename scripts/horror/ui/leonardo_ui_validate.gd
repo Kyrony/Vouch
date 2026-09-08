@@ -1,6 +1,6 @@
 extends RefCounted
 class_name LeonardoUiValidate
-## Headless checks for the hybrid Leonardo plate + hitbox home.
+## Headless checks for the React-port VouchMenu Control home + HUD pack.
 
 
 static func validate_menu(lobby: Control) -> String:
@@ -10,63 +10,75 @@ static func validate_menu(lobby: Control) -> String:
 	if not scene_err.is_empty():
 		return scene_err
 	var bg_node := lobby.get_node_or_null("Background")
-	if bg_node is ColorRect:
-		return "boot background must be TextureRect plate, not ColorRect"
-	var bg := bg_node as TextureRect
+	if bg_node is TextureRect:
+		return "boot background must be ColorRect #050203, not the Leonardo plate"
+	var bg := bg_node as ColorRect
 	if bg == null:
-		return "menu plate TextureRect missing"
-	if bg.stretch_mode != TextureRect.STRETCH_KEEP_ASPECT_COVERED:
-		return "menu plate must use Keep Aspect Covered"
-	if bg.texture == null:
-		return "Leonardo menu plate texture not assigned"
-	if lobby.get_node_or_null("HomePanel/NavColumn") != null:
-		return "NavColumn must not exist on the boot home"
-	if lobby.get_node_or_null("HomePanel/Banner") != null and lobby.get_node("HomePanel/Banner").visible:
-		return "do not rebuild a separate banner over the plate"
+		return "menu Background ColorRect missing"
+	var base := Color(0.0196078, 0.0078431, 0.0117647, 1.0)
+	if bg.color.r > 0.05 or bg.color.g > 0.04 or bg.color.b > 0.04:
+		return "Background is not the dark #050203 base"
+	var mansion := lobby.get_node_or_null("MansionPlaceholder")
+	if mansion == null:
+		return "MansionPlaceholder missing"
+	if not (mansion is ColorRect or mansion is TextureRect):
+		return "MansionPlaceholder must be a blank ColorRect or TextureRect"
+	if mansion is TextureRect and (mansion as TextureRect).texture != null:
+		return "MansionPlaceholder must stay a blank placeholder"
+	var mansion_tex := lobby.get_node_or_null("MansionPlaceholder/Texture") as TextureRect
+	if mansion_tex and mansion_tex.texture != null:
+		return "mansion TextureRect must not require art"
+	if lobby.get_node_or_null("HomePanel/HitboxRoot") != null:
+		return "hybrid plate HitboxRoot must not remain on the boot home"
+	if lobby.get_node_or_null("HomePanel/NavColumn") == null:
+		return "NavColumn missing on the Control home"
+	if lobby.get_node_or_null("HomePanel/Banner") == null:
+		return "VouchBanner missing"
 	for path in [
-		"HomePanel/HitboxRoot/MenuButtons/PlayButton",
-		"HomePanel/HitboxRoot/MenuButtons/JoinFriendsButton",
-		"HomePanel/HitboxRoot/MenuButtons/SettingsButton",
-		"HomePanel/HitboxRoot/MenuButtons/QuitButton",
-		"HomePanel/HitboxRoot/GameModes/ClassicButton",
+		"HomePanel/NavColumn/PlayButton",
+		"HomePanel/NavColumn/JoinFriendsButton",
+		"HomePanel/NavColumn/SettingsButton",
+		"HomePanel/NavColumn/QuitButton",
+		"HomePanel/SidePanel/PlayContent/ModeList/ClassicButton",
+		"HomePanel/SidePanel/PlayContent/StartButton",
+		"HomePanel/SidePanel/FriendsContent/LobbyCodeInput",
+		"HomePanel/SidePanel/FriendsContent/FriendsJoinButton",
+		"HomePanel/SidePanel/SettingsContent/MasterVolumeRow/Slider",
+		"HomePanel/SidePanel/SettingsContent/SfxVolumeRow/Slider",
+		"HomePanel/SidePanel/SettingsContent/FullscreenRow/FullscreenToggle",
+		"HomePanel/SidePanel/SettingsContent/SaveButton",
+		"HomePanel/SignalCluster/SignalLabel",
 		"PlayPanel/VBoxContainer/HostButton",
 		"PlayPanel/BackButton",
 	]:
 		if lobby.get_node_or_null(path) == null:
 			return "menu node missing: %s" % path
-	for path in [
-		"HomePanel/HitboxRoot/MenuButtons/PlayButton",
-		"HomePanel/HitboxRoot/MenuButtons/JoinFriendsButton",
-		"HomePanel/HitboxRoot/MenuButtons/SettingsButton",
-		"HomePanel/HitboxRoot/MenuButtons/QuitButton",
-		"HomePanel/HitboxRoot/GameModes/ClassicButton",
-		"HomePanel/HitboxRoot/GameModes/HardcoreButton",
-		"HomePanel/HitboxRoot/GameModes/CustomButton",
-		"HomePanel/HitboxRoot/GameModes/PracticeButton",
-		"HomePanel/HitboxRoot/GameModes/FriendsLobbyButton",
-	]:
-		var hit := lobby.get_node(path) as Button
-		if not hit.text.is_empty():
-			return "hitbox %s still has visible text" % path
-		var hover := hit.get_theme_stylebox("hover")
-		if not (hover is StyleBoxFlat):
-			return "hitbox %s needs a neon glow hover box" % path
-	var modes := lobby.get_node_or_null("HomePanel/HitboxRoot/GameModes") as Control
-	if modes == null:
-		return "GameModes panel missing"
-	if modes.visible:
-		return "game-modes panel must stay hidden until Play"
-	if lobby.get_node_or_null("HomePanel/HitboxRoot/ModesCover") == null:
-		return "ModesCover missing"
+	var play := lobby.get_node("HomePanel/NavColumn/PlayButton") as Button
+	var caption := play.get_node_or_null("Row/Caption") as Label
+	if caption == null or caption.text.strip_edges().is_empty():
+		return "Play nav must show visible text"
+	var play_content := lobby.get_node_or_null("HomePanel/SidePanel/PlayContent") as Control
+	if play_content == null or not play_content.visible:
+		return "Play modes panel must be open on boot"
+	var thumb := lobby.get_node_or_null("HomePanel/SidePanel/PlayContent/ModeThumb")
+	if thumb == null:
+		return "ModeThumb placeholder missing"
+	if thumb is TextureRect and (thumb as TextureRect).texture != null:
+		return "ModeThumb must stay blank"
+	if not (thumb is ColorRect or thumb is TextureRect or thumb is Panel):
+		return "ModeThumb must be a blank ColorRect, TextureRect, or Panel"
+	var thumb_tex := lobby.get_node_or_null("HomePanel/SidePanel/PlayContent/ModeThumb/Texture") as TextureRect
+	if thumb_tex and thumb_tex.texture != null:
+		return "mode thumbnail must not require modes/*.png"
 	if lobby.get_node_or_null("PlayPanel/MatchSettingsPanel") != null:
 		return "Host Lobby still has spawn-odds sliders"
-	var classic := lobby.get_node("HomePanel/HitboxRoot/GameModes/ClassicButton") as Button
+	var classic := lobby.get_node("HomePanel/SidePanel/PlayContent/ModeList/ClassicButton") as Button
 	if classic.disabled:
 		return "Classic must stay the live Host Match path"
 	for gated_name in ["HardcoreButton", "CustomButton", "PracticeButton", "FriendsLobbyButton"]:
-		var gated := lobby.get_node_or_null("HomePanel/HitboxRoot/GameModes/%s" % gated_name) as Button
+		var gated := lobby.get_node_or_null("HomePanel/SidePanel/PlayContent/ModeList/%s" % gated_name) as Button
 		if gated == null:
-			return "mode hitbox missing: %s" % gated_name
+			return "mode button missing: %s" % gated_name
 		if gated.disabled:
 			return "%s should stay clickable (soft stub)" % gated_name
 		var tip := gated.tooltip_text.to_lower()
@@ -75,27 +87,31 @@ static func validate_menu(lobby: Control) -> String:
 	var host := lobby.get_node("PlayPanel/VBoxContainer/HostButton") as Button
 	if host.text.to_lower().find("host") < 0:
 		return "Classic path lost Host Match"
-	var menu_src := FileAccess.get_file_as_string("res://scripts/horror/ui/neon_menu.gd")
+	var code := lobby.get_node("HomePanel/SidePanel/FriendsContent/LobbyCodeInput") as LineEdit
+	if code.max_length != 8:
+		return "friends lobby code must be max 8"
+	var menu_src := FileAccess.get_file_as_string("res://scripts/lobby.gd")
+	if not menu_src.contains("get_tree().quit()"):
+		return "Quit must call get_tree().quit()"
+	if menu_src.contains("CreoTek") or menu_src.contains("shell_open"):
+		return "Quit must not redirect to a web page"
 	if menu_src.contains("Coming Soon"):
+		return "lobby overclaims Coming Soon"
+	var neon_src := FileAccess.get_file_as_string("res://scripts/horror/ui/neon_menu.gd")
+	if neon_src.contains("Coming Soon"):
 		return "neon_menu overclaims Coming Soon"
-	if menu_src.contains("voice") or menu_src.contains("SMS"):
+	if neon_src.contains("voice") or neon_src.contains("SMS"):
 		return "menu must not claim voice/SMS"
-	if not ResourceLoader.exists("res://assets/horror/ui/menu_leonardo_locked.png"):
-		return "locked menu plate missing"
-	var plate := load("res://assets/horror/ui/menu_leonardo_locked.png") as Texture2D
-	if plate == null:
-		return "menu_leonardo_locked.png failed to load as a texture"
-	if plate.get_width() != 1280 or plate.get_height() != 720:
-		return "menu plate must be 1280x720"
-	var png := FileAccess.open("res://assets/horror/ui/menu_leonardo_locked.png", FileAccess.READ)
-	if png == null:
-		return "menu_leonardo_locked.png unreadable"
-	var magic := png.get_buffer(8)
-	if magic != PackedByteArray([0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A]):
-		return "menu_leonardo_locked.png is not a PNG"
+	var builder_src := FileAccess.get_file_as_string("res://scripts/horror/ui/vouch_menu_builder.gd")
+	if builder_src.contains("mansion-bg.png") or builder_src.contains("modes/"):
+		return "menu must not require mansion-bg.png or modes/*.png"
 	var banner_src := FileAccess.get_file_as_string("res://scripts/horror/ui/vouch_banner.gd")
 	if not banner_src.contains("BANNER_HAS_CROSSBAR := false"):
 		return "VouchBanner must keep BANNER_HAS_CROSSBAR false"
+	if not FileAccess.file_exists("res://assets/fonts/Cinzel-Bold.ttf"):
+		return "Cinzel Bold missing"
+	if not FileAccess.file_exists("res://assets/fonts/SpecialElite-Regular.ttf"):
+		return "Special Elite missing"
 	return ""
 
 
@@ -103,30 +119,27 @@ static func _validate_boot_scene_file() -> String:
 	var tscn := FileAccess.get_file_as_string("res://scenes/Lobby/Lobby.tscn")
 	if tscn.is_empty():
 		return "Lobby.tscn unreadable"
-	if tscn.contains('[node name="Background" type="ColorRect"'):
-		return "Lobby.tscn boot background is still ColorRect"
-	if not tscn.contains('[node name="Background" type="TextureRect"'):
-		return "Lobby.tscn must ship a TextureRect plate named Background"
-	if not tscn.contains("stretch_mode = 6"):
-		return "Lobby.tscn plate must use Keep Aspect Covered (stretch_mode 6)"
-	if not tscn.contains("res://assets/horror/ui/menu_leonardo_locked.png"):
-		return "Lobby.tscn must reference menu_leonardo_locked.png"
-	if tscn.contains("NavColumn"):
-		return "Lobby.tscn still has NavColumn"
+	if tscn.contains("menu_leonardo_locked.png"):
+		return "Lobby.tscn still references the Leonardo plate"
+	if tscn.contains('[node name="Background" type="TextureRect"'):
+		return "Lobby.tscn boot background is still the plate TextureRect"
+	if not tscn.contains('[node name="Background" type="ColorRect"'):
+		return "Lobby.tscn must ship a ColorRect named Background"
+	if not tscn.contains("MansionPlaceholder"):
+		return "Lobby.tscn missing MansionPlaceholder"
 	if tscn.contains("MatchSettingsPanel") or tscn.contains("HiddenHallwayRow"):
 		return "Lobby.tscn Host Lobby still has spawn-odds sliders"
+	if tscn.contains("mansion-bg.png") or tscn.contains("modes/"):
+		return "Lobby.tscn must not require mansion/mode art"
 	var play_chunk := tscn.get_slice('[node name="PlayPanel"', 1)
-	play_chunk = play_chunk.get_slice('[node name="SettingsPanel"', 0)
 	if play_chunk.contains("type=\"HSlider\""):
 		return "PlayPanel still has sliders"
-	var home := tscn.get_slice('[node name="PlayPanel"', 0)
-	for line in home.split("\n"):
-		var trimmed := line.strip_edges()
-		if trimmed.begins_with("text = \"") and trimmed != "text = \"\"":
-			return "Lobby.tscn home hitboxes still show Godot button text"
 	var project := FileAccess.get_file_as_string("res://project.godot")
 	if not project.contains('run/main_scene="res://scenes/Main.tscn"'):
 		return "F5 main scene is not scenes/Main.tscn"
+	var lobby_src := FileAccess.get_file_as_string("res://scripts/lobby.gd")
+	if not lobby_src.contains("get_tree().quit()"):
+		return "lobby.gd Quit is not get_tree().quit()"
 	return ""
 
 

@@ -1,16 +1,14 @@
 extends Control
 class_name VouchBanner
-## Locked main-menu wordmark: neon V + OUCH hanging on puppet strings.
-## Banner form only. No puppet X, no crossbar, no thick stick through the V.
+## React wordmark: gold-gradient V + stone OUCH + hanging ticks.
+## Banner form only. No puppet X, no crossbar, no stick through the V.
 
 const BANNER_HAS_CROSSBAR := false
 const BANNER_HAS_PUPPET_X := false
 const BANNER_HAS_STICK_THROUGH_V := false
 const BANNER_FORM_ONLY := true
 
-const _KIT: GDScript = preload("res://scripts/horror/ui/ui_kit.gd")
-
-var _tex: Texture2D
+const _T: GDScript = preload("res://scripts/horror/ui/vouch_menu_theme.gd")
 
 
 func has_forbidden_stick() -> bool:
@@ -23,43 +21,32 @@ func is_banner_form() -> bool:
 
 func _ready() -> void:
 	mouse_filter = MOUSE_FILTER_IGNORE
-	_tex = _KIT.texture("banner_vouch")
 	queue_redraw()
 
 
+func _notification(what: int) -> void:
+	if what == NOTIFICATION_RESIZED:
+		queue_redraw()
+
+
 func _draw() -> void:
-	if _tex:
-		var dest := Rect2(Vector2.ZERO, size)
-		draw_texture_rect(_tex, dest, false)
-		return
-	_draw_procedural()
-
-
-func _draw_procedural() -> void:
-	var h := size.y
-	var v_c := Vector2(h * 0.42, h * 0.62)
-	var v_h := h * 0.72
-	_draw_neon_v(v_c, v_h)
-	var letters := ["O", "U", "C", "H"]
-	var start_x := h * 0.95
-	var step := h * 0.55
-	for i in letters.size():
-		var x := start_x + float(i) * step
-		var top := Vector2(x + 18.0, 6.0)
-		var hang := Vector2(x + 18.0, h * 0.36)
-		# Strings only. Never a horizontal rail through the V.
-		draw_line(top, hang, Color(0.94, 0.94, 0.96, 0.9), 1.4)
-		draw_circle(top, 2.2, Color(0.95, 0.95, 0.97))
-		draw_string(ThemeDB.fallback_font, Vector2(x, h * 0.78), letters[i], HORIZONTAL_ALIGNMENT_LEFT, -1, int(h * 0.42), _KIT.STONE)
-
-
-func _draw_neon_v(center: Vector2, tall: float) -> void:
-	var half := tall * 0.42
-	var top_l := center + Vector2(-half, -tall * 0.5)
-	var top_r := center + Vector2(half, -tall * 0.5)
-	var bot := center + Vector2(0.0, tall * 0.5)
-	draw_line(top_l, bot, _KIT.YELLOW, 10.0)
-	draw_line(top_r, bot, _KIT.YELLOW, 10.0)
-	draw_line(top_l, bot, _KIT.RED, 5.0)
-	draw_line(top_r, bot, _KIT.RED, 5.0)
-	# Intentionally no third stroke, no X, no crossbar above or through the V.
+	var ui: Font = _T.ui_font()
+	var stone: Font = _T.stone_font()
+	var v_size := 92
+	var ouch_size := 56
+	var v_pos := Vector2(8, 88)
+	# Dark gold under-stroke, bright gold on top — reads as a gold gradient V.
+	draw_string(ui, v_pos + Vector2(2, 3), "V", HORIZONTAL_ALIGNMENT_LEFT, -1, v_size, _T.GOLD_DIM)
+	draw_string(ui, v_pos, "V", HORIZONTAL_ALIGNMENT_LEFT, -1, v_size, _T.GOLD)
+	var ouch_pos := Vector2(86, 86)
+	draw_string(stone, ouch_pos + Vector2(1, 1), "OUCH", HORIZONTAL_ALIGNMENT_LEFT, -1, ouch_size, _T.STONE_DIM)
+	draw_string(stone, ouch_pos, "OUCH", HORIZONTAL_ALIGNMENT_LEFT, -1, ouch_size, _T.STONE)
+	# Decorative hanging ticks under OUCH (not a puppet crossbar).
+	var tick_top := ouch_pos.y + 10.0
+	var widths := [42.0, 40.0, 38.0, 40.0]
+	var x := ouch_pos.x + 18.0
+	for i in 4:
+		var len := 11.0 + float(i % 2) * 5.0
+		draw_line(Vector2(x, tick_top), Vector2(x, tick_top + len), _T.GOLD_DIM, 2.0)
+		draw_line(Vector2(x, tick_top), Vector2(x, tick_top + 5.0), _T.GOLD, 1.4)
+		x += widths[i]

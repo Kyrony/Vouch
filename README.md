@@ -266,7 +266,7 @@ See [`docs/blueprints/v0.5/`](docs/blueprints/v0.5/) for Leonardo v0.5 sheets.
 
 **Towers (soft-go):** many candidate masts; **3 active per match**; **1 forced near the PM**. Phone + mast use **service / weak / dead** radii. Scratch on the slate only (not a voice or SMS line).
 
-**HUD + smartphone (soft-go):** Leonardo’s approved UI pack is wired in `scripts/horror/ui/` and `assets/horror/ui/` + `assets/horror/hud/`. Home is a **hybrid plate**: `menu_leonardo_locked.png` is the full visual (neon **V** + strung **OUCH**, no X-stick); Godot only adds invisible hitboxes. **Classic** is the live outdoor Host Match path; other painted modes are soft stubs. In-match HUD v3: MISSING CHILD / ALIVE ONLY banner, shared empty neon-rim health/stamina/fear tracks (eng-owned fill %), phone LED + signal, PM ability cooldown, center **E INTERACT**. Phone light is the camera LED only — no torch glyph. Drain/TTK stay eng-owned. Textures are wiring refs; Leonardo may redraw them before Steam.
+**HUD + smartphone (soft-go):** Leonardo’s approved UI pack is wired in `scripts/horror/ui/` and `assets/horror/ui/` + `assets/horror/hud/`. Home is Kyle’s React **VouchMenu** port: Control layout on `#050203` with gold/blood chrome, gold **V** + stone **OUCH**, SIGNAL bars, and a Play-selected modes panel on boot. Mode thumbs and the mansion field are blank placeholders (no plate, no `mansion-bg.png`). **Classic → START** is the live outdoor Host Match path; other modes toast stubs. Friends is a lobby-code stub. Settings saves master/SFX/fullscreen. Quit exits the process. In-match HUD v3: MISSING CHILD / ALIVE ONLY banner, shared empty neon-rim health/stamina/fear tracks (eng-owned fill %), phone LED + signal, PM ability cooldown, center **E INTERACT**. Phone light is the camera LED only — no torch glyph. Drain/TTK stay eng-owned. HUD textures are wiring refs; Leonardo may redraw them before Steam.
 
 **Environment kits (soft-go):** Family houses use modular porch / foundation / stairs / crawl graybox (`under_porch_crawl` under house A — no grave wording). PM bunker gets sealed concrete + pipes/shelves and a utility closet for `bunker_utility` (red/yellow neon, fluorescent; no gore, no guns). See `assets/horror/kits/README.md`. Kit plan sizes are art targets; live footprints stay v0.5.
 
@@ -373,16 +373,16 @@ scripts/horror/            Horror neighborhood factory (default play mode)
   environment/             FamilyHouse, PMMansion, UncleHouse, Outdoor + Terrain heightfield
   items/                   EffectDefinitions, PlayerEffects (meter stacks)
   world/                   NeighborhoodV05, NeighborhoodLayout, ChildSpawnRNG (11 L2 SoT pins), TowerRules
-  ui/                      Locked Leonardo menu + HUD (banner / Classic / phone LED)
-  assets/horror/ui/        Soft-go UI pack textures (banner without X-stick)
+  ui/                      React VouchMenu port + HUD (banner / Classic / phone LED)
+  assets/horror/ui/        Soft-go UI pack textures (HUD / leftovers; home is Controls)
   horror_world.gd          World orchestrator
   match_horror.gd          Host-authoritative horror match builder
   puppet_master_controller.gd  PM float, possession, radius life-steal
 scenes/Horror/             HorrorWorld.tscn, WorldPickup, PMChaseAI
 scenes/
   Main.tscn                 Actual main scene: composes Lobby (Home) + World (Match+Outside)
-  Lobby/Lobby.tscn           Home: Play / Join Friends / Settings / Quit + Classic panel,
-                             Host Match, joined-player list, remap + sensitivity + volume
+  Lobby/Lobby.tscn           Home: React VouchMenu (Play / Friends / Settings / Quit),
+                             blank mode thumbs, Classic Host Match, volume + fullscreen
   Match/Match.tscn           Match director (spawns rooms + players)
   Match/RoomPod.tscn         Multiplayer shell — instances scenes/Rooms/Room_XX.tscn
   scenes/Rooms/              6 hand-sealed graybox rooms + Room_PM.tscn

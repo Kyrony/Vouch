@@ -1,5 +1,5 @@
 extends SceneTree
-## Capture the F5 boot home (Main -> Lobby) for hybrid-plate verification.
+## Capture the F5 boot home (Main -> Lobby) for VouchMenu verification.
 
 
 func _initialize() -> void:
@@ -23,17 +23,17 @@ func _run() -> void:
 	print("BOOT_SCENE=res://scenes/Main.tscn")
 	print("BOOT_HOME=res://scenes/Lobby/Lobby.tscn")
 	print("BACKGROUND_TYPE=%s" % bg.get_class())
-	print("STRETCH_MODE=%s" % (bg as TextureRect).stretch_mode)
-	print("PLATE=%s" % (bg as TextureRect).texture.resource_path)
+	print("BACKGROUND_COLOR=%s" % (bg as ColorRect).color)
 	print("NAVCOLUMN=%s" % str(lobby.get_node_or_null("HomePanel/NavColumn") != null))
-	print("MODES_VISIBLE=%s" % str(lobby.get_node("HomePanel/HitboxRoot/GameModes").visible))
-	print("COVER_VISIBLE=%s" % str(lobby.get_node("HomePanel/HitboxRoot/ModesCover").visible))
+	print("PLAY_OPEN=%s" % str(lobby.get_node("HomePanel/SidePanel/PlayContent").visible))
+	print("MANSION_BLANK=%s" % str(lobby.get_node("MansionPlaceholder/Texture").texture == null))
+	print("THUMB_BLANK=%s" % str(lobby.get_node("HomePanel/SidePanel/PlayContent/ModeThumb/Texture").texture == null))
 	for path in [
-		"HomePanel/HitboxRoot/MenuButtons/PlayButton",
-		"HomePanel/HitboxRoot/GameModes/ClassicButton",
+		"HomePanel/NavColumn/PlayButton",
+		"HomePanel/SidePanel/PlayContent/ModeList/ClassicButton",
 	]:
 		var btn := lobby.get_node(path) as Button
-		print("HITBOX %s text='%s' flat=%s" % [path, btn.text, btn.flat])
+		print("NAV %s visible=%s" % [path, btn.visible])
 	var img: Image = root.get_viewport().get_texture().get_image()
 	var out := "res://assets/horror/ui/_boot_capture.png"
 	var err := img.save_png(out)

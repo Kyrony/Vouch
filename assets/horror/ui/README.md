@@ -4,27 +4,27 @@ Leonardo’s approved UI language — **not Steam-final art**. Files here may be
 redrawn before Steam. Keep the same filenames so `VouchUiKit`, `VouchBanner`,
 `NeonMenu`, and `NeonHud` keep loading them.
 
-## Locked main-menu plate (hybrid)
+## F5 home (React VouchMenu port)
 
 F5 / `project.godot` `run/main_scene` is `res://scenes/Main.tscn`, which
 instances `res://scenes/Lobby/Lobby.tscn`. That Lobby scene **is** the boot
 home — there is no separate Home/MainMenu scene.
 
-`menu_leonardo_locked.png` is the **full home visual** (1280×720). The scene
-ships a full-rect `TextureRect` (`Background`, Keep Aspect Covered). Overlay
-hitboxes sit on the painted Play / Join Friends / Settings / Quit zones and
-**glow yellow/red on hover**. The painted modes card stays covered until
-**Play**; then Classic / Hardcore / Custom / Practice / Friends Lobby appear.
-Godot must not rebuild the home as ColorRect + `NavColumn`.
+The live home is a **Control layout**, not the painted Leonardo hybrid plate.
+Base `#050203`, gold `#f0c43a` / `#c9a227`, blood `#c21818` / `#7a0f0f`.
+Wordmark is a gold-gradient **V** (Cinzel) plus stone **OUCH** (Special Elite)
+with hanging ticks. Left nav is Play / Join Friends / Settings / Quit
+(active gold glow + blood diamond, hover shake). Play is selected on boot
+and opens the modes side panel. Clicking the backdrop sets nav to null.
 
-Logo lives in the plate: neon **V** + **OUCH** on strings only — **no X-stick**.
-If you drop a replacement plate, keep that banner form.
+Mode thumbnail + mansion areas are **blank placeholders** (ColorRect / empty
+TextureRect). Do not require `mansion-bg.png` or `modes/*.png`.
 
-`banner_vouch.png` is a leftover wordmark stand-in (same no-stick rule). The
-live home does not draw a separate banner node.
+**Classic → START** is the live Host Match path (Host / Join / Start / Back).
+Other modes toast a stub. Friends is a lobby-code + JOIN stub. Settings is
+master / SFX volume, fullscreen, SAVE. Quit calls `get_tree().quit()`.
 
-**Classic** is the live Host Match path. Other painted modes are clickable
-soft stubs and do not start extra mode systems.
+`menu_leonardo_locked.png` is leftover plate art and is **not** the F5 visual.
 
 ## HUD / prompts
 
