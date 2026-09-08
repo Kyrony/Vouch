@@ -13,6 +13,7 @@ var side_panel: Control
 var play_content: Control
 var friends_content: Control
 var settings_content: Control
+var side_close_button: Button
 var toast_label: Label
 
 var play_button: Button
@@ -68,6 +69,7 @@ func _cache_nodes() -> void:
 	play_content = $HomePanel/SidePanel/PlayContent
 	friends_content = $HomePanel/SidePanel/FriendsContent
 	settings_content = $HomePanel/SidePanel/SettingsContent
+	side_close_button = $HomePanel/SidePanel/CloseButton
 	toast_label = $HomePanel/ToastLabel
 	play_button = $HomePanel/NavColumn/PlayButton
 	join_friends_button = $HomePanel/NavColumn/JoinFriendsButton
@@ -102,6 +104,8 @@ func _connect_signals() -> void:
 	join_friends_button.pressed.connect(func(): _set_nav("friends"))
 	settings_button.pressed.connect(func(): _set_nav("settings"))
 	quit_button.pressed.connect(_on_exit_pressed)
+	if side_close_button:
+		side_close_button.pressed.connect(func(): _set_nav(""))
 	for btn in [play_button, join_friends_button, settings_button, quit_button]:
 		if not btn.mouse_entered.is_connected(_on_nav_hover):
 			btn.mouse_entered.connect(_on_nav_hover.bind(btn))
@@ -187,6 +191,9 @@ func _set_mode(mode_id: String) -> void:
 	}
 	for id in buttons:
 		_T.apply_mode_button(buttons[id], id == mode_id)
+	var thumb_tex := play_content.get_node_or_null("ModeThumb/Texture") as TextureRect
+	if thumb_tex:
+		thumb_tex.texture = _BUILD.call("mode_thumb_texture", mode_id)
 
 
 func _on_nav_hover(button: Button) -> void:

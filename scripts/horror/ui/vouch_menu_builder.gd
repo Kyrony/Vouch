@@ -7,12 +7,16 @@ class_name VouchMenuBuilder
 const _T: GDScript = preload("res://scripts/horror/ui/vouch_menu_theme.gd")
 const TITLE_BG := "res://assets/horror/ui/menu_title_bg.png"
 const LOGO := "res://assets/horror/ui/vouch_fiery_logo.png"
-const NAV_TOP := 320.0
+# Left nav is vertically centered on the page; ~237 top centers the 4-item
+# column in the 720-tall viewport.
+const NAV_TOP := 237.0
 ## Previous plate was 880×260. Keep the same aspect at one-third scale.
 const LOGO_SIZE := Vector2(880.0 / 3.0, 260.0 / 3.0)
 ## Draw order for the interactive menu so it always sits in front of the
 ## decorative logo and background plate ("most forward" when the menu opens).
 const MENU_FRONT_Z := 5
+## Centered side-box size (opens in the middle of the page on nav click).
+const SIDE_SIZE := Vector2(512, 432)
 
 const NAV := [
 	{"id": "play", "name": "PlayButton", "label": "PLAY"},
@@ -20,6 +24,14 @@ const NAV := [
 	{"id": "settings", "name": "SettingsButton", "label": "SETTINGS"},
 	{"id": "quit", "name": "QuitButton", "label": "QUIT"},
 ]
+
+# Scary preview art shown in the mode thumbnail when a mode is selected.
+# Add a mode here to give it a thumbnail; modes left out show a blank box.
+const MODE_THUMBS := {
+	"classic": "res://assets/horror/ui/mode_classic.png",
+	"hardcore": "res://assets/horror/ui/mode_hardcore.png",
+	"custom": "res://assets/horror/ui/mode_custom.png",
+}
 
 const MODE_ORDER := ["classic", "hardcore", "custom", "practice", "friends-lobby"]
 const MODE_NODE := {
@@ -280,17 +292,41 @@ static func _ensure_side(home: Control) -> void:
 		side = Panel.new()
 		side.name = "SidePanel"
 		home.add_child(side)
-	side.set_anchors_preset(Control.PRESET_LEFT_WIDE)
-	side.offset_left = 348
-	side.offset_top = NAV_TOP
-	side.offset_right = 860
-	side.offset_bottom = -48
+	# Opens centered in the page (modal-style) when a nav item is clicked.
+	side.set_anchors_preset(Control.PRESET_CENTER)
+	side.offset_left = -SIDE_SIZE.x * 0.5
+	side.offset_top = -SIDE_SIZE.y * 0.5
+	side.offset_right = SIDE_SIZE.x * 0.5
+	side.offset_bottom = SIDE_SIZE.y * 0.5
 	side.mouse_filter = Control.MOUSE_FILTER_STOP
 	side.z_index = MENU_FRONT_Z
 	side.add_theme_stylebox_override("panel", _T.box(_T.GOLD, _T.PANEL, 1, 2, true))
 	_ensure_play_content(side)
 	_ensure_friends_content(side)
 	_ensure_settings_content(side)
+	_ensure_close_button(side)
+
+
+## Small ✕ in the top-right corner that closes the centered side box.
+static func _ensure_close_button(side: Control) -> void:
+	var close := side.get_node_or_null("CloseButton") as Button
+	if close == null:
+		close = Button.new()
+		close.name = "CloseButton"
+		side.add_child(close)
+	side.move_child(close, side.get_child_count() - 1)
+	close.text = "✕"
+	close.focus_mode = Control.FOCUS_NONE
+	close.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
+	close.mouse_filter = Control.MOUSE_FILTER_STOP
+	close.z_index = MENU_FRONT_Z + 1
+	close.set_anchors_preset(Control.PRESET_TOP_RIGHT)
+	close.offset_left = -40
+	close.offset_top = 6
+	close.offset_right = -8
+	close.offset_bottom = 38
+	_T.apply_action_button(close, "blood")
+	close.add_theme_font_size_override("font_size", 16)
 
 
 static func _ensure_play_content(side: Control) -> void:
@@ -327,10 +363,17 @@ static func _ensure_play_content(side: Control) -> void:
 		tex = TextureRect.new()
 		tex.name = "Texture"
 		thumb.add_child(tex)
-	tex.texture = null
-	tex.set_anchors_preset(Control.PRESET_FULL_RECT)
+	# Size the fill explicitly: full-rect anchors resolve to 0 inside a plain
+	# Panel (not a container), which left the preview invisible.
+	tex.set_anchors_preset(Control.PRESET_TOP_LEFT)
+	tex.position = Vector2.ZERO
+	tex.size = thumb.size
+	tex.custom_minimum_size = thumb.size
 	tex.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	tex.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	# Art is pre-cropped to the box aspect, so a plain stretch fills it cleanly.
+	tex.stretch_mode = TextureRect.STRETCH_SCALE
+	tex.texture = mode_thumb_texture("classic")
 	var modes := play.get_node_or_null("ModeList") as VBoxContainer
 	if modes == null:
 		modes = VBoxContainer.new()
@@ -572,6 +615,19 @@ static func _ensure_button(parent: Node, node_name: String, text: String) -> But
 		parent.add_child(btn)
 	btn.text = text
 	return btn
+
+
+## Scary preview art for a mode, or null when the mode has no thumbnail.
+## Decode straight to an uncompressed ImageTexture: the software GL path used
+## in headless/CI VMs does not reliably sample the imported VRAM .ctex.
+static func mode_thumb_texture(mode_id: String) -> Texture2D:
+	var path: String = MODE_THUMBS.get(mode_id, "")
+	if path.is_empty():
+		return null
+	var tex := _png_from_bytes(path)
+	if tex != null:
+		return tex
+	return load_png_texture(path)
 
 
 ## Prefer the imported CompressedTexture2D. If the .ctex cache is stale or
