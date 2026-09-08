@@ -263,11 +263,13 @@ Host RNG picks **one** per match (`ChildSpawnRNG`). Families spawn on **outdoor 
 
 See [`docs/blueprints/v0.5/`](docs/blueprints/v0.5/) for Leonardo v0.5 sheets.
 
-**Towers:** not in the live Start Match world (no mast meshes). `TowerRules` stays loaded for phone-signal API; `server_roll` is a no-op when the farm has no candidates.
+**Towers (soft-go):** many candidate masts; **3 active per match**; **1 forced near the PM**. Phone + mast use **service / weak / dead** radii. Scratch on the slate only (not a voice or SMS line).
 
-**HUD + smartphone (soft-go):** Leonardo’s approved UI pack is wired in `scripts/horror/ui/` and `assets/horror/ui/` + `assets/horror/hud/`. Home is a **hybrid plate**: `menu_leonardo_locked.png` is the full visual (neon **V** + strung **OUCH**, no X-stick); Godot only adds invisible hitboxes. **Classic** is the live outdoor Host Match path; other painted modes are soft stubs. In-match HUD v3: MISSING CHILD / ALIVE ONLY banner, shared empty neon-rim health/stamina/fear tracks (eng-owned fill %), phone LED + signal, PM ability cooldown, center **E INTERACT**. Phone light is the camera LED only — no torch glyph. Drain/TTK stay eng-owned. Textures are wiring refs; Leonardo may redraw them before Steam.
+**HUD + smartphone (soft-go):** Leonardo’s approved UI pack is wired in `scripts/horror/ui/` and `assets/horror/ui/` + `assets/horror/hud/`. Home is Kyle’s React **VouchMenu** port: Control layout over the original creepy `menu_atmosphere` night-yard, gold/blood chrome, no VOUCH wordmark, no SIGNAL bars, and a Play-selected modes panel on boot. Mode thumbs stay blank placeholders (no plate, no `mansion-bg.png`). **Classic → START** is the live outdoor Host Match path; other modes toast stubs. Friends is a lobby-code stub. Settings saves master/SFX/fullscreen. Quit exits the process. In-match HUD v3: MISSING CHILD / ALIVE ONLY banner, shared empty neon-rim health/stamina/fear tracks (eng-owned fill %), phone LED + signal, PM ability cooldown, center **E INTERACT**. Phone light is the camera LED only — no torch glyph. Drain/TTK stay eng-owned. HUD textures are wiring refs; Leonardo may redraw them before Steam.
 
-**HUD:** neon heart (health), cyan bar (stamina), violet bar (fear), phone + spotty signal.
+**HUD + smartphone (soft-go):** Leonardo’s approved UI pack is wired in `scripts/horror/ui/` and `assets/horror/ui/` + `assets/horror/hud/`. Home is a **hybrid plate**: `menu_leonardo_locked.png` is the full visual (neon **V** + strung **OUCH**, no X-stick); Godot only adds invisible hitboxes. **Classic** is the live outdoor Host Match path; other painted modes are soft stubs. In-match HUD: MISSING CHILD / ALIVE ONLY banner, stacked empty health-over-stamina tracks (eng-owned fill %), phone LED + signal, PM ability cooldown, center **E INTERACT**. Phone light is the camera LED only — no torch glyph. Drain/TTK stay eng-owned. Textures are wiring refs; Leonardo may redraw them before Steam.
+
+**HUD:** stacked horror-vial health over yellow stamina (empty tracks, eng fill %), phone LED, and signal. No fear bar.
 
 ## Friends-ready playtest (James checklist)
 
@@ -370,16 +372,16 @@ scripts/horror/            Horror neighborhood factory (default play mode)
   environment/             Outdoor terrain + roads, labeled L2 Spawn Point markers
   items/                   EffectDefinitions, PlayerEffects (meter stacks)
   world/                   NeighborhoodV05, NeighborhoodLayout, ChildSpawnRNG (11 L2 SoT pins), TowerRules
-  ui/                      Locked Leonardo menu + HUD (banner / Classic / phone LED)
-  assets/horror/ui/        Soft-go UI pack textures (banner without X-stick)
+  ui/                      React VouchMenu port + HUD (banner / Classic / phone LED)
+  assets/horror/ui/        Soft-go UI pack textures (HUD / leftovers; home is Controls)
   horror_world.gd          World orchestrator
   match_horror.gd          Host-authoritative horror match builder
   puppet_master_controller.gd  PM float, possession, radius life-steal
 scenes/Horror/             HorrorWorld.tscn, WorldPickup, PMChaseAI
 scenes/
   Main.tscn                 Actual main scene: composes Lobby (Home) + World (Match+Outside)
-  Lobby/Lobby.tscn           Home: Play / Join Friends / Settings / Quit + Classic panel,
-                             Host Match, joined-player list, remap + sensitivity + volume
+  Lobby/Lobby.tscn           Home: React VouchMenu (Play / Friends / Settings / Quit),
+                             blank mode thumbs, Classic Host Match, volume + fullscreen
   Match/Match.tscn           Match director (spawns rooms + players)
   Match/RoomPod.tscn         Multiplayer shell — instances scenes/Rooms/Room_XX.tscn
   scenes/Rooms/              6 hand-sealed graybox rooms + Room_PM.tscn
