@@ -22,6 +22,8 @@ enum Modal { NONE, PHONE, KEYPAD, BINARY, WALKIE, PAUSE }
 
 const SPEED: float = 4.5
 const SPRINT_MULTIPLIER: float = 1.4
+const STAMINA_EMPTY: float = 0.5
+const STAMINA_RESUME: float = 12.0
 const JUMP_VELOCITY: float = 3.2
 const MOUSE_SENSITIVITY: float = 0.0025
 const TOAST_DURATION: float = 4.5
@@ -121,6 +123,11 @@ var _neon_hud: Control = null
 var _local_health: float = 100.0
 var _local_stamina: float = 100.0
 var _local_max_health: float = 100.0
+var _is_sprinting: bool = false
+var _stamina_exhausted: bool = false
+var _stamina_sync_accum: float = 0.0
+var _last_synced_stamina: float = 100.0
+var _last_synced_sprinting: bool = false
 var _inventory_slots: Array = []
 var _inventory_selected: int = 0
 var _phone_rig: Node3D = null
@@ -248,9 +255,12 @@ func _physics_process(delta: float) -> void:
 	if not _eliminated:
 		_update_crouch_state()
 		if _on_ladder and not locked:
+			_is_sprinting = false
 			_apply_ladder_velocity()
 		else:
 			_apply_ground_velocity(delta, locked)
+
+		_tick_authority_stamina(delta)
 
 		if horror_mode and is_horror_puppet_master:
 			_pm_controller = get_node_or_null("PuppetMasterController")
@@ -285,8 +295,9 @@ func _apply_ground_velocity(delta: float, locked: bool) -> void:
 	var current_room: int = WorldScale.world_position_to_room_index(global_position)
 	var water_level: float = GameState.room_water_levels.get(current_room, 0.0)
 	var want_sprint := (not locked) and (not _crouching) and Input.is_action_pressed("sprint") and direction != Vector3.ZERO
-	if horror_mode and _local_stamina <= 0.5:
+	if horror_mode and not sprint_allowed(_local_stamina, _stamina_exhausted):
 		want_sprint = false
+	_is_sprinting = want_sprint
 	var effective_speed := move_speed_for(want_sprint, _crouching, water_level)
 
 	if direction:
@@ -304,6 +315,58 @@ static func move_speed_for(sprinting: bool, crouching: bool = false, water_level
 	if sprinting:
 		return speed * SPRINT_MULTIPLIER
 	return speed
+
+
+static func sprint_allowed(stamina: float, exhausted: bool = false) -> bool:
+	if exhausted:
+		return stamina >= STAMINA_RESUME
+	return stamina > STAMINA_EMPTY
+
+
+func _tick_authority_stamina(delta: float) -> void:
+	if not is_multiplayer_authority() or _eliminated or not horror_mode:
+		return
+	var was_sprinting := _is_sprinting
+	_local_stamina = PlayerEffects.tick_stamina(_local_stamina, _is_sprinting, delta)
+	if _is_sprinting and _local_stamina <= STAMINA_EMPTY:
+		_stamina_exhausted = true
+		_is_sprinting = false
+	elif _local_stamina >= STAMINA_RESUME:
+		_stamina_exhausted = false
+	if was_sprinting and not sprint_allowed(_local_stamina, _stamina_exhausted):
+		# Empty bar cannot keep the 1.4× bonus for the rest of this frame.
+		var water_level: float = GameState.room_water_levels.get(WorldScale.world_position_to_room_index(global_position), 0.0)
+		var walk := move_speed_for(false, _crouching, water_level)
+		if Vector2(velocity.x, velocity.z).length() > walk + 0.01:
+			var planar := Vector3(velocity.x, 0.0, velocity.z)
+			if planar.length() > 0.001:
+				planar = planar.normalized() * walk
+				velocity.x = planar.x
+				velocity.z = planar.z
+	_refresh_vital_meters()
+	_replicate_stamina(delta)
+
+
+func _refresh_vital_meters() -> void:
+	if _neon_hud:
+		_neon_hud.set_meters(_local_health, _local_max_health, _local_stamina, _local_fear)
+
+
+func _replicate_stamina(delta: float) -> void:
+	if not horror_mode:
+		return
+	if multiplayer.is_server():
+		PlayerEffects.server_set_sprinting(multiplayer.get_unique_id(), _is_sprinting)
+		PlayerEffects.server_set_stamina(multiplayer.get_unique_id(), _local_stamina, false)
+		return
+	_stamina_sync_accum += delta
+	var changed := absf(_local_stamina - _last_synced_stamina) >= 1.0 or _is_sprinting != _last_synced_sprinting
+	if _stamina_sync_accum < 0.1 and not changed:
+		return
+	_stamina_sync_accum = 0.0
+	_last_synced_stamina = _local_stamina
+	_last_synced_sprinting = _is_sprinting
+	PlayerEffects.request_set_stamina.rpc_id(1, _local_stamina, _is_sprinting)
 
 
 func _apply_ladder_velocity() -> void:
@@ -1241,16 +1304,18 @@ func _style_horror_phone_panel() -> void:
 func _on_local_health_changed(hp: float, cap: float) -> void:
 	_local_health = hp
 	_local_max_health = cap
-	if _neon_hud:
-		_neon_hud.set_meters(hp, cap, _stamina_bar.value if _stamina_bar else 100.0, _fear_bar.value if _fear_bar else 0.0)
+	_refresh_vital_meters()
 
 
 func _on_local_meters_changed(hp: float, stamina: float, fear: float) -> void:
 	_local_health = hp
-	_local_stamina = stamina
 	_local_fear = fear
+	# Owning peer already ticks sprint drain/regen; don't let the 10 Hz
+	# PlayerEffects broadcast rewind the live yellow bar.
+	if not is_multiplayer_authority():
+		_local_stamina = stamina
+	_refresh_vital_meters()
 	if _neon_hud:
-		_neon_hud.set_meters(hp, _local_max_health, stamina, fear)
 		_sync_horror_hud_signal()
 
 

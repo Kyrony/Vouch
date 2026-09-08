@@ -336,6 +336,9 @@ VOUCH_HORROR_MATCH_TEST=1 godot4 --headless --path .
 # Horror neighborhood smoke (standalone probe):
 godot4 --headless --path . -s res://scripts/vouch_horror_match_probe.gd
 
+# Sprint stamina drain + yellow HUD fill:
+godot4 --headless --path . -s res://scripts/vouch_stamina_sprint_probe.gd
+
 # Playable loop (phone/walkie) — bunker-only: VOUCH_BUNKER_ONLY=1; full escape path needs VOUCH_ESCAPE_PATH=1:
 VOUCH_PLAYABLE_LOOP_TEST=1 godot4 --headless --path .
 VOUCH_ESCAPE_PATH=1 VOUCH_PLAYABLE_LOOP_TEST=1 godot4 --headless --path .
