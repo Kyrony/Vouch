@@ -1,8 +1,8 @@
 extends Control
 class_name NeonHud
-## Leonardo HUD v3: objective banner, shared empty neon-rim meters
-## (health / stamina / fear), phone LED + signal, PM cooldown, E prompt.
-## Fill % is eng-owned via TextureProgressBar — no mid/low fill PNGs.
+## Kyle-locked HUD: objective banner, stacked health-over-stamina empty
+## tracks (top-left), phone LED + signal, PM cooldown, E prompt.
+## No fear bar, no chips. Fill % is eng-owned via TextureProgressBar.
 
 const _PACK: GDScript = preload("res://scripts/horror/ui/hud_icon_pack.gd")
 const _KIT: GDScript = preload("res://scripts/horror/ui/ui_kit.gd")
@@ -34,10 +34,8 @@ var interact_sub: String = "Look / Talk"
 var _built: bool = false
 var _health_bar: TextureProgressBar
 var _stamina_bar: TextureProgressBar
-var _fear_bar: TextureProgressBar
 var _health_pct: Label
 var _stamina_pct: Label
-var _fear_pct: Label
 var _phone_icon: TextureRect
 var _phone_label: Label
 var _signal_icon: TextureRect
@@ -212,87 +210,59 @@ func _build_objective() -> void:
 
 
 func _build_vitals() -> void:
-	var box := Panel.new()
+	var box := Control.new()
 	box.name = "Vitals"
-	box.set_anchors_preset(PRESET_BOTTOM_LEFT)
+	box.set_anchors_preset(PRESET_TOP_LEFT)
 	box.offset_left = 16
-	box.offset_top = -236
-	box.offset_right = 456
-	box.offset_bottom = -86
+	box.offset_top = 16
+	box.offset_right = 340
+	box.offset_bottom = 88
 	box.mouse_filter = MOUSE_FILTER_IGNORE
-	box.add_theme_stylebox_override("panel", _KIT.panel(Color(0.08, 0.07, 0.1, 0.55), 4, Color(0.03, 0.03, 0.04, 0.62)))
 	add_child(box)
 	var col := VBoxContainer.new()
 	col.name = "MeterColumn"
 	col.set_anchors_preset(PRESET_FULL_RECT)
-	col.offset_left = 10
-	col.offset_top = 8
-	col.offset_right = -10
-	col.offset_bottom = -8
-	col.add_theme_constant_override("separation", 8)
+	col.add_theme_constant_override("separation", 4)
 	box.add_child(col)
-	_health_bar = _make_track_meter(col, "HEALTH", _PACK.HEALTH, _PACK.TEX_HEALTH_CHIP, _PACK.TEX_HEALTH)
-	_stamina_bar = _make_track_meter(col, "STAMINA", _PACK.STAMINA, _PACK.TEX_STAMINA_CHIP, _PACK.TEX_STAMINA)
-	_fear_bar = _make_track_meter(col, "FEAR", _PACK.FEAR, _PACK.TEX_FEAR_CHIP, _PACK.TEX_FEAR)
+	_health_bar = _make_track_meter(col, "HEALTH", _PACK.HEALTH, _PACK.TEX_HEALTH)
+	_stamina_bar = _make_track_meter(col, "STAMINA", _PACK.STAMINA, _PACK.TEX_STAMINA)
 
 
-func _make_track_meter(parent: VBoxContainer, caption: String, color: Color, chip_stem: String, bar_stem: String) -> TextureProgressBar:
+func _make_track_meter(parent: VBoxContainer, caption: String, color: Color, bar_stem: String) -> TextureProgressBar:
 	var row := HBoxContainer.new()
 	row.name = "%sRow" % caption.capitalize()
-	row.add_theme_constant_override("separation", 8)
+	row.add_theme_constant_override("separation", 6)
 	parent.add_child(row)
-	var chip := TextureRect.new()
-	chip.name = "%sChip" % caption.capitalize()
-	chip.custom_minimum_size = Vector2(28, 28)
-	chip.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
-	chip.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
-	chip.texture = _PACK.texture(chip_stem)
-	chip.mouse_filter = MOUSE_FILTER_IGNORE
-	row.add_child(chip)
 	var bar := TextureProgressBar.new()
 	bar.name = "%sBar" % caption.capitalize()
 	bar.min_value = 0.0
 	bar.max_value = 1.0
 	bar.step = 0.001
-	bar.custom_minimum_size = Vector2(236, 28)
+	bar.custom_minimum_size = Vector2(260, 28)
 	bar.size_flags_horizontal = SIZE_EXPAND_FILL
-	bar.nine_patch_stretch = true
+	bar.nine_patch_stretch = false
 	var under: Texture2D = _PACK.texture(bar_stem)
 	bar.texture_under = under
 	var tw := 640
-	var th := 72
+	var th := 52
 	if under:
 		tw = under.get_width()
 		th = under.get_height()
-	var inset := maxi(int(round(float(th) * 0.28)), 8)
+	var inset := maxi(int(round(float(th) * 0.22)), 6)
 	bar.texture_progress = _PACK.make_fill_texture(color, tw, th, inset)
-	var margin := maxi(int(round(float(th) * 0.42)), 12)
-	bar.stretch_margin_left = margin
-	bar.stretch_margin_right = margin
-	bar.stretch_margin_top = margin
-	bar.stretch_margin_bottom = margin
 	bar.fill_mode = TextureProgressBar.FILL_LEFT_TO_RIGHT
 	bar.mouse_filter = MOUSE_FILTER_IGNORE
 	row.add_child(bar)
-	var lab := Label.new()
-	lab.text = caption
-	lab.custom_minimum_size = Vector2(72, 0)
-	lab.add_theme_color_override("font_color", color)
-	lab.add_theme_font_size_override("font_size", 11)
-	row.add_child(lab)
 	var pct := Label.new()
 	pct.name = "%sPct" % caption.capitalize()
-	pct.custom_minimum_size = Vector2(40, 0)
+	pct.custom_minimum_size = Vector2(36, 0)
 	pct.add_theme_color_override("font_color", color)
-	pct.add_theme_font_size_override("font_size", 11)
+	pct.add_theme_font_size_override("font_size", 10)
 	row.add_child(pct)
-	match caption:
-		"HEALTH":
-			_health_pct = pct
-		"STAMINA":
-			_stamina_pct = pct
-		_:
-			_fear_pct = pct
+	if caption == "HEALTH":
+		_health_pct = pct
+	else:
+		_stamina_pct = pct
 	return bar
 
 
@@ -464,9 +434,6 @@ func _refresh() -> void:
 	if _stamina_bar:
 		_stamina_bar.value = stamina_ratio
 		_stamina_pct.text = "%d%%" % int(round(stamina_ratio * 100.0))
-	if _fear_bar:
-		_fear_bar.value = fear_ratio
-		_fear_pct.text = "%d%%" % int(round(fear_ratio * 100.0))
 	_refresh_phone()
 	_refresh_signal()
 	_refresh_ability()

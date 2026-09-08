@@ -265,9 +265,9 @@ See [`docs/blueprints/v0.5/`](docs/blueprints/v0.5/) for Leonardo v0.5 sheets.
 
 **Towers:** not in the live Start Match world (no mast meshes). `TowerRules` stays loaded for phone-signal API; `server_roll` is a no-op when the farm has no candidates.
 
-**HUD + smartphone (soft-go):** Leonardo’s approved UI pack is wired in `scripts/horror/ui/` and `assets/horror/ui/` + `assets/horror/hud/`. Home is a **hybrid plate**: `menu_leonardo_locked.png` is the full visual (neon **V** + strung **OUCH**, no X-stick); Godot only adds invisible hitboxes. **Classic** is the live outdoor Host Match path; other painted modes are soft stubs. In-match HUD v3: MISSING CHILD / ALIVE ONLY banner, shared empty neon-rim health/stamina/fear tracks (eng-owned fill %), phone LED + signal, PM ability cooldown, center **E INTERACT**. Phone light is the camera LED only — no torch glyph. Drain/TTK stay eng-owned. Textures are wiring refs; Leonardo may redraw them before Steam.
+**HUD + smartphone (soft-go):** Leonardo’s approved UI pack is wired in `scripts/horror/ui/` and `assets/horror/ui/` + `assets/horror/hud/`. Home is a **hybrid plate**: `menu_leonardo_locked.png` is the full visual (neon **V** + strung **OUCH**, no X-stick); Godot only adds invisible hitboxes. **Classic** is the live outdoor Host Match path; other painted modes are soft stubs. In-match HUD: MISSING CHILD / ALIVE ONLY banner, stacked empty health-over-stamina tracks (eng-owned fill %), phone LED + signal, PM ability cooldown, center **E INTERACT**. Phone light is the camera LED only — no torch glyph. Drain/TTK stay eng-owned. Textures are wiring refs; Leonardo may redraw them before Steam.
 
-**HUD:** neon heart (health), cyan bar (stamina), violet bar (fear), phone + spotty signal.
+**HUD:** stacked horror-vial health over yellow stamina (empty tracks, eng fill %), phone LED, and signal. No fear bar.
 
 ## Friends-ready playtest (James checklist)
 

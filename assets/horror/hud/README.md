@@ -2,10 +2,10 @@
 
 Wiring reference for the horror HUD / inventory — **not Steam-final art**.
 
-Leonardo HUD **v3** is the meter language source of truth:
+Kyle-locked HUD meters are the live language:
 
-- **Health / Stamina / Fear** — shared EMPTY neon-rim capsule tracks (`*_bar_empty.png`) plus matching chips. Fill % is **eng-owned** in Godot (`TextureProgressBar` + generated fill). Do not ship mid/low `*_fill*.png`.
-- **Chips** — `health_chip.png` (red), `stamina_chip.png` (cyan), `fear_chip.png` (purple)
+- **Health over stamina** (top-left stack) — `health_bar_empty.png` (horror vial / ECG etch) and `stamina_bar_empty.png` (yellow track). Fill % is **eng-owned** in Godot (`TextureProgressBar` + generated fill from color refs). Do not ship mid/low `*_fill*.png`.
+- **No fear bar** and **no side chips** on the live HUD.
 - **Phone LED** — yellow smartphone silhouette with LED bloom (camera light only)
 - **Signal** — full (green bars) / weak (yellow bars) / dead (red slash)
 - **Interact** — `key_e.png` prompt badge + pickup / missing-child marks
