@@ -1,6 +1,7 @@
-[gd_scene load_steps=2 format=3]
+[gd_scene load_steps=3 format=3]
 
 [ext_resource type="Script" path="res://scripts/lobby.gd" id="1"]
+[ext_resource type="Texture2D" path="res://assets/horror/ui/menu_atmosphere.png" id="2"]
 
 [node name="Lobby" type="Control"]
 layout_mode = 3
@@ -20,7 +21,20 @@ grow_horizontal = 2
 grow_vertical = 2
 color = Color(0.0196078, 0.00784314, 0.0117647, 1)
 
+[node name="MenuAtmosphere" type="TextureRect" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+texture = ExtResource("2")
+expand_mode = 1
+stretch_mode = 6
+
 [node name="MansionPlaceholder" type="ColorRect" parent="."]
+visible = false
 layout_mode = 1
 anchors_preset = 15
 anchor_left = 0.42
@@ -29,7 +43,7 @@ anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
 mouse_filter = 2
-color = Color(0.04, 0.02, 0.025, 1)
+color = Color(0, 0, 0, 0)
 
 [node name="Texture" type="TextureRect" parent="MansionPlaceholder"]
 layout_mode = 1

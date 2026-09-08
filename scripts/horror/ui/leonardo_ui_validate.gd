@@ -32,8 +32,17 @@ static func validate_menu(lobby: Control) -> String:
 		return "hybrid plate HitboxRoot must not remain on the boot home"
 	if lobby.get_node_or_null("HomePanel/NavColumn") == null:
 		return "NavColumn missing on the Control home"
-	if lobby.get_node_or_null("HomePanel/Banner") == null:
-		return "VouchBanner missing"
+	var banner := lobby.get_node_or_null("HomePanel/Banner") as Control
+	if banner and banner.visible:
+		return "VOUCH wordmark must stay off the home"
+	var signal_cluster := lobby.get_node_or_null("HomePanel/SignalCluster") as Control
+	if signal_cluster and signal_cluster.visible:
+		return "SIGNAL cluster must stay off the home"
+	var atmo := lobby.get_node_or_null("MenuAtmosphere")
+	if atmo == null:
+		return "MenuAtmosphere creepy background missing"
+	if atmo is TextureRect and (atmo as TextureRect).texture == null:
+		return "MenuAtmosphere has no texture"
 	for path in [
 		"HomePanel/NavColumn/PlayButton",
 		"HomePanel/NavColumn/JoinFriendsButton",
@@ -47,7 +56,6 @@ static func validate_menu(lobby: Control) -> String:
 		"HomePanel/SidePanel/SettingsContent/SfxVolumeRow/Slider",
 		"HomePanel/SidePanel/SettingsContent/FullscreenRow/FullscreenToggle",
 		"HomePanel/SidePanel/SettingsContent/SaveButton",
-		"HomePanel/SignalCluster/SignalLabel",
 		"PlayPanel/VBoxContainer/HostButton",
 		"PlayPanel/BackButton",
 	]:
@@ -125,8 +133,8 @@ static func _validate_boot_scene_file() -> String:
 		return "Lobby.tscn boot background is still the plate TextureRect"
 	if not tscn.contains('[node name="Background" type="ColorRect"'):
 		return "Lobby.tscn must ship a ColorRect named Background"
-	if not tscn.contains("MansionPlaceholder"):
-		return "Lobby.tscn missing MansionPlaceholder"
+	if not tscn.contains("menu_atmosphere.png"):
+		return "Lobby.tscn must reference the creepy menu_atmosphere background"
 	if tscn.contains("MatchSettingsPanel") or tscn.contains("HiddenHallwayRow"):
 		return "Lobby.tscn Host Lobby still has spawn-odds sliders"
 	if tscn.contains("mansion-bg.png") or tscn.contains("modes/"):

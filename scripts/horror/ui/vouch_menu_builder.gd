@@ -1,11 +1,11 @@
 extends RefCounted
 class_name VouchMenuBuilder
-## Builds Kyle's React VouchMenu as Godot Controls.
-## Blank mansion / mode thumbs only — no mansion-bg.png or modes/*.png.
+## Builds Kyle's React VouchMenu as Godot Controls over menu_atmosphere.
+## Blank mode thumbs only — no mansion-bg.png or modes/*.png. No VOUCH / SIGNAL.
 
 const _T: GDScript = preload("res://scripts/horror/ui/vouch_menu_theme.gd")
-const _BANNER: GDScript = preload("res://scripts/horror/ui/vouch_banner.gd")
 const _GLYPH: GDScript = preload("res://scripts/horror/ui/nav_glyph.gd")
+const ATMOSPHERE := "res://assets/horror/ui/menu_atmosphere.png"
 
 const NAV := [
 	{"id": "play", "name": "PlayButton", "label": "PLAY", "glyph": "play"},
@@ -27,6 +27,7 @@ const MODE_NODE := {
 static func ensure(lobby: Control) -> void:
 	_strip_plate(lobby)
 	_ensure_background(lobby)
+	_ensure_atmosphere(lobby)
 	_ensure_mansion(lobby)
 	_ensure_home(lobby)
 	_ensure_host(lobby)
@@ -34,7 +35,7 @@ static func ensure(lobby: Control) -> void:
 
 
 static func _strip_plate(lobby: Control) -> void:
-	for path in ["MenuAtmosphere", "HomePanel/HitboxRoot", "HomePanel/ModesCover"]:
+	for path in ["HomePanel/HitboxRoot", "HomePanel/ModesCover"]:
 		var n := lobby.get_node_or_null(path)
 		if n:
 			n.queue_free()
@@ -64,6 +65,44 @@ static func _ensure_background(lobby: Control) -> void:
 	color_bg.grow_vertical = Control.GROW_DIRECTION_BOTH
 
 
+static func _ensure_atmosphere(lobby: Control) -> void:
+	var atmo := lobby.get_node_or_null("MenuAtmosphere") as Control
+	if atmo == null:
+		atmo = TextureRect.new()
+		atmo.name = "MenuAtmosphere"
+		lobby.add_child(atmo)
+	if not (atmo is TextureRect):
+		var tex_rect := TextureRect.new()
+		tex_rect.name = "MenuAtmosphere"
+		atmo.replace_by(tex_rect)
+		atmo.free()
+		atmo = tex_rect
+	var tex := atmo as TextureRect
+	tex.set_anchors_preset(Control.PRESET_FULL_RECT)
+	tex.offset_left = 0
+	tex.offset_top = 0
+	tex.offset_right = 0
+	tex.offset_bottom = 0
+	tex.grow_horizontal = Control.GROW_DIRECTION_BOTH
+	tex.grow_vertical = Control.GROW_DIRECTION_BOTH
+	tex.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	tex.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	tex.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_COVERED
+	if ResourceLoader.exists(ATMOSPHERE):
+		tex.texture = load(ATMOSPHERE) as Texture2D
+	var bg := lobby.get_node_or_null("Background")
+	if bg:
+		lobby.move_child(tex, bg.get_index() + 1)
+
+
+static func _hide_wordmark_and_signal(home: Control) -> void:
+	for node_name in ["Banner", "SignalCluster"]:
+		var n := home.get_node_or_null(node_name) as Control
+		if n:
+			n.visible = false
+			n.mouse_filter = Control.MOUSE_FILTER_IGNORE
+
+
 static func _ensure_mansion(lobby: Control) -> void:
 	var mansion := lobby.get_node_or_null("MansionPlaceholder") as Control
 	if mansion == null:
@@ -71,7 +110,8 @@ static func _ensure_mansion(lobby: Control) -> void:
 		mansion.name = "MansionPlaceholder"
 		lobby.add_child(mansion)
 	if mansion is ColorRect:
-		(mansion as ColorRect).color = _T.PLACEHOLDER
+		(mansion as ColorRect).color = Color(0, 0, 0, 0)
+	mansion.visible = false
 	mansion.set_anchors_preset(Control.PRESET_FULL_RECT)
 	mansion.anchor_left = 0.42
 	mansion.offset_left = 0
@@ -106,67 +146,10 @@ static func _ensure_home(lobby: Control) -> void:
 	home.offset_right = 0
 	home.offset_bottom = 0
 	home.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	_ensure_banner(home)
-	_ensure_signal(home)
+	_hide_wordmark_and_signal(home)
 	_ensure_nav(home)
 	_ensure_side(home)
 	_ensure_toast(home)
-
-
-static func _ensure_banner(home: Control) -> void:
-	var banner := home.get_node_or_null("Banner") as Control
-	if banner == null:
-		banner = Control.new()
-		banner.name = "Banner"
-		banner.set_script(_BANNER)
-		home.add_child(banner)
-	banner.visible = true
-	banner.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	banner.set_anchors_preset(Control.PRESET_TOP_LEFT)
-	banner.position = Vector2(28, 18)
-	banner.size = Vector2(560, 132)
-
-
-static func _ensure_signal(home: Control) -> void:
-	var cluster := home.get_node_or_null("SignalCluster") as Control
-	if cluster == null:
-		cluster = VBoxContainer.new()
-		cluster.name = "SignalCluster"
-		home.add_child(cluster)
-	cluster.set_anchors_preset(Control.PRESET_TOP_RIGHT)
-	cluster.offset_left = -132
-	cluster.offset_top = 18
-	cluster.offset_right = -24
-	cluster.offset_bottom = 86
-	cluster.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	if cluster is VBoxContainer:
-		(cluster as VBoxContainer).add_theme_constant_override("separation", 4)
-	var bars := cluster.get_node_or_null("SignalBars") as HBoxContainer
-	if bars == null:
-		bars = HBoxContainer.new()
-		bars.name = "SignalBars"
-		cluster.add_child(bars)
-		bars.alignment = BoxContainer.ALIGNMENT_END
-		bars.add_theme_constant_override("separation", 3)
-		var heights := [10, 16, 22, 28]
-		var colors := [_T.GOLD, _T.GOLD_DIM, Color(0.85, 0.35, 0.12), _T.BLOOD]
-		for i in 4:
-			var bar := ColorRect.new()
-			bar.name = "Bar%d" % (i + 1)
-			bar.custom_minimum_size = Vector2(8, heights[i])
-			bar.color = colors[i]
-			bar.size_flags_vertical = Control.SIZE_SHRINK_END
-			bar.mouse_filter = Control.MOUSE_FILTER_IGNORE
-			bars.add_child(bar)
-	var label := cluster.get_node_or_null("SignalLabel") as Label
-	if label == null:
-		label = Label.new()
-		label.name = "SignalLabel"
-		cluster.add_child(label)
-	label.text = "SIGNAL"
-	label.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
-	_T.apply_label(label, "ui")
-	label.add_theme_font_size_override("font_size", 11)
 
 
 static func _ensure_nav(home: Control) -> void:
@@ -175,7 +158,7 @@ static func _ensure_nav(home: Control) -> void:
 		nav = VBoxContainer.new()
 		nav.name = "NavColumn"
 		home.add_child(nav)
-	nav.position = Vector2(28, 168)
+	nav.position = Vector2(28, 36)
 	nav.size = Vector2(300, 280)
 	nav.add_theme_constant_override("separation", 10)
 	nav.mouse_filter = Control.MOUSE_FILTER_STOP
@@ -229,7 +212,7 @@ static func _ensure_side(home: Control) -> void:
 		home.add_child(side)
 	side.set_anchors_preset(Control.PRESET_LEFT_WIDE)
 	side.offset_left = 348
-	side.offset_top = 150
+	side.offset_top = 36
 	side.offset_right = 778
 	side.offset_bottom = -48
 	side.mouse_filter = Control.MOUSE_FILTER_STOP

@@ -10,10 +10,10 @@ F5 / `project.godot` `run/main_scene` is `res://scenes/Main.tscn`, which
 instances `res://scenes/Lobby/Lobby.tscn`. That Lobby scene **is** the boot
 home — there is no separate Home/MainMenu scene.
 
-The live home is a **Control layout**, not the painted Leonardo hybrid plate.
-Base `#050203`, gold `#f0c43a` / `#c9a227`, blood `#c21818` / `#7a0f0f`.
-Wordmark is a gold-gradient **V** (Cinzel) plus stone **OUCH** (Special Elite)
-with hanging ticks. Left nav is Play / Join Friends / Settings / Quit
+The live home is a **Control layout** over the original creepy
+`menu_atmosphere.png` night-yard (not the painted Leonardo hybrid plate).
+Gold `#f0c43a` / `#c9a227`, blood `#c21818` / `#7a0f0f`. No VOUCH wordmark
+and no SIGNAL cluster. Left nav is Play / Join Friends / Settings / Quit
 (active gold glow + blood diamond, hover shake). Play is selected on boot
 and opens the modes side panel. Clicking the backdrop sets nav to null.
 
