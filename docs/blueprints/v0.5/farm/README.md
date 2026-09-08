@@ -4,7 +4,7 @@ Kyle / Leonardo plates for the **open farm** Host Match. Soft-go: **terrain, roa
 
 | Layer | Plate | What it locks |
 | --- | --- | --- |
-| **L1 / L1b** | farm-country + QA terrain/roads | Open/hilly footprint, ~80 m scale, west hub + east oval loop, curbs, contour hills. |
+| **L1 / Kyle T0** | `kyle_greybox_layout` + `kyle_T0_height_97x81.exr` | Open/hilly 144×120 m, Family A–D west, Uncle north of mansion, east cliff. |
 | **L2** | QA spawn pins + CSV | 11 alive-only child pins. **Eng short `spawn_id`s are SoT 1:1** — ignore art camelCase / pin-number drift. |
 | **L3** | (deferred) | Tower candidates are **not** built into the live farm. |
 | **L4** | (deferred) | PM interior rooms are **not** built into the live farm. |
@@ -13,7 +13,7 @@ Kyle / Leonardo plates for the **open farm** Host Match. Soft-go: **terrain, roa
 
 **James verify (locked):** camelCase / plate typos (`master_become`, `unclebecome`) are **not** SoT. Use `master_bedroom` / `uncle_bedroom`. Art may stamp a second **1** in the north clearing — only one `pm_attic`.
 
-QA **v2** places all 11 pins, including pin 9 on the SE road bend.
+Kyle greybox places all 11 pins, including pin 9 on the SE road toward the east cliff.
 
 Live markers use only:
 
@@ -25,7 +25,7 @@ Live markers use only:
 6. `uncle_garage` — south-east of pin 5
 7. `family_shed` — far west circular road loop
 8. `storm_drain` — south of the shed, west intersection
-9. `under_porch_crawl` — SE road bend of the east loop, **no grave**
+9. `under_porch_crawl` — SE road toward the east cliff, **no grave**
 10. `garden_well` — west of the central stack, between parallel lanes
 11. `car_trunk` — south hub three-way junction
 
@@ -33,6 +33,6 @@ Canonical table: [`../L2_child_rng_spawns.csv`](../L2_child_rng_spawns.csv).
 
 ## Live Host Match
 
-World: +X east, +Z south, origin = west farm-road hub. East oval loop is the old PM pad. Families spawn on outdoor pads; PM on the east courtyard pad.
+World: +X east, +Z south, origin = center of the 144×120 heightfield. Families spawn on west outdoor pads; PM on the hilltop courtyard.
 
 `NeighborhoodV05.OUTDOOR_ONLY` is on. `GRAYBOX_NEIGHBORHOOD` is off.
