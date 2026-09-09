@@ -18,13 +18,12 @@ var _host_only: Array[Control] = []
 
 func _ready() -> void:
 	layer = 80
+	visible = false
 	process_mode = Node.PROCESS_MODE_ALWAYS
 	var dbg: Node = get_node_or_null("/root/DebugBuild")
 	if dbg == null or not bool(dbg.get("enabled")):
 		queue_free()
 		return
-	_build()
-	visible = false
 
 
 func _unhandled_input(event: InputEvent) -> void:
@@ -35,6 +34,8 @@ func _unhandled_input(event: InputEvent) -> void:
 
 func _toggle() -> void:
 	_open = not _open
+	if _open and _panel == null:
+		_build()
 	visible = _open
 	if _open:
 		_refresh()
@@ -50,8 +51,16 @@ func _restore_mouse() -> void:
 
 
 func _build() -> void:
+	# Full-rect ignore root so this overlay never eats menu / game clicks.
+	var blocker := Control.new()
+	blocker.name = "Root"
+	blocker.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	blocker.set_anchors_preset(Control.PRESET_FULL_RECT)
+	add_child(blocker)
+
 	_panel = PanelContainer.new()
 	_panel.name = "Panel"
+	_panel.mouse_filter = Control.MOUSE_FILTER_STOP
 	_panel.set_anchors_preset(Control.PRESET_TOP_RIGHT)
 	_panel.offset_left = -340
 	_panel.offset_top = 14
@@ -59,7 +68,7 @@ func _build() -> void:
 	_panel.offset_bottom = 14 + 540
 	_panel.grow_horizontal = Control.GROW_DIRECTION_BEGIN
 	_panel.add_theme_stylebox_override("panel", _T.box(Color(_T.GOLD.r, _T.GOLD.g, _T.GOLD.b, 0.55), _T.PANEL, 1, 2, false))
-	add_child(_panel)
+	blocker.add_child(_panel)
 
 	var margin := MarginContainer.new()
 	margin.add_theme_constant_override("margin_left", 14)
@@ -176,6 +185,8 @@ func _host(ctrl: Control) -> void:
 
 
 func _refresh() -> void:
+	if _status == null or _invincible == null:
+		return
 	var net: Node = get_node_or_null("/root/NetworkManager")
 	var is_host: bool = net != null and net.has_method("is_server") and bool(net.call("is_server"))
 	if is_host:

@@ -152,9 +152,12 @@ func _suppress_parallel_worlds() -> void:
 	var match_node := get_parent()
 	if match_node == null:
 		return
+	# Forward+ greys the viewport if a WorldEnvironment node sits in the tree
+	# with environment=null. Keep FarmSky (day cycle + validation) and drop
+	# Match's leftover WE so only one environment is active.
 	var we := match_node.get_node_or_null("WorldEnvironment") as WorldEnvironment
 	if we:
-		we.environment = null
+		we.queue_free()
 	var world_root := match_node.get_parent()
 	if world_root == null:
 		return
