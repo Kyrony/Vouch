@@ -7,7 +7,8 @@ Kyle-locked HUD meters are the live language:
 - **Health over stamina** (top-left stack) — `health_bar_empty.png` (horror vial / ECG etch) and `stamina_bar_empty.png` (yellow track). Fill % is **eng-owned** in Godot (`TextureProgressBar` + generated fill from color refs). Do not ship mid/low `*_fill*.png`.
 - **No fear bar** and **no side chips** on the live HUD.
 - **Top-right** — `signal_empty` / `signal_full` / `signal_weak` / `signal_dead` widget plus `battery_empty.png` (eng-owned fill %). Signal/battery are **not** rail items.
-- **Right item rail** — five octagon wells (`slot_empty.png`, selected `slot_selected.png` blue bloom). Filled = well + `icon_*.png`. Items/consumables only; not a bottom hotbar.
+- **Right item rail** — five octagon wells **88×80**. Prefer Kyle-locked K7 overlays in `res://hud/k7_overlays/03_rail_overlays/` (`slot_empty`, `slot_selected`, `slot_empty_selected`). Soft-go `slot_empty.png` / `slot_selected.png` remain fallbacks. Filled = well + `icon_*.png` (or `04_icons/` when those land). Items/consumables only; not a bottom hotbar.
+- **K7 phone chrome** — `res://hud/k7_overlays/` PhoneRoot / InteractPrompt overlays sit on functional Controls (`mouse_filter = IGNORE`). Eng owns fills.
 - **Phone LED** — yellow smartphone silhouette with LED bloom (camera light only). Stays a device, not a rail well.
 - **Interact** — `key_e.png` prompt badge + pickup / missing-child marks
 

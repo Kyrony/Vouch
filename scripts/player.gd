@@ -463,10 +463,10 @@ func exit_ladder(ladder: Node) -> void:
 		velocity.y = 0.0
 
 
-func _set_interact_prompt(shown: bool, hint: String = "") -> void:
+func _set_interact_prompt(shown: bool, hint: String = "", hold: bool = false, hold_ratio: float = 0.0) -> void:
 	if _neon_hud and _neon_hud.has_method("set_interact_prompt"):
 		var action := hint if not hint.is_empty() else "INTERACT"
-		_neon_hud.call("set_interact_prompt", shown, action, "Look / Talk" if shown else "")
+		_neon_hud.call("set_interact_prompt", shown, action, "Look / Talk" if shown else "", hold, hold_ratio)
 		prompt_label.visible = false
 		return
 	prompt_label.visible = shown
@@ -672,8 +672,10 @@ func _process_destroy_hold(delta: float) -> void:
 		_destroy_hold_time = 0.0
 
 	_destroy_hold_time += delta
-	destroy_progress_bar.visible = true
-	destroy_progress_bar.value = clampf(_destroy_hold_time / DESTROY_HOLD_DURATION, 0.0, 1.0) * 100.0
+	var hold_ratio := clampf(_destroy_hold_time / DESTROY_HOLD_DURATION, 0.0, 1.0)
+	destroy_progress_bar.visible = _neon_hud == null
+	destroy_progress_bar.value = hold_ratio * 100.0
+	_set_interact_prompt(true, "HOLD [F] · DESTROY", true, hold_ratio)
 
 	if _destroy_hold_time >= DESTROY_HOLD_DURATION:
 		target.call("request_destroy", multiplayer.get_unique_id())

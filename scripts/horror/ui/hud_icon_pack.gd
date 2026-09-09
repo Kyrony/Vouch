@@ -19,6 +19,7 @@ const GOLD := Color(1.0, 0.82, 0.22)
 const PANEL := Color(0.04, 0.03, 0.07, 0.74)
 const DIM := Color(0.16, 0.14, 0.2, 0.88)
 
+const _K7: GDScript = preload("res://scripts/horror/ui/k7_overlays.gd")
 const DIR := "res://assets/horror/hud"
 const RAIL_SLOTS := 5
 const EXAMPLE_RAIL: Array[String] = ["key", "firearm", "crowbar", "", ""]
@@ -50,6 +51,14 @@ const TEX_HIDE_PORCH := "hide_porch"
 
 
 static func texture(stem: String) -> Texture2D:
+	if stem == TEX_SLOT_EMPTY:
+		var k7 := _K7.texture(_K7.SLOT_EMPTY)
+		if k7:
+			return k7
+	if stem == TEX_SLOT_SELECTED:
+		var k7s := _K7.texture(_K7.SLOT_SELECTED)
+		if k7s:
+			return k7s
 	var path := "%s/%s.png" % [DIR, stem]
 	var imported: Texture2D = null
 	if ResourceLoader.exists(path):
@@ -128,6 +137,10 @@ static func hotbar_texture(item_id: String) -> Texture2D:
 static func rail_texture(item_id: String) -> Texture2D:
 	## Multicolor rail icons. Phone is a device — only used if it lands in a well.
 	## Never load flashlight.png / torch.png (classic torch glyph is forbidden).
+	## Prefer K7 neon icons when the follow-up pack lands; else soft-go HUD icons.
+	var k7_icon: Texture2D = _K7.icon_texture(item_id)
+	if k7_icon:
+		return k7_icon
 	var stem := rail_icon_stem(item_id)
 	if stem.is_empty():
 		return null
