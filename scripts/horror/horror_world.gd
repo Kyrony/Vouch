@@ -312,6 +312,7 @@ func _spawn_pickup_local(item_id: String, at: Vector3) -> void:
 		folder = Node3D.new()
 		folder.name = "Pickups"
 		add_child(folder)
+	pickup.name = "Pickup_%s_%d" % [item_id, folder.get_child_count()]
 	folder.add_child(pickup)
 	print("[HorrorWorld] pickup spawned item=%s at %s" % [item_id, at])
 

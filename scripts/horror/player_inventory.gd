@@ -128,7 +128,9 @@ func request_pickup(pickup_path: NodePath) -> void:
 	if GameState.players.get(sender, {}).get("is_puppet_master", false):
 		return
 	var node := get_node_or_null(pickup_path)
-	if node == null or not node.has_method("server_try_pickup"):
+	if node == null or not is_instance_valid(node) or node.is_queued_for_deletion():
+		return
+	if not node.has_method("server_try_pickup"):
 		return
 	node.call("server_try_pickup", sender)
 
