@@ -115,9 +115,10 @@ func building_kind_uv(u: float, v: float) -> String:
 		return ""
 	var best := ""
 	var best_d := 1.0e9
+	var cv := Vector3(c.r, c.g, c.b)
 	for kind in type_colors.keys():
-		var other: Color = type_colors[kind]
-		var d: float = Vector3(c.r, c.g, c.b).distance_to(Vector3(other.r, other.g, other.b))
+		var tc: Color = type_colors[kind]
+		var d: float = cv.distance_to(Vector3(tc.r, tc.g, tc.b))
 		if d < best_d:
 			best_d = d
 			best = str(kind)

@@ -13,7 +13,7 @@ const EXPECTED_SLOT_COUNT: int = 16
 
 @onready var lobby: Control = $Lobby
 @onready var world: Node3D = $World
-@onready var pause_menu: Node = $PauseMenu
+@onready var pause_menu: Node = $PauseLayer/PauseMenu
 @onready var debug_gui: Node = $DebugGui
 
 var _returning_to_lobby: bool = false
