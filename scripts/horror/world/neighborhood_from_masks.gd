@@ -73,8 +73,8 @@ func run(world: Node3D) -> String:
 	if generate_buildings:
 		_place_buildings(world, root)
 	if generate_vegetation:
-		_place_vegetation(world, root)
 		_place_edge_blockers(world, root)
+		_place_vegetation(world, root)
 	_attach_debug(world, root)
 	print("[SemanticMaps] generated roads=%s buildings=%s vegetation=%s" % [
 		generate_roads, generate_buildings, generate_vegetation,
@@ -358,18 +358,52 @@ func _place_vegetation(world: Node3D, root: Node3D) -> void:
 	])
 
 
+func _in_mask(x: float, z: float) -> bool:
+	var uv: Vector2 = maps.coords.world_to_uv(x, z)
+	return uv.x >= 0.0 and uv.x <= 1.0 and uv.y >= 0.0 and uv.y <= 1.0
+
+
 func _can_plant(x: float, z: float) -> bool:
 	if x >= CLIFF_X_WORLD - CLIFF_SETBACK_M:
 		return false
-	if bool(maps.call("is_no_spawn_world", x, z)):
+	if _near_pad_world(x, z):
 		return false
-	if bool(maps.call("is_road_world", x, z)):
+	if _near_gen_road(x, z):
 		return false
-	if bool(maps.call("is_building_world", x, z)):
-		return false
-	if bool(maps.call("is_cliff_world", x, z)):
-		return false
+	## Semantic masks cover the original plate only. Expanded 4x outskirts
+	## are plantable greybox; do not treat out-of-mask as no-spawn.
+	if _in_mask(x, z):
+		if bool(maps.call("is_no_spawn_world", x, z)):
+			return false
+		if bool(maps.call("is_road_world", x, z)):
+			return false
+		if bool(maps.call("is_building_world", x, z)):
+			return false
+		if bool(maps.call("is_cliff_world", x, z)):
+			return false
 	return true
+
+
+func _near_pad_world(x: float, z: float) -> bool:
+	var here := Vector2(x, z)
+	var pads := [
+		Vector2(-76.0, -36.0),
+		Vector2(-76.0, 4.0),
+		Vector2(-76.0, 48.0),
+		Vector2(-28.0, 48.0),
+		Vector2(32.0, -56.0),
+		Vector2(56.0, -56.0),
+		Vector2(44.0, -12.0),
+		Vector2(-116.0, 24.0),
+	]
+	for i in pads.size():
+		var r := 16.0 if i == 6 else 10.5
+		if here.distance_to(pads[i]) < r:
+			return true
+	for s in [Vector2(-76.0, -21.0), Vector2(-61.0, 4.0), Vector2(-76.0, 33.0), Vector2(-28.0, 33.0), Vector2(44.0, 2.0)]:
+		if here.distance_to(s) < 6.5:
+			return true
+	return false
 
 
 func _outskirt_boost(x: float, z: float) -> int:
@@ -442,17 +476,20 @@ func _place_edge_blockers(world: Node3D, root: Node3D) -> void:
 	rng.seed = rng_seed ^ 0xB0A7DE
 	var east_cut := CLIFF_X_WORLD - 8.0
 	var planted := 0
-	var wx := int(TERRAIN_ORIGIN_X) + 4
+	var wx := int(TERRAIN_ORIGIN_X) + 3
 	while wx < int(east_cut):
-		_edge_cluster(folder, world, float(wx), TERRAIN_ORIGIN_Z + 5.0 + rng.randf() * 9.0, rng)
-		_edge_cluster(folder, world, float(wx), TERRAIN_ORIGIN_Z + TERRAIN_SPAN_Z - 6.0 - rng.randf() * 9.0, rng)
+		_edge_cluster(folder, world, float(wx), TERRAIN_ORIGIN_Z + 4.0 + rng.randf() * 6.0, rng)
+		_edge_cluster(folder, world, float(wx), TERRAIN_ORIGIN_Z + 12.0 + rng.randf() * 6.0, rng)
+		_edge_cluster(folder, world, float(wx), TERRAIN_ORIGIN_Z + TERRAIN_SPAN_Z - 5.0 - rng.randf() * 6.0, rng)
+		_edge_cluster(folder, world, float(wx), TERRAIN_ORIGIN_Z + TERRAIN_SPAN_Z - 13.0 - rng.randf() * 6.0, rng)
+		planted += 4
+		wx += 4
+	var wz := int(TERRAIN_ORIGIN_Z) + 6
+	while wz < int(TERRAIN_ORIGIN_Z + TERRAIN_SPAN_Z) - 6:
+		_edge_cluster(folder, world, TERRAIN_ORIGIN_X + 4.0 + rng.randf() * 7.0, float(wz), rng)
+		_edge_cluster(folder, world, TERRAIN_ORIGIN_X + 12.0 + rng.randf() * 7.0, float(wz), rng)
 		planted += 2
-		wx += 6
-	var wz := int(TERRAIN_ORIGIN_Z) + 8
-	while wz < int(TERRAIN_ORIGIN_Z + TERRAIN_SPAN_Z) - 8:
-		_edge_cluster(folder, world, TERRAIN_ORIGIN_X + 5.0 + rng.randf() * 11.0, float(wz), rng)
-		planted += 1
-		wz += 6
+		wz += 4
 	print("[SemanticMaps] edge blockers clusters~=%d" % planted)
 
 
@@ -466,11 +503,10 @@ func _edge_cluster(folder: Node3D, world: Node3D, x: float, z: float, rng: Rando
 		_spawn_boulder(folder, x, y, z, rng)
 	else:
 		_spawn_blocking_tree(folder, x, y, z, rng)
-	if rng.randf() < 0.62:
-		var x2 := x + rng.randf_range(-2.4, 2.4)
-		var z2 := z + rng.randf_range(-2.4, 2.4)
-		if _can_plant(x2, z2) and not _near_gen_road(x2, z2):
-			_spawn_blocking_tree(folder, x2, _ground_y(world, x2, z2), z2, rng)
+	var x2 := x + rng.randf_range(-2.2, 2.2)
+	var z2 := z + rng.randf_range(-2.2, 2.2)
+	if _can_plant(x2, z2):
+		_spawn_blocking_tree(folder, x2, _ground_y(world, x2, z2), z2, rng)
 
 
 func _near_gen_road(x: float, z: float) -> bool:
