@@ -23,7 +23,10 @@ static func _match_node() -> Node:
 
 
 static func _local_player() -> Node3D:
-	var gs := Engine.get_main_loop().root.get_node_or_null("/root/GameState")
+	var loop := Engine.get_main_loop() as SceneTree
+	if loop == null:
+		return null
+	var gs: Node = loop.root.get_node_or_null("/root/GameState")
 	if gs:
 		return gs.get("local_player_node") as Node3D
 	return null
@@ -60,6 +63,7 @@ static func spawn_playtest_kit() -> void:
 	_instance_prop(world, CRATE_SCENE, origin + Vector3(0.4, 0.0, -0.8))
 	_instance_prop(world, BARREL_SCENE, origin + Vector3(-0.6, 0.0, -1.1))
 	var lamp := Node3D.new()
+	lamp.name = "StreetLight"
 	lamp.set_script(load("res://scripts/interactables/props/street_light.gd"))
 	lamp.set("starts_on", true)
 	lamp.position = origin + Vector3(2.8, 0.0, -1.6)
@@ -125,7 +129,8 @@ static func apply_local_character(as_puppet_master: bool) -> void:
 		return
 	player.set("is_horror_puppet_master", as_puppet_master)
 	player.set("horror_mode", true)
-	var gs := Engine.get_main_loop().root.get_node_or_null("/root/GameState")
+	var loop := Engine.get_main_loop() as SceneTree
+	var gs: Node = loop.root.get_node_or_null("/root/GameState") if loop else null
 	if gs:
 		gs.set("local_is_puppet_master", as_puppet_master)
 	if as_puppet_master:

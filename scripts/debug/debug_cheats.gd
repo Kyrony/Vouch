@@ -14,13 +14,13 @@ var _invincible_peers: Dictionary = {}
 
 
 func _ready() -> void:
-	var gs := get_node_or_null("/root/GameState")
+	var gs: Node = get_node_or_null("/root/GameState")
 	if gs and gs.has_signal("match_started"):
 		gs.match_started.connect(_on_match_started)
 
 
 func is_enabled() -> bool:
-	var dbg := get_node_or_null("/root/DebugBuild")
+	var dbg: Node = get_node_or_null("/root/DebugBuild")
 	return dbg != null and bool(dbg.get("enabled"))
 
 

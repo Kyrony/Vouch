@@ -19,7 +19,7 @@ var _host_only: Array[Control] = []
 func _ready() -> void:
 	layer = 80
 	process_mode = Node.PROCESS_MODE_ALWAYS
-	var dbg := get_node_or_null("/root/DebugBuild")
+	var dbg: Node = get_node_or_null("/root/DebugBuild")
 	if dbg == null or not bool(dbg.get("enabled")):
 		queue_free()
 		return
@@ -44,7 +44,7 @@ func _toggle() -> void:
 
 
 func _restore_mouse() -> void:
-	var gs := get_node_or_null("/root/GameState")
+	var gs: Node = get_node_or_null("/root/GameState")
 	if gs and int(gs.get("phase")) == 1:
 		Input.mouse_mode = Input.MOUSE_MODE_CAPTURED
 
@@ -176,13 +176,13 @@ func _host(ctrl: Control) -> void:
 
 
 func _refresh() -> void:
-	var net := get_node_or_null("/root/NetworkManager")
+	var net: Node = get_node_or_null("/root/NetworkManager")
 	var is_host: bool = net != null and net.has_method("is_server") and bool(net.call("is_server"))
 	if is_host:
 		_status.text = "Host tools — Home to close"
 	else:
 		_status.text = "Client — cheats are local, spawns need host"
-	var cheats := get_node_or_null("/root/DebugCheats")
+	var cheats: Node = get_node_or_null("/root/DebugCheats")
 	if cheats:
 		_invincible.set_pressed_no_signal(bool(cheats.get("invincible")))
 		_infinite_jump.set_pressed_no_signal(bool(cheats.get("infinite_jump")))
@@ -242,5 +242,5 @@ func _room_at_player() -> int:
 
 
 func _is_host() -> bool:
-	var net := get_node_or_null("/root/NetworkManager")
+	var net: Node = get_node_or_null("/root/NetworkManager")
 	return net != null and bool(net.call("is_server"))
