@@ -29,7 +29,10 @@ ORIGIN_X = -SPAN_X / 2.0
 ORIGIN_Z = -SPAN_Z / 2.0
 
 # Unscaled Kyle plate coords. World XZ = plate * SCALE.
-CLIFF_X = 54.0
+# Cliff rim sits just east of the mansion (mansion east face ~world x=54).
+CLIFF_X = 32.0
+CLIFF_DROP_M = 12.0
+CLIFF_PIT_Y = -18.0
 HILL_XZ = (22.0, -8.0)
 HILL_PEAK = 13.5
 PLATEAU = 3.15
@@ -63,7 +66,7 @@ L2_MARKERS = [
     ("uncle_garage", 6, 28.0, -26.0),
     ("family_shed", 7, -52.0, -36.0),
     ("storm_drain", 8, -40.0, -8.0),
-    ("under_porch_crawl", 9, 42.0, 18.0),
+    ("under_porch_crawl", 9, 26.0, 18.0),
     ("garden_well", 10, 4.0, -8.0),
     ("car_trunk", 11, 0.0, 20.0),
 ]
@@ -77,9 +80,9 @@ ROADS = [
     ((-38.0, -18.0), (16.0, -28.0), 2.6),
     ((16.0, -28.0), (30.0, -28.0), 2.5),
     ((22.0, -6.0), (22.0, -28.0), 2.5),
-    ((22.0, -6.0), (50.0, -6.0), 2.8),
+    ((22.0, -6.0), (30.0, -6.0), 2.8),
     ((22.0, -6.0), (22.0, 22.0), 2.7),
-    ((22.0, 22.0), (50.0, 22.0), 2.8),
+    ((22.0, 22.0), (30.0, 22.0), 2.8),
     ((8.0, 6.0), (-4.0, 24.0), 2.5),
 ]
 
@@ -107,12 +110,12 @@ HILLS = [
     ("uncle_north", 20.0, -28.0),
     ("south_field", -20.0, 32.0),
     ("garden_knoll", 4.0, -10.0),
-    ("east_cliff_rim", 50.0, 0.0),
+    ("east_cliff_rim", 30.0, 0.0),
     ("shed_nw", -50.0, -36.0),
     ("west_ridge", -58.0, 8.0),
     ("north_saddle", 4.0, -40.0),
     ("south_bowl", 8.0, 40.0),
-    ("east_knoll", 36.0, 28.0),
+    ("east_knoll", 26.0, 28.0),
     ("mid_saddle", -8.0, -4.0),
 ]
 
@@ -197,15 +200,6 @@ def _flatten(h: float, x: float, z: float, cx: float, cz: float, radius: float, 
 
 def height_world(x: float, z: float) -> float:
     """World-space height in metres. x/z are already scaled farm coords."""
-    cliff_x = wx(CLIFF_X)
-    if x >= cliff_x + 16.0:
-        return 0.0
-    if x >= cliff_x:
-        t = (x - cliff_x) / 16.0
-        edge = 1.0 - t * t
-    else:
-        edge = 1.0
-
     # West fields sit lower; the east plateau climbs into the mansion hill.
     west = 1.0 if x < wx(-8.0) else 0.0
     if x < wx(-8.0):
@@ -227,7 +221,7 @@ def height_world(x: float, z: float) -> float:
     h += _bump(x, z, wx(-58.0), wz(8.0), 22.0, 3.4)
     h += _bump(x, z, wx(4.0), wz(-40.0), 20.0, 2.9)
     h += _bump(x, z, wx(8.0), wz(40.0), 24.0, 2.2)
-    h += _bump(x, z, wx(36.0), wz(28.0), 18.0, 2.5)
+    h += _bump(x, z, wx(26.0), wz(28.0), 18.0, 2.5)
     h += _bump(x, z, wx(-8.0), wz(-4.0), 16.0, -1.6)  # saddle / dip
     h += _bump(x, z, wx(-22.0), wz(-22.0), 14.0, 1.4)
 
@@ -272,7 +266,11 @@ def height_world(x: float, z: float) -> float:
         h = _flatten(h, x, z, wx(sx), wz(sz), 5.5, FAMILY_BASE + 0.18, 0.88)
     h = _flatten(h, x, z, wx(PM_SPAWN[1]), wz(PM_SPAWN[2]), 8.0, HILL_PEAK - 0.7, 0.92)
 
-    h *= edge
+    cliff_x = wx(CLIFF_X)
+    if x >= cliff_x:
+        t = min(1.0, (x - cliff_x) / CLIFF_DROP_M)
+        fall = t * t
+        return h * (1.0 - fall) + CLIFF_PIT_Y * fall
     return max(0.0, min(HILL_PEAK + 1.5, h))
 
 
@@ -391,10 +389,22 @@ def write_obj(path: Path, grid: list[float]) -> None:
     print(f"wrote {path} verts={len(verts_top)*2} faces={len(faces)}")
 
 
-def xf(x: float, y: float, z: float, yaw: float = 0.0) -> str:
-    c, s = math.cos(yaw), math.sin(yaw)
-    return "Transform3D(%.5f, 0, %.5f, 0, 1, 0, %.5f, 0, %.5f, %.3f, %.3f, %.3f)" % (
-        c, s, -s, c, x, y, z,
+def xf(
+    x: float,
+    y: float,
+    z: float,
+    yaw: float = 0.0,
+    pitch: float = 0.0,
+    scale: tuple[float, float, float] | None = None,
+) -> str:
+    sx, sy, sz = scale if scale is not None else (1.0, 1.0, 1.0)
+    cy, syaw = math.cos(yaw), math.sin(yaw)
+    cp, sp = math.cos(pitch), math.sin(pitch)
+    xax, xay, xaz = cy * sx, 0.0, -syaw * sx
+    yax, yay, yaz = syaw * sp * sy, cp * sy, cy * sp * sy
+    zax, zay, zaz = syaw * cp * sz, -sp * sz, cy * cp * sz
+    return "Transform3D(%.5f, %.5f, %.5f, %.5f, %.5f, %.5f, %.5f, %.5f, %.5f, %.3f, %.3f, %.3f)" % (
+        xax, yax, zax, xay, yay, zay, xaz, yaz, zaz, x, y, z,
     )
 
 
@@ -404,7 +414,7 @@ def write_scene(grid: list[float]) -> None:
     map_csv = ", ".join("%.3f" % h for h in grid)
 
     lines: list[str] = []
-    lines.append("[gd_scene load_steps=42 format=3]")
+    lines.append("[gd_scene load_steps=48 format=3]")
     lines.append("")
     lines.append('[ext_resource type="Script" path="res://scripts/horror/horror_world.gd" id="1"]')
     lines.append('[ext_resource type="PackedScene" path="res://scenes/Horror/WorldPickup.tscn" id="2"]')
@@ -418,6 +428,18 @@ def write_scene(grid: list[float]) -> None:
     lines.append("ambient_light_source = 2")
     lines.append("ambient_light_color = Color(0.58, 0.34, 0.22, 1)")
     lines.append("ambient_light_energy = 0.55")
+    lines.append("fog_enabled = true")
+    lines.append("fog_light_color = Color(0.58, 0.52, 0.62, 1)")
+    lines.append("fog_density = 0.012")
+    lines.append("fog_aerial_perspective = 0.35")
+    lines.append("fog_sky_affect = 0.55")
+    lines.append("fog_height = -6.0")
+    lines.append("fog_height_density = 0.28")
+    lines.append("volumetric_fog_enabled = true")
+    lines.append("volumetric_fog_density = 0.007")
+    lines.append("volumetric_fog_albedo = Color(0.62, 0.56, 0.68, 1)")
+    lines.append("volumetric_fog_emission = Color(0.12, 0.10, 0.16, 1)")
+    lines.append("volumetric_fog_length = 96.0")
     lines.append("")
     lines.append('[sub_resource type="StandardMaterial3D" id="Mat_grass"]')
     lines.append("albedo_color = Color(0.42, 0.50, 0.24, 1)")
@@ -441,6 +463,8 @@ def write_scene(grid: list[float]) -> None:
         "Mat_base": (0.95, 0.35, 0.18),
         "Mat_crawl": (0.25, 0.85, 0.95),
         "Mat_field": (0.34, 0.48, 0.24),
+        "Mat_cliff": (0.36, 0.35, 0.34),
+        "Mat_fogrock": (0.32, 0.31, 0.34),
     }
     for mid, (r, g, b) in mats.items():
         lines.append(f'[sub_resource type="StandardMaterial3D" id="{mid}"]')
@@ -483,6 +507,26 @@ def write_scene(grid: list[float]) -> None:
     lines.append("size = Vector3(32, 0.06, 26)")
     lines.append('material = SubResource("Mat_field")')
     lines.append("")
+    lines.append('[sub_resource type="BoxMesh" id="Box_road_unit"]')
+    lines.append("size = Vector3(1, 1, 1)")
+    lines.append('material = SubResource("Mat_asphalt")')
+    lines.append("")
+    lines.append('[sub_resource type="BoxShape3D" id="Sh_road_unit"]')
+    lines.append("size = Vector3(1, 1, 1)")
+    lines.append("")
+    lines.append('[sub_resource type="BoxMesh" id="Box_cliff_wall"]')
+    lines.append("size = Vector3(1, 1, 1)")
+    lines.append('material = SubResource("Mat_cliff")')
+    lines.append("")
+    lines.append('[sub_resource type="BoxShape3D" id="Sh_cliff_wall"]')
+    lines.append("size = Vector3(1, 1, 1)")
+    lines.append("")
+    lines.append('[sub_resource type="FogMaterial" id="Fog_cliff"]')
+    lines.append("density = 0.42")
+    lines.append("albedo = Color(0.62, 0.58, 0.68, 1)")
+    lines.append("emission = Color(0.14, 0.12, 0.18, 1)")
+    lines.append("height_falloff = 0.35")
+    lines.append("")
 
     for name, spec in PADS.items():
         sx, sy, sz = spec["size"]
@@ -493,18 +537,6 @@ def write_scene(grid: list[float]) -> None:
         lines.append("")
         lines.append(f'[sub_resource type="BoxShape3D" id="Sh_pad_{name}"]')
         lines.append(f"size = Vector3({sx}, {sy}, {sz})")
-        lines.append("")
-
-    for i, (a, b, r) in enumerate(ROADS):
-        ax, az = wx(a[0]), wz(a[1])
-        bx, bz = wx(b[0]), wz(b[1])
-        length = math.hypot(bx - ax, bz - az)
-        lines.append(f'[sub_resource type="BoxMesh" id="Box_rd{i}"]')
-        lines.append(f"size = Vector3({r * 2:.3f}, 0.10, {length:.3f})")
-        lines.append('material = SubResource("Mat_asphalt")')
-        lines.append("")
-        lines.append(f'[sub_resource type="BoxShape3D" id="Sh_rd{i}"]')
-        lines.append(f"size = Vector3({r * 2:.3f}, 0.10, {length:.3f})")
         lines.append("")
 
     lines.append('[node name="HorrorWorld" type="Node3D"]')
@@ -537,6 +569,7 @@ def write_scene(grid: list[float]) -> None:
     lines.append(f"metadata/map_depth = {DEPTH}")
     lines.append("metadata/cell_m = 1.5")
     lines.append("metadata/area_scale = 4.0")
+    lines.append(f"metadata/cliff_x = {wx(CLIFF_X):.1f}")
     lines.append("")
     lines.append('[node name="MeshInstance3D" type="MeshInstance3D" parent="Outdoor/Terrain"]')
     lines.append("mesh = ExtResource(\"4\")")
@@ -564,25 +597,41 @@ def write_scene(grid: list[float]) -> None:
 
     lines.append('[node name="Roads" type="Node3D" parent="Outdoor"]')
     lines.append('metadata/plate = "kyle_greybox"')
+    lines.append('metadata/draped = true')
     lines.append("")
-    for i, (a, b, _r) in enumerate(ROADS):
+    for i, (a, b, r) in enumerate(ROADS):
         ax, az = wx(a[0]), wz(a[1])
         bx, bz = wx(b[0]), wz(b[1])
-        mx, mz = (ax + bx) / 2.0, (az + bz) / 2.0
-        my = sample(mx, mz) + 0.05
-        yaw = math.atan2(bx - ax, bz - az)
+        dx, dz = bx - ax, bz - az
+        length = math.hypot(dx, dz)
+        nseg = max(1, int(round(length / 3.0)))
         name = f"Lane_{i:02d}"
-        lines.append(f'[node name="{name}" type="StaticBody3D" parent="Outdoor/Roads"]')
-        lines.append(f"transform = {xf(mx, my, mz, yaw)}")
-        lines.append("collision_layer = 1")
-        lines.append("collision_mask = 0")
+        lines.append(f'[node name="{name}" type="Node3D" parent="Outdoor/Roads"]')
         lines.append("")
-        lines.append(f'[node name="MeshInstance3D" type="MeshInstance3D" parent="Outdoor/Roads/{name}"]')
-        lines.append(f"mesh = SubResource(\"Box_rd{i}\")")
-        lines.append("")
-        lines.append(f'[node name="CollisionShape3D" type="CollisionShape3D" parent="Outdoor/Roads/{name}"]')
-        lines.append(f"shape = SubResource(\"Sh_rd{i}\")")
-        lines.append("")
+        for s in range(nseg):
+            t0 = s / nseg
+            t1 = (s + 1) / nseg
+            x0, z0 = ax + dx * t0, az + dz * t0
+            x1, z1 = ax + dx * t1, az + dz * t1
+            y0 = sample(x0, z0)
+            y1 = sample(x1, z1)
+            mx, mz = (x0 + x1) * 0.5, (z0 + z1) * 0.5
+            my = (y0 + y1) * 0.5 + 0.06
+            seg_xz = max(0.4, math.hypot(x1 - x0, z1 - z0))
+            yaw = math.atan2(x1 - x0, z1 - z0)
+            pitch = math.atan2(y0 - y1, seg_xz)
+            seg = f"Seg_{s:02d}"
+            lines.append(f'[node name="{seg}" type="StaticBody3D" parent="Outdoor/Roads/{name}"]')
+            lines.append(f"transform = {xf(mx, my, mz, yaw, pitch, (r * 2.0, 0.12, seg_xz))}")
+            lines.append("collision_layer = 1")
+            lines.append("collision_mask = 0")
+            lines.append("")
+            lines.append(f'[node name="MeshInstance3D" type="MeshInstance3D" parent="Outdoor/Roads/{name}/{seg}"]')
+            lines.append('mesh = SubResource("Box_road_unit")')
+            lines.append("")
+            lines.append(f'[node name="CollisionShape3D" type="CollisionShape3D" parent="Outdoor/Roads/{name}/{seg}"]')
+            lines.append('shape = SubResource("Sh_road_unit")')
+            lines.append("")
 
     lines.append('[node name="Pads" type="Node3D" parent="Outdoor"]')
     lines.append('metadata/sot = "kyle_greybox_layout"')
@@ -648,6 +697,53 @@ def write_scene(grid: list[float]) -> None:
     lines.append("light_color = Color(0.72, 0.78, 0.88, 1)")
     lines.append("light_energy = 0.72")
     lines.append("omni_range = 160.0")
+    lines.append("")
+
+    cliff_x = wx(CLIFF_X)
+    lines.append('[node name="EastCliff" type="Node3D" parent="Outdoor"]')
+    lines.append(f"metadata/rim_x = {cliff_x:.1f}")
+    lines.append('metadata/greybox = "steep_fog_cliff"')
+    lines.append("")
+    slab_i = 0
+    zpos = ORIGIN_Z + 10.0
+    while zpos < ORIGIN_Z + SPAN_Z - 10.0:
+        rim_y = sample(cliff_x - 1.2, zpos)
+        cx = cliff_x + 3.5
+        cy = rim_y - 8.5
+        wall = f"CliffWall_{slab_i:02d}"
+        lines.append(f'[node name="{wall}" type="StaticBody3D" parent="Outdoor/EastCliff"]')
+        lines.append(f"transform = {xf(cx, cy, zpos, 0.0, 0.42, (7.5, 22.0, 16.0))}")
+        lines.append("collision_layer = 1")
+        lines.append("collision_mask = 0")
+        lines.append("")
+        lines.append(f'[node name="MeshInstance3D" type="MeshInstance3D" parent="Outdoor/EastCliff/{wall}"]')
+        lines.append('mesh = SubResource("Box_cliff_wall")')
+        lines.append("")
+        lines.append(f'[node name="CollisionShape3D" type="CollisionShape3D" parent="Outdoor/EastCliff/{wall}"]')
+        lines.append('shape = SubResource("Sh_cliff_wall")')
+        lines.append("")
+        # Rim boulder so the drop reads as a lip, not a seam.
+        if slab_i % 2 == 0:
+            rock = f"CliffRock_{slab_i:02d}"
+            rx = cliff_x - 1.4
+            ry = sample(rx, zpos) + 0.9
+            lines.append(f'[node name="{rock}" type="StaticBody3D" parent="Outdoor/EastCliff"]')
+            lines.append(f"transform = {xf(rx, ry, zpos, 0.35 * slab_i, 0.15, (3.2, 2.4, 4.6))}")
+            lines.append("collision_layer = 1")
+            lines.append("collision_mask = 0")
+            lines.append("")
+            lines.append(f'[node name="MeshInstance3D" type="MeshInstance3D" parent="Outdoor/EastCliff/{rock}"]')
+            lines.append('mesh = SubResource("Box_cliff_wall")')
+            lines.append("")
+            lines.append(f'[node name="CollisionShape3D" type="CollisionShape3D" parent="Outdoor/EastCliff/{rock}"]')
+            lines.append('shape = SubResource("Sh_cliff_wall")')
+            lines.append("")
+        slab_i += 1
+        zpos += 15.0
+    lines.append('[node name="CliffFog" type="FogVolume" parent="Outdoor/EastCliff"]')
+    lines.append(f"transform = {xf(cliff_x + 42.0, -6.0, 0.0)}")
+    lines.append("size = Vector3(88, 48, 248)")
+    lines.append('material = SubResource("Fog_cliff")')
     lines.append("")
 
     mx, mz = wx(PADS["PMMansion"]["xz"][0]), wz(PADS["PMMansion"]["xz"][1])
@@ -809,13 +905,15 @@ def main() -> None:
     print(f"contrast={peak - valley:.3f} mean_slope={mean_g:.3f} max_slope={max_g:.3f} local_maxima={peaks}")
     hx, hz = world_to_cell(wx(HILL_XZ[0]), wz(HILL_XZ[1]))
     print(f"hill_cell=({hx:.1f},{hz:.1f}) hill_h={height_world(wx(HILL_XZ[0]), wz(HILL_XZ[1])):.3f}")
-    print(f"familyA_h={height_world(wx(-38), wz(-18)):.3f} cliff_h={height_world(wx(70), 0):.3f}")
+    print(f"familyA_h={height_world(wx(-38), wz(-18)):.3f} cliff_rim={height_world(wx(CLIFF_X), 0):.3f} cliff_pit={height_world(wx(CLIFF_X) + 14.0, 0):.3f}")
     if SPAN_X < 250 or SPAN_Z < 200:
         raise SystemExit("farm span is not 4x area")
     if peak - valley < 8.0:
         raise SystemExit("height contrast too low — need rolling hills")
     if peaks < 12:
         raise SystemExit("not enough local maxima for curved terrain")
+    if height_world(wx(CLIFF_X) + 14.0, 0.0) > -8.0:
+        raise SystemExit("east cliff is not a steep drop")
     old_exr = FARM / "kyle_T0_height_97x81.exr"
     if old_exr.exists():
         old_exr.unlink()

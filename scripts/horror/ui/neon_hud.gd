@@ -1,8 +1,9 @@
 extends Control
 class_name NeonHud
-## Kyle-locked HUD plate (1280×720): health over stamina (top-left),
-## signal + battery widgets (top-right), 5-slot item rail (right edge).
-## No bottom hotbar. Fill % is eng-owned via TextureProgressBar.
+## Kyle-locked HUD plate (1280×720): health over stamina (bottom-left),
+## cell signal at the very top-right with match time just below, 5-slot
+## item rail on the right edge. Objectives toast in then fade. No battery
+## widget and no persistent MISSING CHILD banner. No bottom hotbar.
 
 const _PACK: GDScript = preload("res://scripts/horror/ui/hud_icon_pack.gd")
 const _KIT: GDScript = preload("res://scripts/horror/ui/ui_kit.gd")
@@ -60,6 +61,9 @@ var _tex_reticle: Texture2D
 var _tex_slot_empty: Texture2D
 var _tex_slot_selected: Texture2D
 var _clock_label: Label
+var _objective_toast: Panel
+var _objective_label: Label
+var _objective_tween: Tween
 
 
 func _ready() -> void:
@@ -180,23 +184,44 @@ func _build() -> void:
 	_build_ability()
 
 
+func show_objective(text: String, seconds: float = 5.0) -> void:
+	if _objective_toast == null or _objective_label == null:
+		return
+	if text.is_empty():
+		text = OBJECTIVE_SUB
+	_objective_label.text = text
+	_objective_toast.visible = true
+	_objective_toast.modulate = Color(1, 1, 1, 1)
+	if _objective_tween:
+		_objective_tween.kill()
+	_objective_tween = create_tween()
+	_objective_tween.tween_interval(maxf(seconds, 0.4))
+	_objective_tween.tween_property(_objective_toast, "modulate:a", 0.0, 0.75)
+	_objective_tween.tween_callback(func() -> void:
+		if is_instance_valid(_objective_toast):
+			_objective_toast.visible = false
+	)
+
+
 func _build_objective() -> void:
-	var banner := Panel.new()
-	banner.name = "ObjectiveBanner"
-	banner.set_anchors_preset(PRESET_CENTER_TOP)
-	banner.offset_left = -340
-	banner.offset_top = 16
-	banner.offset_right = 340
-	banner.offset_bottom = 64
-	banner.mouse_filter = MOUSE_FILTER_IGNORE
-	banner.add_theme_stylebox_override("panel", _KIT.panel_focus())
-	add_child(banner)
+	_objective_toast = Panel.new()
+	_objective_toast.name = "ObjectiveToast"
+	_objective_toast.set_anchors_preset(PRESET_CENTER_TOP)
+	_objective_toast.offset_left = -300
+	_objective_toast.offset_top = 16
+	_objective_toast.offset_right = 300
+	_objective_toast.offset_bottom = 62
+	_objective_toast.mouse_filter = MOUSE_FILTER_IGNORE
+	_objective_toast.visible = false
+	_objective_toast.modulate = Color(1, 1, 1, 0)
+	_objective_toast.add_theme_stylebox_override("panel", _KIT.panel_focus())
+	add_child(_objective_toast)
 	var row := HBoxContainer.new()
 	row.set_anchors_preset(PRESET_FULL_RECT)
-	row.offset_left = 10
-	row.offset_right = -10
+	row.offset_left = 12
+	row.offset_right = -12
 	row.add_theme_constant_override("separation", 10)
-	banner.add_child(row)
+	_objective_toast.add_child(row)
 	var icon := TextureRect.new()
 	icon.custom_minimum_size = Vector2(28, 28)
 	icon.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
@@ -204,29 +229,13 @@ func _build_objective() -> void:
 	icon.texture = _tex_child
 	icon.mouse_filter = MOUSE_FILTER_IGNORE
 	row.add_child(icon)
-	var title := Label.new()
-	title.name = "Title"
-	title.text = OBJECTIVE_TITLE
-	title.add_theme_color_override("font_color", _KIT.YELLOW)
-	title.add_theme_font_size_override("font_size", 16)
-	row.add_child(title)
-	var tag := Label.new()
-	tag.name = "AliveTag"
-	tag.text = "  %s  " % OBJECTIVE_TAG
-	tag.add_theme_color_override("font_color", Color(1, 0.85, 0.85))
-	tag.add_theme_font_size_override("font_size", 11)
-	var tag_bg := StyleBoxFlat.new()
-	tag_bg.bg_color = Color(0.55, 0.08, 0.1, 0.95)
-	tag_bg.set_corner_radius_all(8)
-	tag_bg.content_margin_left = 8
-	tag_bg.content_margin_right = 8
-	tag.add_theme_stylebox_override("normal", tag_bg)
-	row.add_child(tag)
-	var sub := Label.new()
-	sub.text = OBJECTIVE_SUB
-	sub.add_theme_color_override("font_color", _KIT.WHITE)
-	sub.add_theme_font_size_override("font_size", 12)
-	row.add_child(sub)
+	_objective_label = Label.new()
+	_objective_label.name = "Title"
+	_objective_label.text = OBJECTIVE_TITLE
+	_objective_label.size_flags_horizontal = SIZE_EXPAND_FILL
+	_objective_label.add_theme_color_override("font_color", _KIT.YELLOW)
+	_objective_label.add_theme_font_size_override("font_size", 16)
+	row.add_child(_objective_label)
 
 
 func _on_match_clock(_progress: float, label: String) -> void:
@@ -240,10 +249,10 @@ func _build_clock() -> void:
 	_clock_label.text = "6:00 PM"
 	_clock_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
 	_clock_label.set_anchors_preset(PRESET_TOP_RIGHT)
-	_clock_label.offset_left = -220
-	_clock_label.offset_top = 10
-	_clock_label.offset_right = -18
-	_clock_label.offset_bottom = 38
+	_clock_label.offset_left = -140
+	_clock_label.offset_top = 52
+	_clock_label.offset_right = -12
+	_clock_label.offset_bottom = 84
 	_clock_label.mouse_filter = MOUSE_FILTER_IGNORE
 	_clock_label.add_theme_font_size_override("font_size", 18)
 	_clock_label.add_theme_color_override("font_color", _KIT.YELLOW)
@@ -253,11 +262,11 @@ func _build_clock() -> void:
 func _build_vitals() -> void:
 	var box := Control.new()
 	box.name = "Vitals"
-	box.set_anchors_preset(PRESET_TOP_LEFT)
+	box.set_anchors_preset(PRESET_BOTTOM_LEFT)
 	box.offset_left = 16
-	box.offset_top = 16
-	box.offset_right = 340
-	box.offset_bottom = 88
+	box.offset_top = -84
+	box.offset_right = 300
+	box.offset_bottom = -16
 	box.mouse_filter = MOUSE_FILTER_IGNORE
 	add_child(box)
 	var col := VBoxContainer.new()
@@ -294,16 +303,6 @@ func _make_track_meter(parent: VBoxContainer, caption: String, color: Color, bar
 	bar.fill_mode = TextureProgressBar.FILL_LEFT_TO_RIGHT
 	bar.mouse_filter = MOUSE_FILTER_IGNORE
 	row.add_child(bar)
-	var pct := Label.new()
-	pct.name = "%sPct" % caption.capitalize()
-	pct.custom_minimum_size = Vector2(36, 0)
-	pct.add_theme_color_override("font_color", color)
-	pct.add_theme_font_size_override("font_size", 10)
-	row.add_child(pct)
-	if caption == "HEALTH":
-		_health_pct = pct
-	else:
-		_stamina_pct = pct
 	return bar
 
 
@@ -347,32 +346,20 @@ func _build_prompt() -> void:
 
 
 func _build_top_right() -> void:
-	var box := Control.new()
-	box.name = "TopRight"
-	box.set_anchors_preset(PRESET_TOP_RIGHT)
-	box.offset_left = -168
-	box.offset_top = 42
-	box.offset_right = -16
-	box.offset_bottom = 134
-	box.mouse_filter = MOUSE_FILTER_IGNORE
-	add_child(box)
-	var col := VBoxContainer.new()
-	col.name = "SignalBattery"
-	col.set_anchors_preset(PRESET_FULL_RECT)
-	col.add_theme_constant_override("separation", 6)
-	col.alignment = BoxContainer.ALIGNMENT_BEGIN
-	box.add_child(col)
-	_build_signal_widget(col)
-	_build_battery_widget(col)
+	_build_signal_widget()
 
 
-func _build_signal_widget(parent: VBoxContainer) -> void:
+func _build_signal_widget() -> void:
 	var panel := Panel.new()
 	panel.name = "SignalWidget"
-	panel.custom_minimum_size = Vector2(148, 40)
+	panel.set_anchors_preset(PRESET_TOP_RIGHT)
+	panel.offset_left = -140
+	panel.offset_top = 8
+	panel.offset_right = -12
+	panel.offset_bottom = 48
 	panel.mouse_filter = MOUSE_FILTER_IGNORE
 	panel.add_theme_stylebox_override("panel", _KIT.panel(_KIT.GREY, 6, Color(0.02, 0.02, 0.03, 0.82)))
-	parent.add_child(panel)
+	add_child(panel)
 	var row := HBoxContainer.new()
 	row.name = "Row"
 	row.set_anchors_preset(PRESET_FULL_RECT)
@@ -395,47 +382,14 @@ func _build_signal_widget(parent: VBoxContainer) -> void:
 	row.add_child(_signal_label)
 
 
-func _build_battery_widget(parent: VBoxContainer) -> void:
-	var wrap := HBoxContainer.new()
-	wrap.name = "BatteryRow"
-	wrap.add_theme_constant_override("separation", 6)
-	parent.add_child(wrap)
-	_battery_bar = TextureProgressBar.new()
-	_battery_bar.name = "BatteryBar"
-	_battery_bar.min_value = 0.0
-	_battery_bar.max_value = 1.0
-	_battery_bar.step = 0.001
-	_battery_bar.custom_minimum_size = Vector2(108, 36)
-	_battery_bar.size_flags_horizontal = SIZE_EXPAND_FILL
-	_battery_bar.nine_patch_stretch = false
-	var under: Texture2D = _PACK.texture(_PACK.TEX_BATTERY_EMPTY)
-	_battery_bar.texture_under = under
-	var tw := 160
-	var th := 56
-	if under:
-		tw = under.get_width()
-		th = under.get_height()
-	# Leave the nub + rim empty — fill lives inside the shell.
-	_battery_bar.texture_progress = _PACK.make_fill_texture(_PACK.BATTERY, tw, th, 14)
-	_battery_bar.fill_mode = TextureProgressBar.FILL_LEFT_TO_RIGHT
-	_battery_bar.mouse_filter = MOUSE_FILTER_IGNORE
-	wrap.add_child(_battery_bar)
-	_battery_pct = Label.new()
-	_battery_pct.name = "BatteryPct"
-	_battery_pct.custom_minimum_size = Vector2(32, 0)
-	_battery_pct.add_theme_color_override("font_color", _PACK.BATTERY)
-	_battery_pct.add_theme_font_size_override("font_size", 10)
-	wrap.add_child(_battery_pct)
-
-
 func _build_rail() -> void:
 	_rail = VBoxContainer.new()
 	_rail.name = "ItemRail"
 	_rail.set_anchors_preset(PRESET_TOP_RIGHT)
 	_rail.offset_left = -88
-	_rail.offset_top = 148
+	_rail.offset_top = 96
 	_rail.offset_right = -10
-	_rail.offset_bottom = 148 + RAIL_SLOTS * SLOT_PX + (RAIL_SLOTS - 1) * SLOT_GAP
+	_rail.offset_bottom = 96 + RAIL_SLOTS * SLOT_PX + (RAIL_SLOTS - 1) * SLOT_GAP
 	_rail.add_theme_constant_override("separation", SLOT_GAP)
 	_rail.mouse_filter = MOUSE_FILTER_IGNORE
 	add_child(_rail)
@@ -472,10 +426,10 @@ func _build_ability() -> void:
 	_ability_panel = Panel.new()
 	_ability_panel.name = "AbilityCooldown"
 	_ability_panel.set_anchors_preset(PRESET_BOTTOM_LEFT)
-	_ability_panel.offset_left = 16
-	_ability_panel.offset_top = -122
-	_ability_panel.offset_right = 236
-	_ability_panel.offset_bottom = -20
+	_ability_panel.offset_left = 320
+	_ability_panel.offset_top = -78
+	_ability_panel.offset_right = 560
+	_ability_panel.offset_bottom = -16
 	_ability_panel.mouse_filter = MOUSE_FILTER_IGNORE
 	_ability_panel.visible = false
 	_ability_panel.add_theme_stylebox_override("panel", _KIT.panel_violet())
@@ -519,10 +473,12 @@ func _build_ability() -> void:
 func _refresh() -> void:
 	if _health_bar:
 		_health_bar.value = health_ratio
-		_health_pct.text = "%d%%" % int(round(health_ratio * 100.0))
+		if _health_pct:
+			_health_pct.text = "%d%%" % int(round(health_ratio * 100.0))
 	if _stamina_bar:
 		_stamina_bar.value = stamina_ratio
-		_stamina_pct.text = "%d%%" % int(round(stamina_ratio * 100.0))
+		if _stamina_pct:
+			_stamina_pct.text = "%d%%" % int(round(stamina_ratio * 100.0))
 	_refresh_battery()
 	_refresh_signal()
 	_refresh_ability()

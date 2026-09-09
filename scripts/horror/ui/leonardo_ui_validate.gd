@@ -280,8 +280,16 @@ static func validate_hud() -> String:
 		return "NeonHud must build a right-edge ItemRail"
 	if hud_src.contains('name = "Hotbar"'):
 		return "NeonHud must not keep a bottom hotbar"
-	if not hud_src.contains("BatteryBar") or not hud_src.contains("SignalWidget"):
-		return "NeonHud missing top-right signal/battery widgets"
+	if not hud_src.contains("SignalWidget"):
+		return "NeonHud missing SignalWidget"
+	if hud_src.contains('name = "BatteryBar"') or hud_src.contains("_build_battery_widget"):
+		return "NeonHud must not show the battery widget"
+	if hud_src.contains("ObjectiveBanner"):
+		return "NeonHud must not keep a persistent MISSING CHILD banner"
+	if not hud_src.contains("show_objective") or not hud_src.contains("ObjectiveToast"):
+		return "NeonHud must toast objectives then fade them"
+	if not hud_src.contains("PRESET_BOTTOM_LEFT"):
+		return "NeonHud vitals must sit bottom-left"
 	if int(pack.RAIL_SLOTS) != 5:
 		return "item rail must be 5 wells"
 	if not pack.has_method("rail_texture"):

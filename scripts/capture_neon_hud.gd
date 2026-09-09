@@ -16,6 +16,7 @@ func _run() -> void:
 	var hud_script: GDScript = load("res://scripts/horror/ui/neon_hud.gd")
 	var hud: Control = hud_script.new()
 	root.add_child(hud)
+	hud.size = Vector2(1280, 720)
 	await process_frame
 	await process_frame
 	hud.call("set_meters", 62.0, 100.0, 40.0, 25.0)
@@ -46,18 +47,18 @@ func _run() -> void:
 		push_error("HUD RAIL CAPTURE FAILED: old device row still live")
 		quit(1)
 		return
-	var battery := hud.get_node_or_null("TopRight/SignalBattery/BatteryRow/BatteryBar") as TextureProgressBar
-	var signal_icon := hud.get_node_or_null("TopRight/SignalBattery/SignalWidget/Row/SignalIcon") as TextureRect
-	if battery == null or signal_icon == null:
-		push_error("HUD RAIL CAPTURE FAILED: top-right signal/battery missing")
+	if hud.get_node_or_null("ObjectiveBanner") != null:
+		push_error("HUD RAIL CAPTURE FAILED: persistent MISSING CHILD banner still live")
 		quit(1)
 		return
-	if battery.texture_under == null or battery.texture_progress == null:
-		push_error("HUD RAIL CAPTURE FAILED: battery empty track or fill missing")
+	if hud.get_node_or_null("BatteryBar") != null or hud.get_node_or_null("TopRight") != null:
+		push_error("HUD RAIL CAPTURE FAILED: battery widget still live")
 		quit(1)
 		return
-	if not is_equal_approx(float(battery.value), 0.68):
-		push_error("HUD RAIL CAPTURE FAILED: battery fill=%.2f" % battery.value)
+	var signal_icon := hud.get_node_or_null("SignalWidget/Row/SignalIcon") as TextureRect
+	var clock := hud.get_node_or_null("MatchClockLabel") as Label
+	if signal_icon == null or clock == null:
+		push_error("HUD RAIL CAPTURE FAILED: top-right signal/clock missing")
 		quit(1)
 		return
 	var rail := hud.get_node_or_null("ItemRail") as VBoxContainer
@@ -84,8 +85,20 @@ func _run() -> void:
 		push_error("HUD RAIL CAPTURE FAILED: health must stack over stamina")
 		quit(1)
 		return
+	if health.global_position.y < 400.0:
+		push_error("HUD RAIL CAPTURE FAILED: vitals are not bottom-left")
+		quit(1)
+		return
 	if signal_icon.global_position.x < health.global_position.x + 200.0:
 		push_error("HUD RAIL CAPTURE FAILED: signal widget is not top-right")
+		quit(1)
+		return
+	if signal_icon.global_position.y > 80.0:
+		push_error("HUD RAIL CAPTURE FAILED: signal widget is not at the very top right")
+		quit(1)
+		return
+	if clock.global_position.y < signal_icon.global_position.y + 8.0:
+		push_error("HUD RAIL CAPTURE FAILED: match clock is not below the signal")
 		quit(1)
 		return
 	if rail.global_position.x < 1000.0:
@@ -96,14 +109,13 @@ func _run() -> void:
 		push_error("HUD RAIL CAPTURE FAILED: signal band not applied")
 		quit(1)
 		return
-	print("HEALTH=%.2f STAMINA=%.2f BATTERY=%.2f SIGNAL=%s RAIL=%d" % [
+	print("HEALTH=%.2f STAMINA=%.2f SIGNAL=%s RAIL=%d" % [
 		hud.get("health_ratio"), hud.get("stamina_ratio"),
-		float(hud.get("phone_battery")) / 100.0, hud.get("signal_band"),
+		hud.get("signal_band"),
 		rail.get_child_count(),
 	])
 	print("TRACKS=%s %s" % [health.texture_under.resource_path, stamina.texture_under.resource_path])
-	print("BATTERY=%s" % battery.texture_under.resource_path)
-	var shot := _compose_plate(hud, health, stamina, battery, signal_icon, rail)
+	var shot := _compose_plate(hud, health, stamina, signal_icon, rail)
 	var out := "user://hud_rail_layout.png"
 	var err := shot.save_png(out)
 	if err != OK:
@@ -115,7 +127,7 @@ func _run() -> void:
 	quit(0)
 
 
-func _compose_plate(hud: Control, health: TextureProgressBar, stamina: TextureProgressBar, battery: TextureProgressBar, signal_icon: TextureRect, rail: VBoxContainer) -> Image:
+func _compose_plate(hud: Control, health: TextureProgressBar, stamina: TextureProgressBar, signal_icon: TextureRect, rail: VBoxContainer) -> Image:
 	var plate := Image.create(1280, 720, false, Image.FORMAT_RGBA8)
 	plate.fill(Color(0.024, 0.02, 0.031, 1.0))
 	_blit(plate, health.texture_under, health.global_position, Vector2(280, 28))
@@ -123,8 +135,6 @@ func _compose_plate(hud: Control, health: TextureProgressBar, stamina: TexturePr
 	_blit(plate, stamina.texture_under, stamina.global_position, Vector2(280, 28))
 	_fill_bar(plate, stamina, Color(1.0, 0.70, 0.0))
 	_blit(plate, signal_icon.texture, signal_icon.global_position, Vector2(48, 36))
-	_blit(plate, battery.texture_under, battery.global_position, Vector2(120, 36))
-	_fill_bar(plate, battery, Color(0.98, 0.72, 0.12))
 	for cell in rail.get_children():
 		var well := cell.get_node_or_null("Well") as TextureRect
 		var icon := cell.get_node_or_null("Icon") as TextureRect
@@ -144,9 +154,6 @@ func _compose_plate(hud: Control, health: TextureProgressBar, stamina: TexturePr
 func _fill_bar(plate: Image, bar: TextureProgressBar, color: Color) -> void:
 	var pos := bar.global_position
 	var ratio := clampf(float(bar.value), 0.0, 1.0)
-	if bar.name == "BatteryBar":
-		_rect(plate, int(pos.x + 8), int(pos.y + 8), int(100.0 * ratio), 20, color)
-		return
 	_rect(plate, int(pos.x + 8), int(pos.y + 6), int(244.0 * ratio), 16, color)
 
 

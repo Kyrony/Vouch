@@ -92,7 +92,7 @@ const L2_WORLD_MARKERS := {
 	"uncle_garage": Vector3(56.0, 0, -52.0),
 	"family_shed": Vector3(-104.0, 0, -72.0),
 	"storm_drain": Vector3(-80.0, 0, -16.0),
-	"under_porch_crawl": Vector3(84.0, 0, 36.0),
+	"under_porch_crawl": Vector3(52.0, 0, 36.0),
 	"garden_well": Vector3(8.0, 0, -16.0),
 	"car_trunk": Vector3(0.0, 0, 40.0),
 }

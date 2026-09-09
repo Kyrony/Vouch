@@ -109,7 +109,7 @@ func get_prompt() -> String:
 
 
 func server_try_pickup(peer_id: int) -> bool:
-	if _taken:
+	if _taken or is_queued_for_deletion():
 		return false
 	if item_id == "puppet":
 		PuppetControlSystem.server_take_puppet(peer_id)
@@ -117,8 +117,20 @@ func server_try_pickup(peer_id: int) -> bool:
 		return false
 	_taken = true
 	_client_hide.rpc()
-	queue_free()
 	return true
+
+
+func _disable_pickup() -> void:
+	set_process(false)
+	collision_layer = 0
+	collision_mask = 0
+	input_ray_pickable = false
+	visible = false
+	if is_in_group("world_pickups"):
+		remove_from_group("world_pickups")
+	for c in get_children():
+		if c is CollisionShape3D:
+			c.disabled = true
 
 
 @rpc("any_peer", "call_remote", "reliable")
@@ -132,7 +144,7 @@ func rpc_pm_take() -> void:
 
 @rpc("authority", "call_local", "reliable")
 func _client_hide() -> void:
-	visible = false
-	for c in get_children():
-		if c is CollisionShape3D:
-			c.disabled = true
+	_disable_pickup()
+	# Free after the current physics/interact tick so the ray collider is not
+	# destroyed while the player is still reading it.
+	call_deferred("queue_free")

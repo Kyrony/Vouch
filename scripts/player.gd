@@ -488,10 +488,22 @@ func _update_interact_prompt() -> void:
 	_set_interact_prompt(false)
 
 
+func _pickup_is_live(node: Node) -> bool:
+	if node == null or not is_instance_valid(node) or node.is_queued_for_deletion():
+		return false
+	if bool(node.get("_taken")):
+		return false
+	if node is Node3D and not (node as Node3D).visible:
+		return false
+	if node is CollisionObject3D and (node as CollisionObject3D).collision_layer == 0:
+		return false
+	return true
+
+
 func _find_world_pickup() -> Node:
 	if interact_ray.is_colliding():
 		var hit := interact_ray.get_collider()
-		if hit and hit.is_in_group("world_pickups"):
+		if hit is Node and _pickup_is_live(hit as Node) and (hit as Node).is_in_group("world_pickups"):
 			return hit as Node
 	if not horror_mode:
 		return null
@@ -500,7 +512,7 @@ func _find_world_pickup() -> Node:
 	var best: Node = null
 	var best_dist := 2.8
 	for node in get_tree().get_nodes_in_group("world_pickups"):
-		if not (node is Node3D):
+		if not (node is Node3D) or not _pickup_is_live(node):
 			continue
 		var to: Vector3 = (node as Node3D).global_position - origin
 		var dist := to.length()
@@ -535,7 +547,7 @@ func _try_interact() -> void:
 		if child_pos != Vector3.ZERO and global_position.distance_to(child_pos) < 3.5:
 			if multiplayer.is_server():
 				if ChildSpawnRNG.server_try_pickup_child(multiplayer.get_unique_id(), global_position):
-					_show_toast("You found the missing child — reach the escape zone!")
+					_show_objective("Reach the escape zone with the child.")
 			else:
 				_rpc_try_child_pickup.rpc_id(1, global_position)
 			return
@@ -546,11 +558,12 @@ func _try_interact() -> void:
 				return
 
 	var ground_item := _find_world_pickup()
-	if horror_mode and not is_horror_puppet_master and ground_item:
+	if horror_mode and not is_horror_puppet_master and ground_item and _pickup_is_live(ground_item):
 		if multiplayer.is_server():
 			ground_item.call("server_try_pickup", multiplayer.get_unique_id())
 		else:
 			PlayerInventory.request_pickup.rpc_id(1, ground_item.get_path())
+		_set_interact_prompt(false)
 		return
 
 	if not interact_ray.is_colliding():
@@ -1414,6 +1427,13 @@ func _on_lose_spectate_pressed() -> void:
 
 # --- Toast (brief on-screen text for clue reveals, lock feedback, ...) --
 
+func _show_objective(text: String) -> void:
+	if _neon_hud and _neon_hud.has_method("show_objective"):
+		_neon_hud.call("show_objective", text, 5.0)
+		return
+	_show_toast(text)
+
+
 func _show_toast(text: String) -> void:
 	toast_label.text = text
 	toast_label.visible = true
@@ -1441,6 +1461,10 @@ func _build_horror_hud() -> void:
 	_attach_phone_rig()
 	if is_horror_puppet_master:
 		_neon_hud.call("set_steal", false, 0.0, 1.0)
+	_show_objective(
+		"Hunt the survivors before they escape." if is_horror_puppet_master
+		else "Find the missing child — bring her home."
+	)
 	faction_label.visible = false
 	prompt_label.visible = false
 	var cross := hud.get_node_or_null("CrosshairLabel") as Label
