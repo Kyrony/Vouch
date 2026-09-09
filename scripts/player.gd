@@ -301,7 +301,11 @@ func _apply_ground_velocity(delta: float, locked: bool) -> void:
 	if not is_on_floor():
 		velocity.y -= _gravity * delta
 
-	if not locked and Input.is_action_just_pressed("jump") and is_on_floor():
+	var can_jump := is_on_floor()
+	var cheats := get_node_or_null("/root/DebugCheats")
+	if cheats and cheats.has_method("infinite_jump_enabled") and bool(cheats.call("infinite_jump_enabled")):
+		can_jump = true
+	if not locked and Input.is_action_just_pressed("jump") and can_jump:
 		velocity.y = JUMP_VELOCITY
 
 	var input_dir := Vector2.ZERO
@@ -452,12 +456,13 @@ func _update_interact_prompt() -> void:
 		_set_highlight(null)
 		_set_interact_prompt(false)
 		return
+	var pickup := _find_world_pickup()
+	if pickup:
+		var hint: String = pickup.call("get_prompt") if pickup.has_method("get_prompt") else "Pick up item"
+		_set_interact_prompt(true, hint)
+		return
 	if interact_ray.is_colliding():
 		var collider := interact_ray.get_collider()
-		if horror_mode and not is_horror_puppet_master and collider.is_in_group("world_pickups"):
-			var hint: String = collider.call("get_prompt") if collider.has_method("get_prompt") else "Pick up item"
-			_set_interact_prompt(true, hint)
-			return
 		if _PATHS.is_ladder(collider) and not collider.is_carried:
 			var hint: String = collider.prompt_text
 			if collider.is_placed and not collider.is_leaning and not collider.is_leaning_anim:
@@ -489,6 +494,31 @@ func _update_interact_prompt() -> void:
 	_set_interact_prompt(false)
 
 
+func _find_world_pickup() -> Node:
+	if interact_ray.is_colliding():
+		var hit := interact_ray.get_collider()
+		if hit and hit.is_in_group("world_pickups"):
+			return hit as Node
+	if not horror_mode:
+		return null
+	var origin := camera.global_position
+	var forward := -camera.global_transform.basis.z
+	var best: Node = null
+	var best_dist := 2.8
+	for node in get_tree().get_nodes_in_group("world_pickups"):
+		if not (node is Node3D):
+			continue
+		var to: Vector3 = (node as Node3D).global_position - origin
+		var dist := to.length()
+		if dist > best_dist or dist < 0.05:
+			continue
+		if forward.dot(to / dist) < 0.15:
+			continue
+		best_dist = dist
+		best = node
+	return best
+
+
 func _try_interact() -> void:
 	# Possessed? E is the escape-the-mind struggle, nothing else works.
 	if _possessed:
@@ -498,9 +528,9 @@ func _try_interact() -> void:
 			PuppetControlSystem.request_struggle.rpc_id(1)
 		return
 	# PM can grab the puppet prop off the ground.
-	if horror_mode and is_horror_puppet_master and interact_ray.is_colliding():
-		var pm_hit := interact_ray.get_collider()
-		if pm_hit and pm_hit.is_in_group("world_pickups") and str(pm_hit.get("item_id")) == "puppet":
+	if horror_mode and is_horror_puppet_master:
+		var pm_hit := _find_world_pickup()
+		if pm_hit and str(pm_hit.get("item_id")) == "puppet":
 			if multiplayer.is_server():
 				pm_hit.call("server_try_pickup", multiplayer.get_unique_id())
 			else:
@@ -522,16 +552,17 @@ func _try_interact() -> void:
 				_try_open_signal_slate(hit)
 				return
 
+	var ground_item := _find_world_pickup()
+	if horror_mode and not is_horror_puppet_master and ground_item:
+		if multiplayer.is_server():
+			ground_item.call("server_try_pickup", multiplayer.get_unique_id())
+		else:
+			PlayerInventory.request_pickup.rpc_id(1, ground_item.get_path())
+		return
+
 	if not interact_ray.is_colliding():
 		return
 	var collider := interact_ray.get_collider()
-
-	if horror_mode and not is_horror_puppet_master and collider.is_in_group("world_pickups"):
-		if multiplayer.is_server():
-			collider.call("server_try_pickup", multiplayer.get_unique_id())
-		else:
-			PlayerInventory.request_pickup.rpc_id(1, collider.get_path())
-		return
 
 	var ladder_target: Node = collider if _PATHS.is_ladder(collider) else null
 	if ladder_target:

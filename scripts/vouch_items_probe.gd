@@ -130,6 +130,31 @@ func _run() -> void:
 	var pick_consumed: bool = PI._apply_use_item(me, "lockpick")
 	_check(not gate3.server_is_locked(), "lockpick unlocks a gate")
 	_check(not pick_consumed, "lockpick is reusable")
+	var gate4 := _new_prop("res://scripts/interactables/props/locked_gate.gd", {"locked": true}, Vector3(1.0, 0, 0))
+	var card_consumed: bool = PI._apply_use_item(me, "keycard")
+	_check(not gate4.server_is_locked(), "keycard unlocks a gate")
+	_check(card_consumed, "keycard is consumed")
+
+	# Phone LED + battery recharge (named-item use).
+	var PD := root.get_node("/root/PhoneDevice")
+	PI.server_add_item(me, "phone")
+	PD.reset()
+	PD.server_init_peer(me)
+	_check(PD.server_toggle_led(me), "phone LED turns on")
+	PD._battery[me] = 10.0
+	_check(PD.server_recharge(me, float(CAT.get_item("battery").get("recharge", 55.0))), "battery recharges phone")
+	_check(PD.server_get_battery(me) >= 64.0, "battery adds catalog recharge")
+
+	var pickup_scene: PackedScene = load("res://scenes/Horror/WorldPickup.tscn")
+	var pickup: Node = pickup_scene.instantiate()
+	pickup.set("item_id", "medkit")
+	root.add_child(pickup)
+	await process_frame
+	_check(pickup is StaticBody3D, "world pickup is a StaticBody3D (interact ray)")
+	_check(pickup.collision_layer == 2, "world pickup is on interactables layer")
+	_check(pickup.is_in_group("world_pickups"), "world pickup joins world_pickups")
+	_check(pickup.has_method("server_try_pickup"), "world pickup can be taken")
+	pickup.queue_free()
 
 	# Different use times.
 	_check(is_equal_approx(CAT.use_time("medkit"), 3.0), "medkit use time 3s")

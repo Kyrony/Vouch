@@ -297,7 +297,7 @@ at spawn time and bakes them into replicated room data.
 
 Toggle with the **Home** key. Host gets buttons to spawn a test gun,
 toggle utilities in the current room, and reset spawn odds. Clients see
-a read-only panel. See `scripts/debug_gui.gd`.
+a read-only panel. See `scripts/debug/debug_overlay.gd`.
 
 ## Test-only tools (*** REMOVE BEFORE FULL RELEASE ***)
 
@@ -308,7 +308,7 @@ a read-only panel. See `scripts/debug_gui.gd`.
   collision); hitting a dummy flashes it red and wobbles it (purely
   cosmetic feedback). This exists **solely** to manually verify
   hit-registration during development. **Remove `Gun.gd`, `DummyTarget.gd`,
-  `TestProjectile.gd`, `debug_gui.gd`, the `fire` input action,
+  `TestProjectile.gd`, `scripts/debug/`, the `fire` input action,
   `Player.has_gun`/`_fire_gun()`, and the test nodes before shipping.**
 
 ## Host spawn odds

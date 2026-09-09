@@ -6,13 +6,13 @@ class_name MapCoords
 
 const TRANSFORM_PATH := "res://assets/horror/farm/masks/map_transform.txt"
 
-const TERRAIN_ORIGIN_X: float = -72.0
-const TERRAIN_ORIGIN_Z: float = -60.0
-const TERRAIN_SPAN_X: float = 144.0
-const TERRAIN_SPAN_Z: float = 120.0
+const TERRAIN_ORIGIN_X: float = -144.0
+const TERRAIN_ORIGIN_Z: float = -120.0
+const TERRAIN_SPAN_X: float = 288.0
+const TERRAIN_SPAN_Z: float = 240.0
 const CELL_M: float = 1.5
-const MAP_WIDTH: int = 97
-const MAP_DEPTH: int = 81
+const MAP_WIDTH: int = 193
+const MAP_DEPTH: int = 161
 
 var origin_x: float = -53.80
 var origin_z: float = -40.92

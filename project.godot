@@ -45,6 +45,7 @@ FireSystem="*res://scripts/systems/fire_system.gd"
 WalkieSystem="*res://scripts/systems/walkie_system.gd"
 WorldScale="*res://scripts/world_scale.gd"
 DebugBuild="*res://scripts/autoload/debug_build.gd"
+DebugCheats="*res://scripts/debug/debug_cheats.gd"
 
 [display]
 

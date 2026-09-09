@@ -2,16 +2,16 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://vdoh5fq81mbb"
-path="res://.godot/imported/kyle_T0_height_97x81.exr-95592a45166011e2ab65081ffbc4c979.ctex"
+uid="uid://b4p7gei38u2nc"
+path="res://.godot/imported/kyle_T0_height_193x161.exr-c1a9898b2365547dd2341289bf073d24.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://assets/horror/farm/kyle_T0_height_97x81.exr"
-dest_files=["res://.godot/imported/kyle_T0_height_97x81.exr-95592a45166011e2ab65081ffbc4c979.ctex"]
+source_file="res://assets/horror/farm/kyle_T0_height_193x161.exr"
+dest_files=["res://.godot/imported/kyle_T0_height_193x161.exr-c1a9898b2365547dd2341289bf073d24.ctex"]
 
 [params]
 

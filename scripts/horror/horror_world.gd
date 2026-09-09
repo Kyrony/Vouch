@@ -175,20 +175,20 @@ func server_init_match(player_count: int) -> void:
 
 func get_family_spawn_transform(family_index: int) -> Transform3D:
 	if _family_spawns.is_empty():
-		return Transform3D(Basis.IDENTITY, Vector3(-12.0, 0.2, -8.0))
+		return Transform3D(Basis.IDENTITY, Vector3(-76.0, 2.4, -21.0))
 	var idx := clampi(family_index, 0, _family_spawns.size() - 1)
 	return _family_spawns[idx].global_transform
 
 
 func get_pm_spawn_transform() -> Transform3D:
 	if _pm_spawn == null:
-		return Transform3D(Basis.IDENTITY, Vector3(22.0, 3.6, 1.0))
+		return Transform3D(Basis.IDENTITY, Vector3(44.0, 13.0, 2.0))
 	return _pm_spawn.global_transform
 
 
 func get_random_spawn_transform() -> Transform3D:
 	if _family_spawns.is_empty():
-		return Transform3D(Basis.IDENTITY, Vector3(-12.0, 0.2, -8.0))
+		return Transform3D(Basis.IDENTITY, Vector3(-76.0, 2.4, -21.0))
 	var m: Marker3D = _family_spawns[randi() % _family_spawns.size()]
 	return m.global_transform
 
