@@ -51,7 +51,7 @@ var _prompt_sub: Label
 var _rail: VBoxContainer
 var _rail_wells: Array[TextureRect] = []
 var _rail_icons: Array[TextureRect] = []
-var _objective_toast: Panel
+var _obj_banner: Panel
 var _objective_label: Label
 var _objective_tween: Tween
 var _tex_ability: Texture2D
@@ -172,7 +172,7 @@ func _build() -> void:
 	if _built:
 		return
 	_built = true
-	_build_objective_toast()
+	_build_obj_banner()
 	_build_clock()
 	_build_vitals()
 	_build_prompt()
@@ -183,18 +183,18 @@ func _build() -> void:
 
 ## Transient objective banner: pops in at top-center and fades after a few
 ## seconds. Call show_objective() again for the next objective as play moves on.
-func _build_objective_toast() -> void:
-	_objective_toast = Panel.new()
-	_objective_toast.name = "ObjectiveToast"
-	_objective_toast.set_anchors_preset(PRESET_CENTER_TOP)
-	_objective_toast.offset_left = -320
-	_objective_toast.offset_top = 20
-	_objective_toast.offset_right = 320
-	_objective_toast.offset_bottom = 66
-	_objective_toast.mouse_filter = MOUSE_FILTER_IGNORE
-	_objective_toast.add_theme_stylebox_override("panel", _KIT.panel_focus())
-	_objective_toast.visible = false
-	add_child(_objective_toast)
+func _build_obj_banner() -> void:
+	_obj_banner = Panel.new()
+	_obj_banner.name = "ObjectiveToast"
+	_obj_banner.set_anchors_preset(PRESET_CENTER_TOP)
+	_obj_banner.offset_left = -320
+	_obj_banner.offset_top = 20
+	_obj_banner.offset_right = 320
+	_obj_banner.offset_bottom = 66
+	_obj_banner.mouse_filter = MOUSE_FILTER_IGNORE
+	_obj_banner.add_theme_stylebox_override("panel", _KIT.panel_focus())
+	_obj_banner.visible = false
+	add_child(_obj_banner)
 	_objective_label = Label.new()
 	_objective_label.name = "Text"
 	_objective_label.set_anchors_preset(PRESET_FULL_RECT)
@@ -203,26 +203,31 @@ func _build_objective_toast() -> void:
 	_objective_label.add_theme_color_override("font_color", _KIT.YELLOW)
 	_objective_label.add_theme_font_size_override("font_size", 16)
 	_objective_label.mouse_filter = MOUSE_FILTER_IGNORE
-	_objective_toast.add_child(_objective_label)
+	_obj_banner.add_child(_objective_label)
 
 
 ## Pop a new objective at the top of the screen; it fades out after `seconds`.
 func show_objective(text: String, seconds: float = 5.0) -> void:
 	if not _built:
 		_build()
-	if _objective_toast == null:
+	if _obj_banner == null:
 		return
 	_objective_label.text = text
-	_objective_toast.visible = true
-	_objective_toast.modulate.a = 1.0
+	_obj_banner.visible = true
+	_obj_banner.modulate.a = 1.0
 	if _objective_tween and _objective_tween.is_valid():
 		_objective_tween.kill()
 	_objective_tween = create_tween()
 	_objective_tween.tween_interval(maxf(seconds - 0.6, 0.2))
-	_objective_tween.tween_property(_objective_toast, "modulate:a", 0.0, 0.6)
-	_objective_tween.tween_callback(func() -> void:
-		_objective_toast.visible = false
-		_objective_toast.modulate.a = 1.0)
+	_objective_tween.tween_property(_obj_banner, "modulate:a", 0.0, 0.6)
+	_objective_tween.tween_callback(_hide_obj_banner)
+
+
+func _hide_obj_banner() -> void:
+	if _obj_banner == null:
+		return
+	_obj_banner.visible = false
+	_obj_banner.modulate.a = 1.0
 
 
 func _on_match_clock(_progress: float, label: String) -> void:

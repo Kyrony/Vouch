@@ -91,7 +91,7 @@ func _broadcast_health(peer_id: int) -> void:
 	health_changed.emit(peer_id, hp, cap)
 	if peer_id == multiplayer.get_unique_id():
 		local_health_changed.emit(hp, cap)
-	else:
+	elif GameState.is_network_peer(peer_id):
 		_client_health.rpc_id(peer_id, hp, cap)
 
 

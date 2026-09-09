@@ -41,7 +41,7 @@ const MODES := {
 	},
 	"practice": {
 		"title": "PRACTICE",
-		"desc": "Learn the streets. No stakes.",
+		"desc": "Indoor bay. Dummy takes damage and shows readings.",
 	},
 	"friends-lobby": {
 		"title": "FRIENDS LOBBY",

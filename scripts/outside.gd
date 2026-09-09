@@ -10,12 +10,13 @@ class_name Outside
 @onready var roam_spawn_points: Node3D = $RoamSpawnPoints
 
 const _GEOM: GDScript = preload("res://scripts/rooms/geometry_util.gd")
+const _HORROR_MODE: GDScript = preload("res://scripts/autoload/horror_mode_settings.gd")
 
 
 func _ready() -> void:
 	## Live Classic Host Match is HorrorWorld (terrain/roads/markers).
 	## This courtyard + mountain graybox must not share the viewport.
-	if HorrorModeSettings.is_horror_mode():
+	if _HORROR_MODE.is_horror_mode():
 		visible = false
 		process_mode = Node.PROCESS_MODE_DISABLED
 		for child in get_children():

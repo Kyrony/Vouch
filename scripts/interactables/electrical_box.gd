@@ -112,7 +112,7 @@ func _apply_connected(wire_idx: int) -> void:
 			mat.emission = Color(0.3, 0.9, 0.4) if i == wire_idx else Color.BLACK
 
 
-func interact_wire_index(wire_idx: int, by_peer_id: int) -> void:
+func interact_wire_index(wire_idx: int, _by_peer_id: int) -> void:
 	if connected_wire >= 0 or wire_idx < 0 or wire_idx >= wire_targets.size():
 		return
 	if multiplayer.is_server():

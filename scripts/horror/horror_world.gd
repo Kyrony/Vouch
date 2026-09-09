@@ -15,6 +15,7 @@ func _ready() -> void:
 	add_to_group("horror_world")
 	_suppress_parallel_worlds()
 	_bind_authored_spawns()
+	_ensure_spawn_pads()
 	_ensure_placeholder_gun()
 	_ensure_terrain_texture()
 	## Mask placement must not block Start Match / player spawn.
@@ -27,6 +28,7 @@ func _ready() -> void:
 	print("[HorrorWorld] loaded authored farm scene family_pads=%d l2_markers=%d" % [
 		_family_spawns.size(), get_tree().get_nodes_in_group("child_spawn_points").size(),
 	])
+	call_deferred("_snap_spawned_players")
 
 
 func _ensure_placeholder_gun() -> void:
@@ -152,9 +154,14 @@ func _suppress_parallel_worlds() -> void:
 	var match_node := get_parent()
 	if match_node == null:
 		return
+	## A leftover Match WorldEnvironment with a nulled resource still wins the
+	## viewport and paints a grey void. Remove the node so FarmSky is the env.
 	var we := match_node.get_node_or_null("WorldEnvironment") as WorldEnvironment
 	if we:
-		we.environment = null
+		we.queue_free()
+	var match_sun := match_node.get_node_or_null("DirectionalLight3D") as DirectionalLight3D
+	if match_sun:
+		match_sun.visible = false
 	var world_root := match_node.get_parent()
 	if world_root == null:
 		return
@@ -175,22 +182,102 @@ func server_init_match(player_count: int) -> void:
 
 func get_family_spawn_transform(family_index: int) -> Transform3D:
 	if _family_spawns.is_empty():
-		return Transform3D(Basis.IDENTITY, Vector3(-76.0, 2.4, -21.0))
+		return Transform3D(Basis.IDENTITY, snap_to_ground(Vector3(-76.0, 2.4, -21.0)))
 	var idx := clampi(family_index, 0, _family_spawns.size() - 1)
-	return _family_spawns[idx].global_transform
+	var xf := _family_spawns[idx].global_transform
+	xf.origin = snap_to_ground(xf.origin)
+	return xf
 
 
 func get_pm_spawn_transform() -> Transform3D:
 	if _pm_spawn == null:
-		return Transform3D(Basis.IDENTITY, Vector3(44.0, 13.0, 2.0))
-	return _pm_spawn.global_transform
+		return Transform3D(Basis.IDENTITY, snap_to_ground(Vector3(44.0, 13.0, 2.0)))
+	var xf := _pm_spawn.global_transform
+	xf.origin = snap_to_ground(xf.origin)
+	return xf
+
+
+## Lift a point onto the authored heightfield so pawns do not start inside
+## the mesh or fall through onto the underside bed collider.
+func snap_to_ground(origin: Vector3) -> Vector3:
+	var y := _sample_heightfield_y(origin.x, origin.z)
+	if y < -8.0:
+		return origin
+	if origin.y < y + 0.15:
+		origin.y = y + 1.15
+	return origin
+
+
+func _sample_heightfield_y(x: float, z: float) -> float:
+	var terrain := get_node_or_null("Outdoor/Terrain") as Node3D
+	if terrain == null:
+		return -999.0
+	var hm: HeightMapShape3D = null
+	for child in terrain.get_children():
+		if child is CollisionShape3D and (child as CollisionShape3D).shape is HeightMapShape3D:
+			hm = (child as CollisionShape3D).shape
+			break
+	if hm == null:
+		return -999.0
+	var data: PackedFloat32Array = hm.map_data
+	var w := hm.map_width
+	var d := hm.map_depth
+	if w < 2 or d < 2 or data.size() < w * d:
+		return -999.0
+	var u := (x + 144.0) / 288.0
+	var v := (z + 120.0) / 240.0
+	var ix := clampi(int(round(u * float(w - 1))), 0, w - 1)
+	var iz := clampi(int(round(v * float(d - 1))), 0, d - 1)
+	var idx := iz * w + ix
+	if idx < 0 or idx >= data.size():
+		return -999.0
+	return data[idx]
+
+
+func _snap_spawned_players() -> void:
+	if not is_inside_tree():
+		return
+	for node in get_tree().get_nodes_in_group("players"):
+		if node.has_method("snap_to_walkable_ground"):
+			node.call("snap_to_walkable_ground")
 
 
 func get_random_spawn_transform() -> Transform3D:
 	if _family_spawns.is_empty():
-		return Transform3D(Basis.IDENTITY, Vector3(-76.0, 2.4, -21.0))
+		return Transform3D(Basis.IDENTITY, snap_to_ground(Vector3(-76.0, 2.4, -21.0)))
 	var m: Marker3D = _family_spawns[randi() % _family_spawns.size()]
-	return m.global_transform
+	var xf := m.global_transform
+	xf.origin = snap_to_ground(xf.origin)
+	return xf
+
+
+func _ensure_spawn_pads() -> void:
+	if get_node_or_null("Outdoor/SpawnPads") != null:
+		return
+	var folder := Node3D.new()
+	folder.name = "SpawnPads"
+	var outdoor := get_node_or_null("Outdoor")
+	if outdoor == null:
+		return
+	outdoor.add_child(folder)
+	var spots: Array[Vector3] = []
+	for marker in _family_spawns:
+		spots.append(snap_to_ground(marker.global_position))
+	if _pm_spawn:
+		spots.append(snap_to_ground(_pm_spawn.global_position))
+	var i := 0
+	for pos in spots:
+		var body := StaticBody3D.new()
+		body.name = "SpawnPad_%d" % i
+		body.collision_layer = 1
+		body.position = Vector3(pos.x, pos.y - 0.08, pos.z)
+		var col := CollisionShape3D.new()
+		var box := BoxShape3D.new()
+		box.size = Vector3(3.2, 0.2, 3.2)
+		col.shape = box
+		body.add_child(col)
+		folder.add_child(body)
+		i += 1
 
 
 func get_spawn_point_count() -> int:

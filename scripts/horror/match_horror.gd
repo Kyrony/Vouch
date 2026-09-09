@@ -5,10 +5,14 @@ class_name MatchHorror
 const HORROR_WORLD_SCENE: String = "res://scenes/Horror/HorrorWorld.tscn"
 const PM_AI_SCENE: String = "res://scenes/Horror/PMChaseAI.tscn"
 const PLAYER_SCENE_PATH: String = "res://scenes/Player/Player.tscn"
+const _PRACTICE: GDScript = preload("res://scripts/horror/practice_arena.gd")
 
 
 static func server_build(match_node: Node) -> void:
 	if not match_node.multiplayer.is_server():
+		return
+	if GameState.practice_mode:
+		_server_build_practice(match_node)
 		return
 	var peer_ids: Array = GameState.players.keys()
 	peer_ids.shuffle()
@@ -76,9 +80,41 @@ static func _ensure_puppet_master(peer_ids: Array) -> int:
 
 
 static func build_world_all_peers(match_node: Node) -> void:
+	if GameState.practice_mode:
+		_PRACTICE.call("ensure", match_node)
+		return
 	if match_node.get_node_or_null("HorrorWorld") != null:
 		return
 	_spawn_world(match_node)
+
+
+static func _server_build_practice(match_node: Node) -> void:
+	PlayerHealth.reset()
+	PlayerInventory.reset()
+	PlayerEffects.reset()
+	PhoneDevice.reset()
+	PuppetStringSystem.reset()
+	EscapeSystem.reset()
+	PuppetMasterSystem.reset()
+	var arena: Node = _PRACTICE.call("ensure", match_node)
+	if arena == null:
+		push_error("MatchHorror: practice arena failed")
+		return
+	var peer_id: int = 1
+	if GameState.practice_as_pm:
+		GameState.server_set_puppet_master(peer_id)
+	var xform: Transform3D = _PRACTICE.call("player_spawn_transform")
+	_server_spawn_horror_player(match_node, peer_id, xform, GameState.practice_as_pm, 0)
+	if GameState.practice_as_pm:
+		PlayerInventory.server_init_peer(peer_id)
+		PlayerInventory.server_add_item(peer_id, "puppet")
+	else:
+		for item_id in ["crowbar", "medkit", "scissors", "flare", "energy_drink", "adrenaline", "bandage"]:
+			PlayerInventory.server_add_item(peer_id, str(item_id))
+	print("PRACTICE ready role=%s dummy=%s" % [
+		"pm" if GameState.practice_as_pm else "survivor",
+		arena.get_node_or_null("9001") != null,
+	])
 
 
 static func _spawn_world(match_node: Node) -> void:
@@ -161,6 +197,7 @@ static func teardown(match_node: Node) -> void:
 	var hw := match_node.get_node_or_null("HorrorWorld")
 	if hw:
 		hw.queue_free()
+	_PRACTICE.call("teardown", match_node)
 	var ai := match_node.get_node_or_null("PMChaseAI")
 	if ai:
 		ai.queue_free()

@@ -27,4 +27,9 @@ static func mode_label() -> String:
 
 
 func _ready() -> void:
-	print("[HorrorModeSettings] active mode=%s" % mode_label())
+	var label := "horror"
+	if OS.get_environment(BUNKER_ENV) == "1":
+		label = "bunker_only"
+	elif OS.get_environment(ESCAPE_ENV) == "1":
+		label = "escape_path"
+	print("[HorrorModeSettings] active mode=%s" % label)

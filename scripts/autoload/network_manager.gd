@@ -99,7 +99,11 @@ func start_match() -> void:
 	# faction pool entirely - they're a fifth, independent role. See
 	# PuppetMasterSystem / docs/MVP_GDD.md.
 	var pm_peer_id := -1
-	if HorrorMode.is_horror_mode():
+	if GameState.practice_mode:
+		if GameState.practice_as_pm and not all_peer_ids.is_empty():
+			pm_peer_id = int(all_peer_ids[0])
+			GameState.server_set_puppet_master(pm_peer_id)
+	elif HorrorMode.is_horror_mode():
 		if all_peer_ids.size() >= 2:
 			pm_peer_id = all_peer_ids[randi() % all_peer_ids.size()]
 			GameState.server_set_puppet_master(pm_peer_id)

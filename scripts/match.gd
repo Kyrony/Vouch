@@ -51,7 +51,7 @@ var _rooms: Dictionary = {}
 ## a live reference to this Match instance.
 static func room_grid_position(index: int) -> Vector3:
 	var col := index % GRID_COLUMNS
-	var row := index / GRID_COLUMNS
+	var row := int(float(index) / float(GRID_COLUMNS))
 	return Vector3(col * WorldScale.GRID_SPACING, -WorldScale.UNDERGROUND_DEPTH, row * WorldScale.GRID_SPACING)
 
 
@@ -89,7 +89,8 @@ func _on_match_started() -> void:
 		_HORROR.call("build_world_all_peers", self)
 	if not multiplayer.is_server():
 		return
-	_server_build_match()
+	# Farm collision / sky must finish _ready before we place pawns.
+	call_deferred("_server_build_match")
 
 
 func _server_build_match() -> void:
@@ -458,7 +459,7 @@ func _spawn_player(data: Dictionary) -> Node:
 	# node enters the tree, or its pending spawn silently fails on clients.
 	player.set_multiplayer_authority(data["peer_id"])
 	player.set("faction_id", data.get("faction_id", ""))
-	player.position = data["spawn_position"]
+	player.position = _safe_spawn_position(data.get("spawn_position", Vector3.ZERO))
 	player.rotation.y = data["spawn_rotation_y"]
 	if data.get("horror_mode", false):
 		player.set("horror_mode", true)
@@ -466,6 +467,13 @@ func _spawn_player(data: Dictionary) -> Node:
 			player.set("is_horror_puppet_master", true)
 			_HORROR.call("attach_pm_controller", player)
 	return player
+
+
+func _safe_spawn_position(pos: Variant) -> Vector3:
+	var p: Vector3 = pos if pos is Vector3 else Vector3.ZERO
+	if p.y < 0.6:
+		p.y = 2.4
+	return p
 
 
 func _log_horror_match_ready(player_count: int, spawn_count: int) -> void:

@@ -111,7 +111,7 @@ func _broadcast(peer_id: int) -> void:
 	inventory_changed.emit(peer_id, slots, sel)
 	if peer_id == multiplayer.get_unique_id():
 		local_inventory_changed.emit(slots, sel)
-	else:
+	elif GameState.is_network_peer(peer_id):
 		_client_inventory.rpc_id(peer_id, slots, sel)
 
 
@@ -226,10 +226,16 @@ func _apply_use_item(peer_id: int, item_id: String) -> bool:
 	match item_id:
 		"medkit", "bandage", "painkillers":
 			var heal := float(def.get("heal", 0.0))
-			if heal > 0.0:
+			var dummy := _nearest_in_group(peer_id, "practice_dummy", 3.0)
+			if dummy and dummy.has_method("apply_event") and heal > 0.0:
+				dummy.call("apply_event", "heal", heal)
+			elif heal > 0.0:
 				PlayerHealth.server_heal(peer_id, heal)
 			if float(def.get("fear_relief", 0.0)) > 0.0:
-				PlayerEffects.server_set_fear(peer_id, 0.0)
+				if dummy and dummy.has_method("apply_event"):
+					dummy.call("apply_event", "fear", 0.0)
+				else:
+					PlayerEffects.server_set_fear(peer_id, 0.0)
 			return true
 		"energy_drink":
 			PlayerEffects.server_set_stamina(peer_id, float(def.get("stamina", 100.0)), true)
@@ -347,6 +353,12 @@ func _drop_flare(peer_id: int, def: Dictionary) -> void:
 ## Crowbar (weapon): strike the Puppet Master if they're right in front,
 ## locking out their abilities briefly.
 func _crowbar_stun(peer_id: int, def: Dictionary) -> void:
+	var reach := float(def.get("stun_range", 3.0))
+	var dummy := _nearest_in_group(peer_id, "practice_dummy", reach)
+	if dummy and dummy.has_method("apply_event"):
+		dummy.call("apply_event", "damage", 20.0)
+		PuppetMasterSystem.server_stun(float(def.get("stun_seconds", 3.0)))
+		return
 	var pm := GameState.puppet_master_peer_id
 	if pm <= 0:
 		return
@@ -354,7 +366,7 @@ func _crowbar_stun(peer_id: int, def: Dictionary) -> void:
 	var pm_node := _find_player(pm) as Node3D
 	if me == null or pm_node == null:
 		return
-	if me.global_position.distance_to(pm_node.global_position) <= float(def.get("stun_range", 3.0)):
+	if me.global_position.distance_to(pm_node.global_position) <= reach:
 		PuppetMasterSystem.server_stun(float(def.get("stun_seconds", 3.0)))
 
 

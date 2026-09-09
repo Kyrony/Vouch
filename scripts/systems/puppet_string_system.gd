@@ -65,7 +65,7 @@ func server_make_ghost(pm_peer: int, victim_peer: int) -> bool:
 
 
 ## Release non-ghost strings (PM lets go / dies). Ghost strings stay.
-func server_release(pm_peer: int, victim_peer: int) -> void:
+func server_release(_pm_peer: int, victim_peer: int) -> void:
 	if not multiplayer.is_server() or not _tethers.has(victim_peer):
 		return
 	if bool(_tethers[victim_peer]["ghost"]):
@@ -148,7 +148,7 @@ func _broadcast(victim_peer: int) -> void:
 	var immobile := server_is_immobilized(victim_peer)
 	if victim_peer == multiplayer.get_unique_id():
 		local_tether_changed.emit(count, ghost, immobile)
-	else:
+	elif GameState.is_network_peer(victim_peer):
 		_client_tether.rpc_id(victim_peer, count, ghost, immobile)
 
 

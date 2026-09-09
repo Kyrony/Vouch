@@ -58,6 +58,7 @@ func _probe() -> String:
 		return "host_game failed err=%s" % host_err
 	net.call("start_match")
 	await process_frame
+	await process_frame
 	await physics_frame
 	await process_frame
 

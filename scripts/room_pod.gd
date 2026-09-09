@@ -21,13 +21,13 @@ var _map: Node3D
 static func plan_recipe(is_pm: bool) -> Dictionary:
 	var rng := RandomNumberGenerator.new()
 	rng.randomize()
-	var room_scene_id: int = 0 if is_pm else int(_LAYOUTS.call("pick_id", rng))
+	var picked_scene_id: int = 0 if is_pm else int(_LAYOUTS.call("pick_id", rng))
 
 	var has_valve := not is_pm and randf() < MatchSettings.flood_valve_chance
 	var has_electrical_box := not is_pm and randf() < 0.35
 
 	return {
-		"room_scene_id": room_scene_id,
+		"room_scene_id": picked_scene_id,
 		"has_valve": has_valve,
 		"has_electrical_box": has_electrical_box,
 		"wire_targets": [],

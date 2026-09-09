@@ -265,7 +265,7 @@ func _broadcast_meters(peer_id: int) -> void:
 	meters_changed.emit(peer_id, m.x, m.y, m.z)
 	if peer_id == multiplayer.get_unique_id():
 		local_meters_changed.emit(m.x, m.y, m.z)
-	else:
+	elif GameState.is_network_peer(peer_id):
 		_client_meters.rpc_id(peer_id, m.x, m.y, m.z)
 
 
@@ -276,7 +276,7 @@ func _broadcast_effect(peer_id: int, effect_id: String) -> void:
 	var cooldown := float(def.get("cooldown", 0.0))
 	if peer_id == multiplayer.get_unique_id():
 		local_effect_state.emit(effect_id, times.x, times.y, duration, cooldown)
-	else:
+	elif GameState.is_network_peer(peer_id):
 		_client_effect_state.rpc_id(peer_id, effect_id, times.x, times.y, duration, cooldown)
 
 
