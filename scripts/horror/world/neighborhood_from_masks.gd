@@ -16,10 +16,10 @@ const VEG_STEP: float = 7.2
 const VEG_MAX: int = 96
 const ROAD_STEP_M: float = 10.0
 const ROAD_MAX_LANES: int = 36
-const TERRAIN_ORIGIN_X: float = -72.0
-const TERRAIN_ORIGIN_Z: float = -60.0
-const TERRAIN_SPAN_X: float = 144.0
-const TERRAIN_SPAN_Z: float = 120.0
+const TERRAIN_ORIGIN_X: float = -144.0
+const TERRAIN_ORIGIN_Z: float = -120.0
+const TERRAIN_SPAN_X: float = 288.0
+const TERRAIN_SPAN_Z: float = 240.0
 
 const SIZES := {
 	"mansion": Vector3(20.0, 3.2, 16.0),

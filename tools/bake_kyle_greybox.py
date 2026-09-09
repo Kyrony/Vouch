@@ -2,6 +2,10 @@
 """Offline baker: Kyle T0 greybox SoT → EXR + solid mesh + HorrorWorld.tscn.
 
 Not loaded at runtime. Start Match instantiates the authored packed scene.
+
+Map is 2× in X and Z (4× area) vs the original 144×120 plate, with much
+stronger rolling hills, ridges, and saddles so slopes actually read in play.
+Layout pads stay the same size; they are spread across the larger country.
 """
 
 from __future__ import annotations
@@ -14,18 +18,22 @@ ROOT = Path(__file__).resolve().parents[1]
 FARM = ROOT / "assets/horror/farm"
 SCENE = ROOT / "scenes/Horror/HorrorWorld.tscn"
 
-WIDTH = 97
-DEPTH = 81
+# 2× linear → 4× walkable area (288×240 m).
+SCALE = 2.0
+WIDTH = 193
+DEPTH = 161
 SPACING = 1.5
-SPAN_X = (WIDTH - 1) * SPACING  # 144
-SPAN_Z = (DEPTH - 1) * SPACING  # 120
+SPAN_X = (WIDTH - 1) * SPACING  # 288
+SPAN_Z = (DEPTH - 1) * SPACING  # 240
 ORIGIN_X = -SPAN_X / 2.0
 ORIGIN_Z = -SPAN_Z / 2.0
+
+# Unscaled Kyle plate coords. World XZ = plate * SCALE.
 CLIFF_X = 54.0
 HILL_XZ = (22.0, -8.0)
-HILL_PEAK = 4.5
-PLATEAU = 1.15
-FAMILY_BASE = 0.85
+HILL_PEAK = 13.5
+PLATEAU = 3.15
+FAMILY_BASE = 2.15
 
 # Layout pads — Family A–D lower west, Uncle+garage north of mansion, PM on hill.
 PADS = {
@@ -38,7 +46,6 @@ PADS = {
     "PMMansion": {"xz": (22.0, -6.0), "size": (20.0, 3.2, 16.0), "yaw": 0.0},
 }
 
-# Family outdoor spawns sit on the road-facing edge of each pad.
 FAMILY_SPAWNS = [
     ("Outdoor_Family_A", -38.0, -10.5, 0.0),
     ("Outdoor_Family_B", -30.5, 2.0, -math.pi / 2.0),
@@ -61,29 +68,37 @@ L2_MARKERS = [
     ("car_trunk", 11, 0.0, 20.0),
 ]
 
-# Road centerlines (a → b, half-width). Kyle layout connectors.
 ROADS = [
-    ((-60.0, -18.0), (-30.0, -18.0), 2.6),  # west from A
-    ((-38.0, -18.0), (-38.0, 24.0), 2.4),  # A–B–C
-    ((-38.0, 24.0), (-8.0, 24.0), 2.4),  # C–D
-    ((-14.0, 24.0), (8.0, 6.0), 2.5),  # D toward mansion
-    ((8.0, 6.0), (22.0, -6.0), 2.6),  # junction to mansion
-    ((-38.0, -18.0), (16.0, -28.0), 2.4),  # A to Uncle
-    ((16.0, -28.0), (30.0, -28.0), 2.3),  # Uncle to garage
-    ((22.0, -6.0), (22.0, -28.0), 2.3),  # mansion north to uncle
-    ((22.0, -6.0), (50.0, -6.0), 2.6),  # mansion east toward cliff
-    ((22.0, -6.0), (22.0, 22.0), 2.5),  # mansion south
-    ((22.0, 22.0), (50.0, 22.0), 2.6),  # south then east to cliff
-    ((8.0, 6.0), (-4.0, 24.0), 2.3),  # west spur near D
+    ((-60.0, -18.0), (-30.0, -18.0), 2.8),
+    ((-38.0, -18.0), (-38.0, 24.0), 2.6),
+    ((-38.0, 24.0), (-8.0, 24.0), 2.6),
+    ((-14.0, 24.0), (8.0, 6.0), 2.7),
+    ((8.0, 6.0), (22.0, -6.0), 2.8),
+    ((-38.0, -18.0), (16.0, -28.0), 2.6),
+    ((16.0, -28.0), (30.0, -28.0), 2.5),
+    ((22.0, -6.0), (22.0, -28.0), 2.5),
+    ((22.0, -6.0), (50.0, -6.0), 2.8),
+    ((22.0, -6.0), (22.0, 22.0), 2.7),
+    ((22.0, 22.0), (50.0, 22.0), 2.8),
+    ((8.0, 6.0), (-4.0, 24.0), 2.5),
 ]
 
+# Playtest pickups sit on the road-facing side of Family A (not inside the pad).
 PICKUPS = [
-    ("medkit", -34.0, -12.0),
-    ("phone", 2.0, 2.0),
-    ("bandage", 22.0, 4.0),
-    ("battery", -50.0, -36.0),
-    ("crowbar", -14.0, 20.0),
-    ("keycard", 16.0, -24.0),
+    ("medkit", -38.0, -6.5),
+    ("phone", -36.0, -6.0),
+    ("bandage", -40.0, -6.0),
+    ("battery", -34.5, -7.5),
+    ("crowbar", -41.5, -7.5),
+    ("keycard", -38.0, -4.8),
+    ("energy_drink", -35.5, -4.5),
+    ("scissors", -40.5, -4.5),
+    ("fuse", -33.5, -5.5),
+    ("flare", -42.5, -5.5),
+    ("key", -37.0, -3.6),
+    ("lockpick", -39.0, -3.6),
+    ("painkillers", -36.5, -8.4),
+    ("adrenaline", -39.5, -8.4),
 ]
 
 HILLS = [
@@ -94,17 +109,59 @@ HILLS = [
     ("garden_knoll", 4.0, -10.0),
     ("east_cliff_rim", 50.0, 0.0),
     ("shed_nw", -50.0, -36.0),
+    ("west_ridge", -58.0, 8.0),
+    ("north_saddle", 4.0, -40.0),
+    ("south_bowl", 8.0, 40.0),
+    ("east_knoll", 36.0, 28.0),
+    ("mid_saddle", -8.0, -4.0),
 ]
+
+
+def wx(x: float) -> float:
+    return x * SCALE
+
+
+def wz(z: float) -> float:
+    return z * SCALE
 
 
 def world_to_cell(x: float, z: float) -> tuple[float, float]:
     return (x - ORIGIN_X) / SPACING, (z - ORIGIN_Z) / SPACING
 
 
-def height_at_cell(ix: float, iz: float) -> float:
-    x = ORIGIN_X + ix * SPACING
-    z = ORIGIN_Z + iz * SPACING
-    return height_world(x, z)
+def _hash(ix: int, iz: int) -> float:
+    n = (ix * 374761393 + iz * 668265263) & 0x7FFFFFFF
+    n = (n ^ (n >> 13)) * 1274126177
+    return ((n ^ (n >> 16)) & 0x7FFFFFFF) / 2147483647.0
+
+
+def _value_noise(x: float, z: float) -> float:
+    x0 = math.floor(x)
+    z0 = math.floor(z)
+    tx = x - x0
+    tz = z - z0
+    sx = tx * tx * (3.0 - 2.0 * tx)
+    sz = tz * tz * (3.0 - 2.0 * tz)
+    n00 = _hash(int(x0), int(z0))
+    n10 = _hash(int(x0) + 1, int(z0))
+    n01 = _hash(int(x0), int(z0) + 1)
+    n11 = _hash(int(x0) + 1, int(z0) + 1)
+    nx0 = n00 * (1.0 - sx) + n10 * sx
+    nx1 = n01 * (1.0 - sx) + n11 * sx
+    return nx0 * (1.0 - sz) + nx1 * sz
+
+
+def _fbm(x: float, z: float, octaves: int = 5) -> float:
+    total = 0.0
+    amp = 1.0
+    freq = 1.0
+    norm = 0.0
+    for _ in range(octaves):
+        total += amp * _value_noise(x * freq, z * freq)
+        norm += amp
+        amp *= 0.5
+        freq *= 2.05
+    return total / max(norm, 1e-6)
 
 
 def _bump(x: float, z: float, cx: float, cz: float, radius: float, height: float) -> float:
@@ -112,28 +169,117 @@ def _bump(x: float, z: float, cx: float, cz: float, radius: float, height: float
     if d2 > radius * radius:
         return 0.0
     t = 1.0 - d2 / (radius * radius)
-    return height * (t * t)
+    return height * (t * t * (3.0 - 2.0 * t))
+
+
+def _ridge(x: float, z: float, ax: float, az: float, bx: float, bz: float, width: float, height: float) -> float:
+    dx, dz = bx - ax, bz - az
+    length2 = dx * dx + dz * dz
+    if length2 < 1e-6:
+        return 0.0
+    t = max(0.0, min(1.0, ((x - ax) * dx + (z - az) * dz) / length2))
+    px, pz = ax + t * dx, az + t * dz
+    d = math.hypot(x - px, z - pz)
+    if d >= width:
+        return 0.0
+    fall = 1.0 - (d / width) ** 2
+    return height * fall * fall
+
+
+def _flatten(h: float, x: float, z: float, cx: float, cz: float, radius: float, target: float, strength: float = 1.0) -> float:
+    d = math.hypot(x - cx, z - cz)
+    if d >= radius:
+        return h
+    t = 1.0 - d / radius
+    w = (t * t) * strength
+    return h * (1.0 - w) + target * w
 
 
 def height_world(x: float, z: float) -> float:
-    # East cliff / steep drop — black strip on the T0 preview.
-    if x >= CLIFF_X + 8.0:
+    """World-space height in metres. x/z are already scaled farm coords."""
+    cliff_x = wx(CLIFF_X)
+    if x >= cliff_x + 16.0:
         return 0.0
-    if x >= CLIFF_X:
-        t = (x - CLIFF_X) / 8.0
+    if x >= cliff_x:
+        t = (x - cliff_x) / 16.0
         edge = 1.0 - t * t
     else:
         edge = 1.0
 
-    h = FAMILY_BASE if x < -8.0 else PLATEAU
-    h += _bump(x, z, HILL_XZ[0], HILL_XZ[1], 26.0, HILL_PEAK - PLATEAU)
-    h += _bump(x, z, -36.0, 8.0, 16.0, 0.35)
-    h += _bump(x, z, 8.0, -28.0, 12.0, 0.45)
-    h += _bump(x, z, -20.0, 30.0, 14.0, 0.30)
-    h += _bump(x, z, 6.0, -12.0, 10.0, 0.25)
-    h += _bump(x, z, -50.0, -36.0, 10.0, 0.40)
+    # West fields sit lower; the east plateau climbs into the mansion hill.
+    west = 1.0 if x < wx(-8.0) else 0.0
+    if x < wx(-8.0):
+        west = max(0.0, min(1.0, (wx(-8.0) - x) / wx(24.0)))
+    h = FAMILY_BASE * west + PLATEAU * (1.0 - west)
+
+    # Broad rolling countryside (curves, not a flat plate).
+    h += (_fbm(x * 0.018, z * 0.018) - 0.45) * 4.8
+    h += (_fbm(x * 0.045 + 12.0, z * 0.045 - 7.0, 4) - 0.5) * 2.2
+    h += (_fbm(x * 0.09 - 3.0, z * 0.09 + 5.0, 3) - 0.5) * 0.85
+
+    # Named hills / saddles. Radii scale with the larger country.
+    h += _bump(x, z, wx(HILL_XZ[0]), wz(HILL_XZ[1]), 38.0, HILL_PEAK - PLATEAU)
+    h += _bump(x, z, wx(-36.0), wz(8.0), 24.0, 2.4)
+    h += _bump(x, z, wx(8.0), wz(-28.0), 20.0, 3.1)
+    h += _bump(x, z, wx(-20.0), wz(32.0), 22.0, 2.6)
+    h += _bump(x, z, wx(6.0), wz(-12.0), 16.0, 1.8)
+    h += _bump(x, z, wx(-50.0), wz(-36.0), 18.0, 2.8)
+    h += _bump(x, z, wx(-58.0), wz(8.0), 22.0, 3.4)
+    h += _bump(x, z, wx(4.0), wz(-40.0), 20.0, 2.9)
+    h += _bump(x, z, wx(8.0), wz(40.0), 24.0, 2.2)
+    h += _bump(x, z, wx(36.0), wz(28.0), 18.0, 2.5)
+    h += _bump(x, z, wx(-8.0), wz(-4.0), 16.0, -1.6)  # saddle / dip
+    h += _bump(x, z, wx(-22.0), wz(-22.0), 14.0, 1.4)
+
+    # Long ridge + a second crossing fold so the land isn't radial blobs.
+    h += _ridge(x, z, wx(-62.0), wz(8.0), wx(18.0), wz(-36.0), 16.0, 3.6)
+    h += _ridge(x, z, wx(-48.0), wz(40.0), wx(44.0), wz(10.0), 14.0, 2.4)
+    h += _ridge(x, z, wx(-10.0), wz(-44.0), wx(48.0), wz(32.0), 12.0, 2.0)
+
+    # Shallow valley between the family yards and the mansion climb.
+    h += _ridge(x, z, wx(-18.0), wz(-22.0), wx(-4.0), wz(18.0), 11.0, -2.2)
+
+    h = max(0.15, h)
+
+    # Soften roads first so pad flatten can win on yards / the hilltop.
+    for a, b, r in ROADS:
+        ax, az = wx(a[0]), wz(a[1])
+        bx, bz = wx(b[0]), wz(b[1])
+        dx, dz = bx - ax, bz - az
+        length = math.hypot(dx, dz)
+        if length < 1.0:
+            continue
+        steps = max(4, int(length / 4.0))
+        for i in range(steps + 1):
+            t = i / steps
+            rx, rz = ax + dx * t, az + dz * t
+            h = _flatten(h, x, z, rx, rz, r * 2.2 + 1.0, h, 0.28)
+
+    # Keep pads / spawns walkable (flatten after sculpting + roads).
+    for spec in PADS.values():
+        px, pz = wx(spec["xz"][0]), wz(spec["xz"][1])
+        sx, _sy, sz = spec["size"]
+        radius = max(sx, sz) * 0.72 + 2.0
+        if spec is PADS["PMMansion"]:
+            target = HILL_PEAK - 0.55
+        elif spec["xz"][0] > 0:
+            target = PLATEAU + 0.55
+        else:
+            target = FAMILY_BASE + 0.12
+        h = _flatten(h, x, z, px, pz, radius, target, 0.94)
+
+    for _name, sx, sz, _yaw in FAMILY_SPAWNS:
+        h = _flatten(h, x, z, wx(sx), wz(sz), 5.5, FAMILY_BASE + 0.18, 0.88)
+    h = _flatten(h, x, z, wx(PM_SPAWN[1]), wz(PM_SPAWN[2]), 8.0, HILL_PEAK - 0.7, 0.92)
+
     h *= edge
-    return max(0.0, min(HILL_PEAK, h))
+    return max(0.0, min(HILL_PEAK + 1.5, h))
+
+
+def height_at_cell(ix: float, iz: float) -> float:
+    x = ORIGIN_X + ix * SPACING
+    z = ORIGIN_Z + iz * SPACING
+    return height_world(x, z)
 
 
 def sample(x: float, z: float) -> float:
@@ -154,7 +300,7 @@ def build_grid() -> list[float]:
 
 
 def write_exr(path: Path, grid: list[float]) -> None:
-    """RGB FLOAT uncompressed OpenEXR (97×81). Offline SoT; collision is baked into the scene."""
+    """RGB FLOAT uncompressed OpenEXR. Offline SoT; collision is baked into the scene."""
     channels = b"".join(
         name + b"\x00" + struct.pack("<iB3sii", 2, 0, b"\x00\x00\x00", 1, 1)
         for name in (b"B", b"G", b"R")
@@ -216,7 +362,6 @@ def write_obj(path: Path, grid: list[float]) -> None:
     for iz in range(DEPTH - 1):
         for ix in range(WIDTH - 1):
             a, b, c, d = vid(ix, iz), vid(ix + 1, iz), vid(ix, iz + 1), vid(ix + 1, iz + 1)
-            # CCW from +Y
             faces.append((a, c, b))
             faces.append((b, c, d))
             a2, b2, c2, d2 = vid(ix, iz, True), vid(ix + 1, iz, True), vid(ix, iz + 1, True), vid(ix + 1, iz + 1, True)
@@ -235,7 +380,7 @@ def write_obj(path: Path, grid: list[float]) -> None:
         skirt(vid(WIDTH - 1, iz), vid(WIDTH - 1, iz + 1), vid(WIDTH - 1, iz, True), vid(WIDTH - 1, iz + 1, True))
 
     lines = [
-        "# Kyle T0 greybox heightfield. Baked, not generated at runtime.",
+        "# Kyle T0 greybox heightfield (4x area, rolling hills). Baked, not generated at runtime.",
         "o KyleFarmTerrain",
     ]
     for v in verts_top + verts_bot:
@@ -259,22 +404,36 @@ def write_scene(grid: list[float]) -> None:
     map_csv = ", ".join("%.3f" % h for h in grid)
 
     lines: list[str] = []
-    lines.append("[gd_scene load_steps=40 format=3]")
+    lines.append("[gd_scene load_steps=42 format=3]")
     lines.append("")
     lines.append('[ext_resource type="Script" path="res://scripts/horror/horror_world.gd" id="1"]')
     lines.append('[ext_resource type="PackedScene" path="res://scenes/Horror/WorldPickup.tscn" id="2"]')
     lines.append('[ext_resource type="Script" path="res://scripts/interactables/escape_zone.gd" id="3"]')
     lines.append('[ext_resource type="ArrayMesh" path="res://assets/horror/farm/kyle_farm_terrain.obj" id="4"]')
+    lines.append('[ext_resource type="Texture2D" path="res://assets/horror/farm/grass_dirt_tile.png" id="5"]')
     lines.append("")
     lines.append('[sub_resource type="Environment" id="EnvFarm"]')
     lines.append("background_mode = 1")
-    lines.append("background_color = Color(0.55, 0.68, 0.82, 1)")
+    lines.append("background_color = Color(0.72, 0.38, 0.22, 1)")
     lines.append("ambient_light_source = 2")
-    lines.append("ambient_light_color = Color(0.55, 0.6, 0.58, 1)")
-    lines.append("ambient_light_energy = 0.7")
+    lines.append("ambient_light_color = Color(0.58, 0.34, 0.22, 1)")
+    lines.append("ambient_light_energy = 0.55")
     lines.append("")
+    lines.append('[sub_resource type="StandardMaterial3D" id="Mat_grass"]')
+    lines.append("albedo_color = Color(0.42, 0.50, 0.24, 1)")
+    lines.append('albedo_texture = ExtResource("5")')
+    lines.append("roughness = 0.86")
+    lines.append("metallic = 0.0")
+    lines.append("cull_mode = 2")
+    lines.append("uv1_scale = Vector3(0.14, 0.14, 0.14)")
+    lines.append("uv1_triplanar = true")
+    lines.append("uv1_world_triplanar = true")
+    lines.append("emission_enabled = true")
+    lines.append("emission = Color(0.16, 0.20, 0.09, 1)")
+    lines.append("emission_energy_multiplier = 0.22")
+    lines.append("")
+
     mats = {
-        "Mat_grass": (0.30, 0.46, 0.22),
         "Mat_asphalt": (0.11, 0.11, 0.13),
         "Mat_pad": (0.55, 0.55, 0.52),
         "Mat_mansion": (0.42, 0.36, 0.32),
@@ -287,8 +446,6 @@ def write_scene(grid: list[float]) -> None:
         lines.append(f'[sub_resource type="StandardMaterial3D" id="{mid}"]')
         lines.append(f"albedo_color = Color({r}, {g}, {b}, 1)")
         lines.append("roughness = 0.92")
-        if mid == "Mat_grass":
-            lines.append("cull_mode = 2")
         if mid in ("Mat_pin", "Mat_base", "Mat_crawl"):
             lines.append("emission_enabled = true")
             lines.append(f"emission = Color({r}, {g}, {b}, 1)")
@@ -301,33 +458,32 @@ def write_scene(grid: list[float]) -> None:
     lines.append(f"map_data = PackedFloat32Array({map_csv})")
     lines.append("")
     lines.append('[sub_resource type="BoxShape3D" id="Sh_bed"]')
-    lines.append("size = Vector3(144, 0.8, 120)")
+    lines.append(f"size = Vector3({SPAN_X:.0f}, 0.8, {SPAN_Z:.0f})")
     lines.append("")
     lines.append('[sub_resource type="BoxMesh" id="Box_pin"]')
     lines.append("size = Vector3(1.1, 1.55, 1.1)")
-    lines.append("material = SubResource(\"Mat_pin\")")
+    lines.append('material = SubResource("Mat_pin")')
     lines.append("")
     lines.append('[sub_resource type="BoxMesh" id="Box_pinbase"]')
     lines.append("size = Vector3(1.1, 1.55, 1.1)")
-    lines.append("material = SubResource(\"Mat_base\")")
+    lines.append('material = SubResource("Mat_base")')
     lines.append("")
     lines.append('[sub_resource type="BoxMesh" id="Box_pincrawl"]')
     lines.append("size = Vector3(1.1, 1.55, 1.1)")
-    lines.append("material = SubResource(\"Mat_crawl\")")
+    lines.append('material = SubResource("Mat_crawl")')
     lines.append("")
     lines.append('[sub_resource type="BoxShape3D" id="Sh_escape"]')
     lines.append("size = Vector3(8, 2.4, 8)")
     lines.append("")
     lines.append('[sub_resource type="BoxMesh" id="Box_field_a"]')
-    lines.append("size = Vector3(28, 0.06, 22)")
-    lines.append("material = SubResource(\"Mat_field\")")
+    lines.append("size = Vector3(40, 0.06, 32)")
+    lines.append('material = SubResource("Mat_field")')
     lines.append("")
     lines.append('[sub_resource type="BoxMesh" id="Box_field_b"]')
-    lines.append("size = Vector3(22, 0.06, 18)")
-    lines.append("material = SubResource(\"Mat_field\")")
+    lines.append("size = Vector3(32, 0.06, 26)")
+    lines.append('material = SubResource("Mat_field")')
     lines.append("")
 
-    # Per-pad / road mesh resources
     for name, spec in PADS.items():
         sx, sy, sz = spec["size"]
         mid = "Mat_mansion" if name == "PMMansion" else "Mat_pad"
@@ -340,8 +496,8 @@ def write_scene(grid: list[float]) -> None:
         lines.append("")
 
     for i, (a, b, r) in enumerate(ROADS):
-        ax, az = a
-        bx, bz = b
+        ax, az = wx(a[0]), wz(a[1])
+        bx, bz = wx(b[0]), wz(b[1])
         length = math.hypot(bx - ax, bz - az)
         lines.append(f'[sub_resource type="BoxMesh" id="Box_rd{i}"]')
         lines.append(f"size = Vector3({r * 2:.3f}, 0.10, {length:.3f})")
@@ -351,20 +507,25 @@ def write_scene(grid: list[float]) -> None:
         lines.append(f"size = Vector3({r * 2:.3f}, 0.10, {length:.3f})")
         lines.append("")
 
-    # Nodes
     lines.append('[node name="HorrorWorld" type="Node3D"]')
     lines.append('script = ExtResource("1")')
     lines.append("")
     lines.append('[node name="FarmSky" type="WorldEnvironment" parent="."]')
-    lines.append("environment = SubResource(\"EnvFarm\")")
+    lines.append('environment = SubResource("EnvFarm")')
+    lines.append("")
+    lines.append('[node name="SunMoon" type="DirectionalLight3D" parent="."]')
+    lines.append("transform = Transform3D(1, 0, 0, 0, 0.978, 0.208, 0, -0.208, 0.978, 0, 36, 0)")
+    lines.append("light_color = Color(1, 0.55, 0.28, 1)")
+    lines.append("light_energy = 0.88")
+    lines.append("shadow_enabled = true")
     lines.append("")
     lines.append('[node name="Outdoor" type="Node3D" parent="."]')
     lines.append("")
     lines.append('[node name="Terrain" type="StaticBody3D" parent="Outdoor"]')
     lines.append("collision_layer = 1")
     lines.append("collision_mask = 0")
-    lines.append("metadata/span_x = 144.0")
-    lines.append("metadata/span_z = 120.0")
+    lines.append(f"metadata/span_x = {SPAN_X:.1f}")
+    lines.append(f"metadata/span_z = {SPAN_Z:.1f}")
     lines.append("metadata/authored_heightfield = true")
     lines.append("metadata/solid_mesh = true")
     lines.append("metadata/underside = true")
@@ -372,16 +533,17 @@ def write_scene(grid: list[float]) -> None:
     lines.append('metadata/sot = "kyle_T0"')
     lines.append(f"metadata/peak_y = {peak:.3f}")
     lines.append(f"metadata/valley_y = {valley:.3f}")
-    lines.append("metadata/map_width = 97")
-    lines.append("metadata/map_depth = 81")
+    lines.append(f"metadata/map_width = {WIDTH}")
+    lines.append(f"metadata/map_depth = {DEPTH}")
     lines.append("metadata/cell_m = 1.5")
+    lines.append("metadata/area_scale = 4.0")
     lines.append("")
     lines.append('[node name="MeshInstance3D" type="MeshInstance3D" parent="Outdoor/Terrain"]')
     lines.append("mesh = ExtResource(\"4\")")
     lines.append("material_override = SubResource(\"Mat_grass\")")
     lines.append("")
     lines.append('[node name="CollisionShape3D" type="CollisionShape3D" parent="Outdoor/Terrain"]')
-    lines.append("transform = Transform3D(1.5, 0, 0, 0, 1, 0, 0, 0, 1.5, 0, 0, 0)")
+    lines.append(f"transform = Transform3D({SPACING}, 0, 0, 0, 1, 0, 0, 0, {SPACING}, 0, 0, 0)")
     lines.append("shape = SubResource(\"Sh_terrain\")")
     lines.append("")
     lines.append('[node name="Bed" type="CollisionShape3D" parent="Outdoor/Terrain"]')
@@ -391,12 +553,12 @@ def write_scene(grid: list[float]) -> None:
 
     lines.append('[node name="Hills" type="Node3D" parent="Outdoor"]')
     lines.append(f"metadata/hill_count = {len(HILLS)}")
-    lines.append('metadata/variety = "kyle_t0"')
+    lines.append('metadata/variety = "rolling_t0"')
     lines.append("")
     for hid, hx, hz in HILLS:
-        hy = sample(hx, hz)
+        hy = sample(wx(hx), wz(hz))
         lines.append(f'[node name="Hill_{hid}" type="Marker3D" parent="Outdoor/Hills"]')
-        lines.append(f"position = Vector3({hx:.3f}, {hy:.3f}, {hz:.3f})")
+        lines.append(f"position = Vector3({wx(hx):.3f}, {hy:.3f}, {wz(hz):.3f})")
         lines.append(f'metadata/hill_id = "{hid}"')
         lines.append("")
 
@@ -404,8 +566,8 @@ def write_scene(grid: list[float]) -> None:
     lines.append('metadata/plate = "kyle_greybox"')
     lines.append("")
     for i, (a, b, _r) in enumerate(ROADS):
-        ax, az = a
-        bx, bz = b
+        ax, az = wx(a[0]), wz(a[1])
+        bx, bz = wx(b[0]), wz(b[1])
         mx, mz = (ax + bx) / 2.0, (az + bz) / 2.0
         my = sample(mx, mz) + 0.05
         yaw = math.atan2(bx - ax, bz - az)
@@ -426,11 +588,10 @@ def write_scene(grid: list[float]) -> None:
     lines.append('metadata/sot = "kyle_greybox_layout"')
     lines.append("")
     for name, spec in PADS.items():
-        px, pz = spec["xz"]
+        px, pz = wx(spec["xz"][0]), wz(spec["xz"][1])
         sx, sy, sz = spec["size"]
         py = sample(px, pz) + sy / 2.0
         if name == "PMMansion":
-            # MainHouse is the hilltop mansion pad (validation name).
             continue
         lines.append(f'[node name="Pad_{name}" type="StaticBody3D" parent="Outdoor/Pads"]')
         lines.append(f"transform = {xf(px, py, pz, spec['yaw'])}")
@@ -446,31 +607,31 @@ def write_scene(grid: list[float]) -> None:
 
     lines.append('[node name="Fields" type="Node3D" parent="Outdoor"]')
     lines.append("")
-    fy = sample(-38.0, 36.0) + 0.03
+    fy = sample(wx(-38.0), wz(36.0)) + 0.03
     lines.append('[node name="FieldWest" type="MeshInstance3D" parent="Outdoor/Fields"]')
-    lines.append(f"transform = {xf(-38.0, fy, 36.0)}")
+    lines.append(f"transform = {xf(wx(-38.0), fy, wz(36.0))}")
     lines.append("mesh = SubResource(\"Box_field_a\")")
     lines.append("")
-    fy2 = sample(8.0, 36.0) + 0.03
+    fy2 = sample(wx(8.0), wz(36.0)) + 0.03
     lines.append('[node name="FieldEast" type="MeshInstance3D" parent="Outdoor/Fields"]')
-    lines.append(f"transform = {xf(8.0, fy2, 36.0)}")
+    lines.append(f"transform = {xf(wx(8.0), fy2, wz(36.0))}")
     lines.append("mesh = SubResource(\"Box_field_b\")")
     lines.append("")
 
     lines.append('[node name="PlayerSpawns" type="Node3D" parent="Outdoor"]')
     lines.append("")
     for name, sx, sz, yaw in FAMILY_SPAWNS:
-        sy = sample(sx, sz) + 0.14
+        sy = sample(wx(sx), wz(sz)) + 0.14
         lines.append(f'[node name="{name}" type="Marker3D" parent="Outdoor/PlayerSpawns" groups=["outdoor_player_spawns"]]')
-        lines.append(f"transform = {xf(sx, sy, sz, yaw)}")
+        lines.append(f"transform = {xf(wx(sx), sy, wz(sz), yaw)}")
         lines.append("")
-    pmx, pmz = PM_SPAWN[1], PM_SPAWN[2]
+    pmx, pmz = wx(PM_SPAWN[1]), wz(PM_SPAWN[2])
     pmy = sample(pmx, pmz) + 0.14
     lines.append('[node name="Outdoor_PM_Street" type="Marker3D" parent="Outdoor" groups=["outdoor_player_spawns"]]')
     lines.append(f"transform = {xf(pmx, pmy, pmz, PM_SPAWN[3])}")
     lines.append("")
 
-    ex, ez = -58.0, 12.0
+    ex, ez = wx(-58.0), wz(12.0)
     ey = sample(ex, ez) + 0.6
     lines.append('[node name="HorrorEscapeZone" type="Area3D" parent="Outdoor"]')
     lines.append(f"transform = {xf(ex, ey, ez)}")
@@ -483,13 +644,13 @@ def write_scene(grid: list[float]) -> None:
     lines.append("shape = SubResource(\"Sh_escape\")")
     lines.append("")
     lines.append('[node name="OutdoorFill" type="OmniLight3D" parent="Outdoor"]')
-    lines.append("transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 16, 6)")
+    lines.append("transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 28, 8)")
     lines.append("light_color = Color(0.72, 0.78, 0.88, 1)")
-    lines.append("light_energy = 0.58")
-    lines.append("omni_range = 90.0")
+    lines.append("light_energy = 0.72")
+    lines.append("omni_range = 160.0")
     lines.append("")
 
-    mx, mz = PADS["PMMansion"]["xz"]
+    mx, mz = wx(PADS["PMMansion"]["xz"][0]), wz(PADS["PMMansion"]["xz"][1])
     msy = PADS["PMMansion"]["size"][1]
     my = sample(mx, mz)
     lines.append('[node name="MainHouse" type="Node3D" parent="Outdoor"]')
@@ -513,11 +674,11 @@ def write_scene(grid: list[float]) -> None:
     lines.append('[node name="L2SpawnMarkers" type="Node3D" parent="."]')
     lines.append("")
     for sid, pin, lx, lz in L2_MARKERS:
-        ly = sample(lx, lz) + 0.12
+        ly = sample(wx(lx), wz(lz)) + 0.12
         box = "Box_pincrawl" if sid == "under_porch_crawl" else ("Box_pinbase" if sid == "basement" else "Box_pin")
         site = f"SpawnPoint_{sid}"
         lines.append(f'[node name="{site}" type="Node3D" parent="L2SpawnMarkers"]')
-        lines.append(f"transform = {xf(lx, ly, lz)}")
+        lines.append(f"transform = {xf(wx(lx), ly, wz(lz))}")
         lines.append("")
         lines.append(f'[node name="ChildSpawn_{sid}" type="Marker3D" parent="L2SpawnMarkers/{site}" groups=["child_spawn_points"]]')
         lines.append(f'metadata/spawn_id = "{sid}"')
@@ -548,15 +709,15 @@ def write_scene(grid: list[float]) -> None:
     lines.append('[node name="Pickups" type="Node3D" parent="."]')
     lines.append("")
     for item, px, pz in PICKUPS:
-        py = sample(px, pz) + 0.12
+        py = sample(wx(px), wz(pz)) + 0.35
         lines.append(f'[node name="Pickup_{item}" parent="Pickups" instance=ExtResource("2")]')
-        lines.append(f"transform = {xf(px, py, pz)}")
+        lines.append(f"transform = {xf(wx(px), py, wz(pz))}")
         lines.append(f'item_id = "{item}"')
         lines.append("")
 
     SCENE.write_text("\n".join(lines) + "\n")
-    print(f"wrote {SCENE} peak={peak:.3f} valley={valley:.3f}")
-    print("family_spawns", [(n, sample(x, z) + 0.14) for n, x, z, _ in FAMILY_SPAWNS])
+    print(f"wrote {SCENE} peak={peak:.3f} valley={valley:.3f} span={SPAN_X:.0f}x{SPAN_Z:.0f}")
+    print("family_spawns", [(n, sample(wx(x), wz(z)) + 0.14) for n, x, z, _ in FAMILY_SPAWNS])
     print("pm_spawn_y", pmy, "mansion_y", my)
 
 
@@ -602,7 +763,7 @@ def write_exr_import(exr_path: Path) -> None:
                 "",
                 'importer="texture"',
                 'type="CompressedTexture2D"',
-                'uid="uid://kylet0height97x81"',
+                'uid="uid://kylet0height193x161"',
                 "",
                 "[deps]",
                 "",
@@ -618,17 +779,55 @@ def write_exr_import(exr_path: Path) -> None:
     )
 
 
+def _slope_stats(grid: list[float]) -> tuple[float, float, int]:
+    """Mean |grad|, max |grad| (m per cell), and count of local maxima."""
+    grads: list[float] = []
+    peaks = 0
+    for iz in range(1, DEPTH - 1):
+        for ix in range(1, WIDTH - 1):
+            h = grid[iz * WIDTH + ix]
+            dx = grid[iz * WIDTH + ix + 1] - grid[iz * WIDTH + ix - 1]
+            dz = grid[(iz + 1) * WIDTH + ix] - grid[(iz - 1) * WIDTH + ix]
+            grads.append(math.hypot(dx, dz) / (2.0 * SPACING))
+            if (
+                h > grid[iz * WIDTH + ix - 1]
+                and h > grid[iz * WIDTH + ix + 1]
+                and h > grid[(iz - 1) * WIDTH + ix]
+                and h > grid[(iz + 1) * WIDTH + ix]
+            ):
+                peaks += 1
+    mean_g = sum(grads) / len(grads)
+    return mean_g, max(grads), peaks
+
+
 def main() -> None:
     FARM.mkdir(parents=True, exist_ok=True)
     grid = build_grid()
-    print(f"grid {WIDTH}x{DEPTH} min={min(grid):.3f} max={max(grid):.3f}")
-    hx, hz = world_to_cell(*HILL_XZ)
-    print(f"hill_cell=({hx:.1f},{hz:.1f}) hill_h={height_world(*HILL_XZ):.3f}")
-    print(f"familyA_h={height_world(-38, -18):.3f} cliff_h={height_world(70, 0):.3f}")
-    exr = FARM / "kyle_T0_height_97x81.exr"
+    peak, valley = max(grid), min(grid)
+    mean_g, max_g, peaks = _slope_stats(grid)
+    print(f"grid {WIDTH}x{DEPTH} span={SPAN_X:.0f}x{SPAN_Z:.0f} min={valley:.3f} max={peak:.3f}")
+    print(f"contrast={peak - valley:.3f} mean_slope={mean_g:.3f} max_slope={max_g:.3f} local_maxima={peaks}")
+    hx, hz = world_to_cell(wx(HILL_XZ[0]), wz(HILL_XZ[1]))
+    print(f"hill_cell=({hx:.1f},{hz:.1f}) hill_h={height_world(wx(HILL_XZ[0]), wz(HILL_XZ[1])):.3f}")
+    print(f"familyA_h={height_world(wx(-38), wz(-18)):.3f} cliff_h={height_world(wx(70), 0):.3f}")
+    if SPAN_X < 250 or SPAN_Z < 200:
+        raise SystemExit("farm span is not 4x area")
+    if peak - valley < 8.0:
+        raise SystemExit("height contrast too low — need rolling hills")
+    if peaks < 12:
+        raise SystemExit("not enough local maxima for curved terrain")
+    old_exr = FARM / "kyle_T0_height_97x81.exr"
+    if old_exr.exists():
+        old_exr.unlink()
+    old_imp = FARM / "kyle_T0_height_97x81.exr.import"
+    if old_imp.exists():
+        old_imp.unlink()
+    exr = FARM / "kyle_T0_height_193x161.exr"
     write_exr(exr, grid)
+    write_exr_import(exr)
     obj = FARM / "kyle_farm_terrain.obj"
     write_obj(obj, grid)
+    write_import(obj)
     write_scene(grid)
     noisy = FARM / "kyle_height_preview_NOISY_do_not_import.png"
     if noisy.exists():

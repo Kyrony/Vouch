@@ -1,0 +1,14 @@
+[remap]
+
+importer="texture"
+type="CompressedTexture2D"
+uid="uid://kylet0height193x161"
+
+[deps]
+
+source_file="res://assets/horror/farm/kyle_T0_height_193x161.exr"
+
+[params]
+
+compress/mode=0
+mipmaps/generate=false

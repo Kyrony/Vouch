@@ -157,7 +157,8 @@ func _server_use_selected(sender: int) -> void:
 		PhoneDevice.server_toggle_led(sender)
 		return
 	if item == "battery":
-		if PhoneDevice.server_recharge(sender):
+		var amt := float(_CATALOG.get_item("battery").get("recharge", 55.0))
+		if PhoneDevice.server_recharge(sender, amt):
 			server_remove_slot(sender, sel)
 		return
 	# Different items take different amounts of time to use (medkit is slow,
@@ -250,16 +251,14 @@ func _apply_use_item(peer_id: int, item_id: String) -> bool:
 			_crowbar_stun(peer_id, def)
 			_pry_barrier(peer_id, float(def.get("pry_range", 3.0)))
 			return false  # reusable tool
-		"key", "lockpick":
+		"key", "lockpick", "keycard":
 			var did := _unlock_barrier(peer_id, float(def.get("unlock_range", 3.0)))
-			return did and item_id == "key"  # keys are one-use; lockpicks reusable
+			return did and item_id != "lockpick"  # keys / keycards are one-use
 		"puppet":
 			PuppetControlSystem.server_take_puppet(peer_id)
 			return false  # reusable — the PM wears it
 		"strings":
 			return false  # shot with fire; nothing to do on R
-		"keycard":
-			return true
 		_:
 			print("[Inventory] used %s (stub)" % item_id)
 			return true

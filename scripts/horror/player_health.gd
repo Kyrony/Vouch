@@ -45,6 +45,9 @@ func server_apply_drain(victim_peer: int, amount: float, healer_peer: int = -1) 
 		return
 	if GameState.server_is_eliminated(victim_peer):
 		return
+	var cheats := get_node_or_null("/root/DebugCheats")
+	if cheats and cheats.has_method("blocks_damage") and bool(cheats.call("blocks_damage", victim_peer)):
+		return
 	if amount < 0.0:
 		server_heal(victim_peer, -amount)
 		return
