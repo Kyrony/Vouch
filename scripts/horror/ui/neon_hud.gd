@@ -53,8 +53,8 @@ var _rail: VBoxContainer
 var _rail_wells: Array[TextureRect] = []
 var _rail_icons: Array[TextureRect] = []
 var _obj_banner: Panel
-var _objective_label: Label
-var _objective_tween: Tween
+var _obj_text: Label
+var _obj_fade: Tween
 var _tex_ability: Texture2D
 var _tex_key: Texture2D
 var _tex_child: Texture2D
@@ -62,9 +62,6 @@ var _tex_reticle: Texture2D
 var _tex_slot_empty: Texture2D
 var _tex_slot_selected: Texture2D
 var _clock_label: Label
-var _objective_toast: Panel
-var _objective_label: Label
-var _objective_tween: Tween
 
 
 func _ready() -> void:
@@ -199,15 +196,15 @@ func _build_obj_banner() -> void:
 	_obj_banner.add_theme_stylebox_override("panel", _KIT.panel_focus())
 	_obj_banner.visible = false
 	add_child(_obj_banner)
-	_objective_label = Label.new()
-	_objective_label.name = "Text"
-	_objective_label.set_anchors_preset(PRESET_FULL_RECT)
-	_objective_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	_objective_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-	_objective_label.add_theme_color_override("font_color", _KIT.YELLOW)
-	_objective_label.add_theme_font_size_override("font_size", 16)
-	_objective_label.mouse_filter = MOUSE_FILTER_IGNORE
-	_obj_banner.add_child(_objective_label)
+	_obj_text = Label.new()
+	_obj_text.name = "Text"
+	_obj_text.set_anchors_preset(PRESET_FULL_RECT)
+	_obj_text.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	_obj_text.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	_obj_text.add_theme_color_override("font_color", _KIT.YELLOW)
+	_obj_text.add_theme_font_size_override("font_size", 16)
+	_obj_text.mouse_filter = MOUSE_FILTER_IGNORE
+	_obj_banner.add_child(_obj_text)
 
 
 ## Pop a new objective at the top of the screen; it fades out after `seconds`.
@@ -216,15 +213,15 @@ func show_objective(text: String, seconds: float = 5.0) -> void:
 		_build()
 	if _obj_banner == null:
 		return
-	_objective_label.text = text
+	_obj_text.text = text
 	_obj_banner.visible = true
 	_obj_banner.modulate.a = 1.0
-	if _objective_tween and _objective_tween.is_valid():
-		_objective_tween.kill()
-	_objective_tween = create_tween()
-	_objective_tween.tween_interval(maxf(seconds - 0.6, 0.2))
-	_objective_tween.tween_property(_obj_banner, "modulate:a", 0.0, 0.6)
-	_objective_tween.tween_callback(_hide_obj_banner)
+	if _obj_fade and _obj_fade.is_valid():
+		_obj_fade.kill()
+	_obj_fade = create_tween()
+	_obj_fade.tween_interval(maxf(seconds - 0.6, 0.2))
+	_obj_fade.tween_property(_obj_banner, "modulate:a", 0.0, 0.6)
+	_obj_fade.tween_callback(_hide_obj_banner)
 
 
 func _hide_obj_banner() -> void:
