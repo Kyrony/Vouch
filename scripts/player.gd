@@ -23,6 +23,9 @@ enum Modal { NONE, PHONE, KEYPAD, BINARY, WALKIE, PAUSE }
 # ── TUNABLES — tweak these to balance gameplay ──
 const SPEED: float = 4.5  # base walk speed (m/s)
 const SPRINT_MULTIPLIER: float = 1.4  # sprint = SPEED * this
+# Puppet Master moves at a steady pace just under a survivor's sprint (6.3),
+# so a sprinting survivor can just barely pull away.
+const PM_MOVE_SPEED: float = 5.9
 const STAMINA_EMPTY: float = 0.5
 const STAMINA_RESUME: float = 12.0
 const JUMP_VELOCITY: float = 3.2  # initial jump impulse
@@ -187,7 +190,7 @@ func _ready() -> void:
 			PuppetStringSystem.local_tether_changed.connect(_on_local_tether)
 			PuppetControlSystem.local_possessed_changed.connect(_on_local_possessed)
 			PuppetControlSystem.local_puppet_state_changed.connect(_on_puppet_state)
-		_pause_menu = get_node_or_null("/root/Main/PauseMenu")
+		_pause_menu = get_node_or_null("/root/Main/PauseLayer/PauseMenu")
 		_wire_lose_overlay()
 	else:
 		camera.current = false
@@ -319,6 +322,9 @@ func _apply_ground_velocity(delta: float, locked: bool) -> void:
 		want_sprint = false
 	_is_sprinting = want_sprint
 	var effective_speed := move_speed_for(want_sprint, _crouching, water_level)
+	if is_horror_puppet_master:
+		# Steady stalk — a touch slower than a survivor at full sprint.
+		effective_speed = PM_MOVE_SPEED
 	if _possessed:
 		effective_speed = 0.0
 	elif _tether_slow > 0.0:
@@ -506,6 +512,7 @@ func _try_interact() -> void:
 			if multiplayer.is_server():
 				if ChildSpawnRNG.server_try_pickup_child(multiplayer.get_unique_id(), global_position):
 					_show_toast("You found the missing child — reach the escape zone!")
+					_show_objective("Reach the escape zone with the child.")
 			else:
 				_rpc_try_child_pickup.rpc_id(1, global_position)
 			return
@@ -1383,6 +1390,12 @@ func _on_lose_spectate_pressed() -> void:
 
 # --- Toast (brief on-screen text for clue reveals, lock feedback, ...) --
 
+## Pop a new objective banner at the top of the screen (fades after ~5s).
+func _show_objective(text: String) -> void:
+	if _neon_hud and _neon_hud.has_method("show_objective"):
+		_neon_hud.call("show_objective", text)
+
+
 func _show_toast(text: String) -> void:
 	toast_label.text = text
 	toast_label.visible = true
@@ -1410,6 +1423,9 @@ func _build_horror_hud() -> void:
 	_attach_phone_rig()
 	if is_horror_puppet_master:
 		_neon_hud.call("set_steal", false, 0.0, 1.0)
+		_show_objective("Hunt the survivors before they escape.")
+	else:
+		_show_objective("Find the missing child — bring her home.")
 	faction_label.visible = false
 	prompt_label.visible = false
 	var cross := hud.get_node_or_null("CrosshairLabel") as Label

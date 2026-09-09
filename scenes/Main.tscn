@@ -20,4 +20,7 @@ script = ExtResource("1")
 
 [node name="DebugGui" parent="." instance=ExtResource("5")]
 
-[node name="PauseMenu" parent="." instance=ExtResource("6")]
+[node name="PauseLayer" type="CanvasLayer" parent="."]
+layer = 128
+
+[node name="PauseMenu" parent="PauseLayer" instance=ExtResource("6")]

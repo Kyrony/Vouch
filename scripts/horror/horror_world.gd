@@ -235,15 +235,19 @@ func server_scatter_starter_items() -> void:
 		return
 	var catalog: GDScript = load("res://scripts/horror/items/item_catalog.gd")
 	var ids: Array = catalog.survivor_item_ids()
-	var base := get_family_spawn_transform(0).origin + Vector3(0, 0.4, 0)
-	var i := 0
-	for item_id in ids:
-		var angle := float(i) * TAU / float(max(ids.size(), 1))
-		var offset := Vector3(cos(angle) * 2.4, 0.0, sin(angle) * 2.4)
-		spawn_pickup(str(item_id), base + offset)
-		i += 1
+	# Scatter a ring of every item at each family pad so players spawn next to a
+	# set to try out, wherever they land.
+	var pads := maxi(get_family_count(), 1)
+	for pad in range(pads):
+		var base := get_family_spawn_transform(pad).origin + Vector3(0, 0.5, 0)
+		var i := 0
+		for item_id in ids:
+			var angle := float(i) * TAU / float(max(ids.size(), 1))
+			var offset := Vector3(cos(angle) * 2.6, 0.0, sin(angle) * 2.6)
+			spawn_pickup(str(item_id), base + offset)
+			i += 1
 	# Drop the puppet near the Puppet Master's hilltop for them to find.
-	spawn_pickup("puppet", get_pm_spawn_transform().origin + Vector3(1.5, 0.4, 0.0))
+	spawn_pickup("puppet", get_pm_spawn_transform().origin + Vector3(1.5, 0.5, 0.0))
 
 
 ## Flare: a temporary point light dropped on the ground (survival light).
