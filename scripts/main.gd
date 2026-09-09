@@ -9,6 +9,7 @@ const _SPAWN: GDScript = preload("res://scripts/rooms/graybox_spawn_validator.gd
 const _BUNKER: GDScript = preload("res://scripts/rooms/graybox_bunker_validator.gd")
 const _ESCAPE_SETTINGS: GDScript = preload("res://scripts/autoload/escape_path_settings.gd")
 const _HORROR: GDScript = preload("res://scripts/horror/match_horror.gd")
+const _HORROR_MODE: GDScript = preload("res://scripts/autoload/horror_mode_settings.gd")
 const EXPECTED_SLOT_COUNT: int = 16
 
 @onready var lobby: Control = $Lobby
@@ -64,7 +65,7 @@ func _run_horror_match_test_async() -> void:
 
 
 func _probe_horror_match() -> String:
-	if not HorrorModeSettings.is_horror_mode():
+	if not _HORROR_MODE.is_horror_mode():
 		return "Horror mode disabled — unset VOUCH_BUNKER_ONLY / VOUCH_ESCAPE_PATH"
 	var match_node = $World/Match
 	if not match_node.is_node_ready():
@@ -73,6 +74,7 @@ func _probe_horror_match() -> String:
 	if host_err != OK:
 		return "host_game failed err=%s" % host_err
 	NetworkManager.start_match()
+	await get_tree().process_frame
 	await get_tree().process_frame
 	await get_tree().physics_frame
 	await get_tree().process_frame
@@ -519,7 +521,7 @@ func _spawn_test_room(room_id: int, full_items: bool = false):
 func _on_match_started() -> void:
 	lobby.visible = false
 	world.visible = true
-	if HorrorModeSettings.is_horror_mode():
+	if _HORROR_MODE.is_horror_mode():
 		var outside := world.get_node_or_null("Outside")
 		if outside is Node3D:
 			outside.visible = false

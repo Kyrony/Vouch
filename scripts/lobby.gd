@@ -26,6 +26,7 @@ var custom_button: Button
 var practice_button: Button
 var friends_lobby_button: Button
 var start_button: Button
+var practice_pm_button: Button
 
 var lobby_code_input: LineEdit
 var friends_join_button: Button
@@ -79,6 +80,19 @@ func _cache_nodes() -> void:
 	practice_button = $HomePanel/SidePanel/PlayContent/ModeList/PracticeButton
 	friends_lobby_button = $HomePanel/SidePanel/PlayContent/ModeList/FriendsLobbyButton
 	start_button = $HomePanel/SidePanel/PlayContent/StartButton
+	practice_pm_button = play_content.get_node_or_null("PracticePmButton") as Button
+	if practice_pm_button == null:
+		practice_pm_button = Button.new()
+		practice_pm_button.name = "PracticePmButton"
+		play_content.add_child(practice_pm_button)
+		practice_pm_button.text = "PRACTICE AS PUPPET MASTER"
+		practice_pm_button.set_anchors_preset(Control.PRESET_BOTTOM_WIDE)
+		practice_pm_button.offset_left = 0
+		practice_pm_button.offset_top = -92
+		practice_pm_button.offset_right = 0
+		practice_pm_button.offset_bottom = -48
+		_T.apply_action_button(practice_pm_button, "blood")
+	practice_pm_button.visible = false
 	lobby_code_input = $HomePanel/SidePanel/FriendsContent/LobbyCodeInput
 	friends_join_button = $HomePanel/SidePanel/FriendsContent/FriendsJoinButton
 	master_volume_slider = $HomePanel/SidePanel/SettingsContent/MasterVolumeRow/Slider
@@ -111,6 +125,8 @@ func _connect_signals() -> void:
 	practice_button.pressed.connect(func(): _set_mode("practice"))
 	friends_lobby_button.pressed.connect(func(): _set_mode("friends-lobby"))
 	start_button.pressed.connect(_on_start_mode)
+	if practice_pm_button and not practice_pm_button.pressed.is_connected(_on_practice_pm):
+		practice_pm_button.pressed.connect(_on_practice_pm)
 	friends_join_button.pressed.connect(_on_friends_join)
 	lobby_code_input.text_changed.connect(_on_lobby_code_changed)
 	play_back_button.pressed.connect(_close_host)
@@ -190,6 +206,10 @@ func _set_mode(mode_id: String) -> void:
 	var thumb_tex := play_content.get_node_or_null("ModeThumb/Texture") as TextureRect
 	if thumb_tex:
 		thumb_tex.texture = _BUILD.call("mode_thumb_texture", mode_id)
+	if start_button:
+		start_button.text = "PRACTICE AS SURVIVOR" if mode_id == "practice" else "START"
+	if practice_pm_button:
+		practice_pm_button.visible = mode_id == "practice"
 
 
 func _on_nav_hover(button: Button) -> void:
@@ -208,9 +228,27 @@ func _on_start_mode() -> void:
 		_show_host()
 		status_label.text = "Classic outdoor neighborhood. Host a match or join by IP."
 		return
+	if _mode_id == "practice":
+		_start_practice(false)
+		return
 	var spec: Dictionary = _T.MODES.get(_mode_id, {})
 	var title: String = spec.get("title", _mode_id.to_upper())
 	_toast("%s is a stub in this build." % title)
+
+
+func _on_practice_pm() -> void:
+	_start_practice(true)
+
+
+func _start_practice(as_pm: bool) -> void:
+	var err := NetworkManager.host_game()
+	if err != OK:
+		_toast("Could not start practice (error %s)." % err)
+		return
+	GameState.practice_mode = true
+	GameState.practice_as_pm = as_pm
+	_toast("Practice as %s — dummy is in the bay." % ("Puppet Master" if as_pm else "Survivor"))
+	NetworkManager.start_match()
 
 
 func _on_friends_join() -> void:

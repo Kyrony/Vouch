@@ -33,7 +33,7 @@ const GRID_COLUMNS: int = 4
 
 func room_grid_position(index: int) -> Vector3:
 	var col := index % GRID_COLUMNS
-	var row := index / GRID_COLUMNS
+	var row := int(float(index) / float(GRID_COLUMNS))
 	return Vector3(col * GRID_SPACING, -UNDERGROUND_DEPTH, row * GRID_SPACING)
 
 

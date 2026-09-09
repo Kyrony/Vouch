@@ -65,6 +65,10 @@ var local_player_node: Node3D = null
 ## extra registry. See BrokenPipe.gd.
 var room_water_levels: Dictionary = {}
 
+## Solo training room (items vs a dummy). Not a scored match.
+var practice_mode: bool = false
+var practice_as_pm: bool = false
+
 
 ## Always restore a usable cursor + unpause when leaving gameplay.
 func restore_menu_input() -> void:
@@ -90,9 +94,21 @@ func reset_for_new_match() -> void:
 	puppet_master_peer_id = -1
 	local_player_node = null
 	room_water_levels.clear()
+	practice_mode = false
+	practice_as_pm = false
 	var clock := get_node_or_null("/root/MatchClock")
 	if clock and clock.has_method("stop"):
 		clock.stop()
+
+
+func is_network_peer(peer_id: int) -> bool:
+	if peer_id <= 0 or peer_id >= 9000:
+		return false
+	if multiplayer.multiplayer_peer == null:
+		return peer_id == 1
+	if peer_id == multiplayer.get_unique_id():
+		return true
+	return peer_id in multiplayer.get_peers()
 
 
 func server_register_player(peer_id: int, display_name: String) -> void:

@@ -39,6 +39,7 @@ const PAPER_REVEAL_TIME: float = 1.5
 const PAPER_BURN_TIME: float = 1.2
 
 const _PATHS: GDScript = preload("res://scripts/interactable_script_paths.gd")
+const _HORROR_MODE: GDScript = preload("res://scripts/autoload/horror_mode_settings.gd")
 const _TEST_PROJECTILE_SCRIPT: Script = preload("res://scripts/interactables/test_projectile.gd")
 
 @onready var head: Node3D = $Head
@@ -154,7 +155,7 @@ func _ready() -> void:
 	if is_multiplayer_authority():
 		camera.current = true
 		hud.visible = true
-		if horror_mode or HorrorModeSettings.is_horror_mode():
+		if horror_mode or _HORROR_MODE.is_horror_mode():
 			horror_mode = true
 		if is_horror_puppet_master:
 			GameState.local_is_puppet_master = true
@@ -192,6 +193,8 @@ func _ready() -> void:
 			PuppetControlSystem.local_puppet_state_changed.connect(_on_puppet_state)
 		_pause_menu = get_node_or_null("/root/Main/PauseLayer/PauseMenu")
 		_wire_lose_overlay()
+		if horror_mode:
+			call_deferred("snap_to_walkable_ground")
 	else:
 		camera.current = false
 		hud.visible = false
@@ -427,6 +430,26 @@ func _apply_ladder_velocity() -> void:
 
 
 ## Called by Ladder.gd's Area3D when this player's body enters/exits it.
+func snap_to_walkable_ground() -> void:
+	if not is_inside_tree() or not is_multiplayer_authority():
+		return
+	var space := get_world_3d().direct_space_state
+	if space == null:
+		return
+	var from := global_position + Vector3(0, 18, 0)
+	var to := global_position + Vector3(0, -48, 0)
+	var query := PhysicsRayQueryParameters3D.create(from, to)
+	query.collision_mask = 1
+	query.exclude = [get_rid()]
+	var hit := space.intersect_ray(query)
+	if hit.is_empty():
+		return
+	var floor_y: float = hit.position.y
+	if global_position.y < floor_y + 0.05 or global_position.y > floor_y + 6.0:
+		global_position.y = floor_y + 0.08
+		velocity.y = 0.0
+
+
 func enter_ladder(ladder: Node) -> void:
 	if is_multiplayer_authority():
 		_on_ladder = true
