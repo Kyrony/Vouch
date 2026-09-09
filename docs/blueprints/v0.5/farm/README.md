@@ -4,7 +4,7 @@ Kyle / Leonardo plates for the **open farm** Host Match. Soft-go: **terrain, roa
 
 | Layer | Plate | What it locks |
 | --- | --- | --- |
-| **L1 / Kyle T0** | `kyle_greybox_layout` + `kyle_T0_height_97x81.exr` | Open/hilly 144×120 m, Family A–D west, Uncle north of mansion, east cliff. |
+| **L1 / Kyle T0** | `kyle_greybox_layout` + `kyle_T0_height_193x161.exr` | Open/hilly 288×240 m (4× area), Family A–D west, Uncle north of mansion, east cliff. |
 | **L2** | QA spawn pins + CSV | 11 alive-only child pins. **Eng short `spawn_id`s are SoT 1:1** — ignore art camelCase / pin-number drift. |
 | **L3** | (deferred) | Tower candidates are **not** built into the live farm. |
 | **L4** | (deferred) | PM interior rooms are **not** built into the live farm. |

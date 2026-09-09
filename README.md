@@ -90,7 +90,7 @@ field as a placeholder — session codes are post-MVP.
 
 ### Kyle greybox farm (terrain + roads + markers)
 
-Layout SoT is Kyle’s **greybox** plate (`kyle_greybox_layout`) plus height `kyle_T0_height_97x81.exr` (97×81 @ 1.5 m). Never import `kyle_height_preview_NOISY_do_not_import.png`. Live Start Match instantiates the authored packed scene `scenes/Horror/HorrorWorld.tscn` — **no runtime terrain/road/neighborhood builder**. The farm is a **solid HeightMapShape3D** with Family A–D west, Uncle+garage north of the hill, PM mansion on the hill, and an east cliff. No extra houses, bunkers, or masts. `NeighborhoodV05.OUTDOOR_ONLY` is **on**. L2 eng short ids stay 1:1 (CSV wins over plate typos). Pin 9 `under_porch_crawl` is on the SE road toward the cliff. Hold **Shift** to sprint at **1.4×** walk speed.
+Layout SoT is Kyle’s **greybox** plate (`kyle_greybox_layout`) plus height `kyle_T0_height_193x161.exr` (193×161 @ 1.5 m, **288×240 m / 4× area**). Never import `kyle_height_preview_NOISY_do_not_import.png`. Live Start Match instantiates the authored packed scene `scenes/Horror/HorrorWorld.tscn` — **no runtime terrain/road/neighborhood builder**. The farm is a **solid HeightMapShape3D** with rolling hills, ridges, and saddles; Family A–D west, Uncle+garage north of the hill, PM mansion on the hill, and an east cliff. No extra houses, bunkers, or masts. `NeighborhoodV05.OUTDOOR_ONLY` is **on**. L2 eng short ids stay 1:1 (CSV wins over plate typos). Pin 9 `under_porch_crawl` is on the SE road toward the cliff. Hold **Shift** to sprint at **1.4×** walk speed.
 
 **In-editor check (Kyle):**
 
@@ -210,8 +210,9 @@ persists locally between sessions.
   transform via `MultiplayerSynchronizer`.
 - **Host spawn odds UI**: cleaner labels; **host-only** editable sliders,
   clients see a read-only notice (`scripts/lobby.gd`).
-- **Debug GUI** (`scripts/debug_gui.gd`, toggle **Home** key): host-only
-  spawn/test buttons — **REMOVE OR GATE BEFORE RELEASE**.
+- **Debug overlay** (`scripts/debug/`, toggle **Home** key): isolated
+  playtest panel (invincible, infinite jump, character swap, spawn
+  pawns/items/props). Gated by `DebugBuild`. **REMOVE OR GATE BEFORE RELEASE**.
 - **\*\*\* TEST-ONLY, REMOVE BEFORE FULL RELEASE \*\*\*** - a pickup gun
   firing **visible projectiles** (`TestProjectile`) and dummy targets in
   the Outside courtyard for hit-registration testing. See "Test-only
@@ -301,7 +302,7 @@ Use this before a friends session. Each item maps to a GDD MVP check:
 | 7 | Water (stylized rule) | `scripts/interactables/broken_pipe.gd`, `scripts/interactables/drain.gd`, `scripts/systems/escape_system.gd` |
 | 8 | Fire (stylized rule) | `scripts/systems/fire_system.gd`, `scripts/interactables/fireplace.gd`, `flammable_prop.gd` |
 | 9 | Playable loop strip | `scripts/match.gd`, `scripts/room_pod.gd`, `scripts/autoload/match_settings.gd` |
-| 10 | Friends-ready gate | `scripts/autoload/debug_build.gd`, `scripts/outside.gd`, `scripts/debug_gui.gd`, `README.md` |
+| 10 | Friends-ready gate | `scripts/autoload/debug_build.gd`, `scripts/outside.gd`, `scripts/debug/`, `README.md` |
 
 ## Script ownership (room interiors)
 
@@ -361,8 +362,8 @@ pickup `Gun`, **`TestProjectile`**, and a few `DummyTarget` props, used solely t
 verify multiplayer hit-registration during development - no ammo, no
 damage model, no gameplay purpose. Before shipping, remove:
 `scripts/interactables/gun.gd`, `scripts/interactables/dummy_target.gd`,
-`scripts/interactables/test_projectile.gd`, `scripts/debug_gui.gd`,
-`scenes/DebugGui.tscn`, the `fire` input action in `project.godot`, the
+`scripts/interactables/test_projectile.gd`, `scripts/debug/`,
+`scenes/debug/DebugOverlay.tscn`, the `fire` input action in `project.godot`, the
 `has_gun`/`_fire_gun()` bits in `scripts/player.gd`, and the
 `TestRange_RemoveBeforeRelease` node from `scenes/Outside/Outside.tscn`.
 
@@ -391,7 +392,8 @@ scenes/
   scripts/rooms/             RoomMap, graybox layouts, 16-slot item spawn
   Match/Props/               Small graybox decoration scenes (crate/shelf/barrel)
   Match/Interactables/       Ladder.tscn (climbable + movable)
-  DebugGui.tscn              Dev/host debug panel (Home key — remove before release)
+  debug/DebugOverlay.tscn    Dev debug panel (Home key — remove before release)
+scripts/debug/             Isolated debug overlay, cheats, spawn commands
   Outside/Outside.tscn       Shared mountain clearing (post-escape) + test-only gun/dummy range
   Player/Player.tscn         First-person player pawn + HUD (phone/keypad/camera/eliminated panels)
 scripts/

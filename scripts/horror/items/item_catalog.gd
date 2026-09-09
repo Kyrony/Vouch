@@ -55,6 +55,18 @@ const ITEMS: Dictionary = {
 		"label": "Lockpick", "color": Color(0.60, 0.62, 0.66),
 		"unlock_range": 2.5, "use_time": 2.5, "consumable": false,
 	},
+	"phone": {
+		"label": "Smartphone", "color": Color(0.18, 0.18, 0.20),
+		"use_time": 0.0, "consumable": false,
+	},
+	"battery": {
+		"label": "Battery", "color": Color(0.72, 0.58, 0.16),
+		"recharge": 55.0, "use_time": 0.4, "consumable": true,
+	},
+	"keycard": {
+		"label": "Keycard", "color": Color(0.2, 0.7, 0.9),
+		"unlock_range": 3.0, "use_time": 0.6, "consumable": true,
+	},
 
 	# --- Puppet Master items ---
 	"strings": {

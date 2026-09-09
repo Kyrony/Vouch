@@ -440,8 +440,8 @@ static func validate_v05_layout(world: Node3D) -> String:
 		max_z = maxf(max_z, p.z)
 	var span_x: float = max_x - min_x
 	var span_z: float = max_z - min_z
-	if span_x < 56.0 or span_x > 150.0 or span_z < 40.0 or span_z > 130.0:
-		return "L2 footprint span %.1fx%.1f not Kyle farm (~80m+)" % [span_x, span_z]
+	if span_x < 100.0 or span_x > 360.0 or span_z < 70.0 or span_z > 280.0:
+		return "L2 footprint span %.1fx%.1f not the scaled Kyle farm (~160m+)" % [span_x, span_z]
 	return ""
 
 
@@ -452,8 +452,8 @@ static func validate_outdoor_terrain(world: Node3D) -> String:
 	var terrain := outdoor.get_node_or_null("Terrain")
 	if terrain == null:
 		return "Outdoor/Terrain missing (Kyle T0 heightfield)"
-	if not FileAccess.file_exists("res://assets/horror/farm/kyle_T0_height_97x81.exr"):
-		return "Kyle T0 height EXR missing (kyle_T0_height_97x81.exr)"
+	if not FileAccess.file_exists("res://assets/horror/farm/kyle_T0_height_193x161.exr"):
+		return "Kyle T0 height EXR missing (kyle_T0_height_193x161.exr)"
 	if FileAccess.file_exists("res://assets/horror/farm/kyle_height_preview_NOISY_do_not_import.png"):
 		return "noisy height preview must not be imported"
 	var pads := outdoor.get_node_or_null("Pads")
@@ -468,12 +468,12 @@ static func validate_outdoor_terrain(world: Node3D) -> String:
 	var hm := cs.shape as HeightMapShape3D
 	if hm == null:
 		return "Outdoor/Terrain collision is not HeightMapShape3D"
-	if hm.map_width != 97 or hm.map_depth != 81:
-		return "Kyle T0 HeightMapShape3D must be 97x81, got %dx%d" % [hm.map_width, hm.map_depth]
+	if hm.map_width != 193 or hm.map_depth != 161:
+		return "Kyle T0 HeightMapShape3D must be 193x161 (4x area), got %dx%d" % [hm.map_width, hm.map_depth]
 	var span_x: float = float(terrain.get_meta("span_x", 0.0))
 	var span_z: float = float(terrain.get_meta("span_z", 0.0))
-	if span_x < 80.0 or span_z < 64.0:
-		return "outdoor terrain too small (%.1fx%.1f) — need a large walkable area" % [span_x, span_z]
+	if span_x < 250.0 or span_z < 200.0:
+		return "outdoor terrain too small (%.1fx%.1f) — need the 4x farm (~288x240)" % [span_x, span_z]
 	var hills := outdoor.get_node_or_null("Hills")
 	if hills == null:
 		return "Outdoor/Hills missing"
@@ -505,7 +505,7 @@ static func validate_outdoor_terrain(world: Node3D) -> String:
 	var valley_y: float = float(terrain.get_meta("valley_y", 0.0))
 	if not bool(terrain.get_meta("authored_heightfield", false)):
 		return "Outdoor/Terrain is not an authored heightfield"
-	if peak_y - valley_y < 3.5:
+	if peak_y - valley_y < 8.0:
 		return "farm height contrast %.2f is too flat — need rolling hills" % (peak_y - valley_y)
 	if not FileAccess.file_exists("res://assets/horror/farm/grass_dirt_tile.png"):
 		return "farm grass/dirt tile missing — terrain needs visible albedo"
@@ -527,7 +527,7 @@ static func validate_hilltop_main_house(world: Node3D) -> String:
 		return "MainHouse missing on_hilltop meta"
 	if house.global_position.y < 3.5:
 		return "MainHouse is not on a hill (y=%.2f)" % house.global_position.y
-	if house.global_position.x < 14.0 or house.global_position.x > 40.0:
+	if house.global_position.x < 28.0 or house.global_position.x > 80.0:
 		return "MainHouse xz is not on the Kyle hilltop"
 	if house.get_node_or_null("Core") == null:
 		return "MainHouse missing graybox Core"
@@ -537,7 +537,7 @@ static func validate_hilltop_main_house(world: Node3D) -> String:
 static func _spawn_must_be_outdoor(origin: Vector3, label: String) -> String:
 	if origin.y < _V05.OUTDOOR_SPAWN_Y_MIN:
 		return "%s spawn is underground y=%.2f" % [label, origin.y]
-	if origin.y > 8.5:
+	if origin.y > 20.0:
 		return "%s spawn is not on walkable farm terrain (y=%.2f)" % [label, origin.y]
 	return ""
 

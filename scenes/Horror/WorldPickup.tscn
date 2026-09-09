@@ -2,5 +2,7 @@
 
 [ext_resource type="Script" path="res://scripts/horror/world_pickup.gd" id="1"]
 
-[node name="WorldPickup" type="Area3D"]
+[node name="WorldPickup" type="StaticBody3D"]
+collision_layer = 2
+collision_mask = 0
 script = ExtResource("1")
