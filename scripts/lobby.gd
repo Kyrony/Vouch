@@ -187,6 +187,9 @@ func _set_mode(mode_id: String) -> void:
 	}
 	for id in buttons:
 		_T.apply_mode_button(buttons[id], id == mode_id)
+	var thumb_tex := play_content.get_node_or_null("ModeThumb/Texture") as TextureRect
+	if thumb_tex:
+		thumb_tex.texture = _BUILD.call("mode_thumb_texture", mode_id)
 
 
 func _on_nav_hover(button: Button) -> void:

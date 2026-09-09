@@ -17,6 +17,7 @@ const _ROOM_POD: GDScript = preload("res://scripts/room_pod.gd")
 const _PATH: GDScript = preload("res://scripts/rooms/escape_path_validator.gd")
 const _ESCAPE_HUB: GDScript = preload("res://scripts/systems/escape_hub.gd")
 const _HORROR: GDScript = preload("res://scripts/horror/match_horror.gd")
+const HorrorMode := preload("res://scripts/autoload/horror_mode_settings.gd")
 
 const ROOM_POD_SCENE_PATH: String = "res://scenes/Match/RoomPod.tscn"
 const PLAYER_SCENE_PATH: String = "res://scenes/Player/Player.tscn"
@@ -84,7 +85,7 @@ func _get_player_scene() -> PackedScene:
 
 func _on_match_started() -> void:
 	_teardown_match_geometry()
-	if HorrorModeSettings.is_horror_mode():
+	if HorrorMode.is_horror_mode():
 		_HORROR.call("build_world_all_peers", self)
 	if not multiplayer.is_server():
 		return
@@ -92,7 +93,7 @@ func _on_match_started() -> void:
 
 
 func _server_build_match() -> void:
-	if HorrorModeSettings.is_horror_mode():
+	if HorrorMode.is_horror_mode():
 		_HORROR.call("server_build", self)
 		return
 	_rooms.clear()
@@ -356,7 +357,7 @@ func teardown_match_geometry() -> void:
 
 
 func _teardown_match_geometry() -> void:
-	if HorrorModeSettings.is_horror_mode():
+	if HorrorMode.is_horror_mode():
 		_HORROR.call("teardown", self)
 	_rooms.clear()
 	if is_instance_valid(_escape_hub):

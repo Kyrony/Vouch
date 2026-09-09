@@ -1,14 +1,9 @@
 extends Node
 ## FactionData
 ##
-## Static definitions for the rival factions players are split into.
-## MVP ships with exactly 4 factions (8 players, 4v4), but every system in
-## this project reads from `ACTIVE_FACTIONS`/`get_active_factions()` rather
-## than hardcoding "4" or "2 teams", so a host can later configure 3v3v3 or
-## 4v4v4v4 without touching gameplay code.
-##
-## TODO(post-MVP): expose faction count / roster size as a lobby setting
-## instead of the ALL_FACTIONS -> first N slice used today.
+## Static definitions for the rival factions. MVP activates 4, but systems
+## read from `ACTIVE_FACTIONS`/`get_active_factions()` instead of hardcoding
+## counts, so other splits can be configured without touching gameplay code.
 
 ## Every faction Vouch ships with. MVP only ever activates 4 of these, but
 ## keeping the master list larger than the MVP requirement makes it trivial

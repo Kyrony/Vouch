@@ -450,21 +450,6 @@ func _run_attachment_test() -> void:
 	get_tree().quit(0)
 
 
-func _validate_stairs(map: Node) -> String:
-	var geometry := map.get_node_or_null("Geometry")
-	if geometry == null:
-		return ""
-	var landing_count := 0
-	for child in geometry.get_children():
-		if child is StaticBody3D and child.position.y > 0.4:
-			landing_count += 1
-	var layout_script: GDScript = preload("res://scripts/rooms/room_layouts.gd")
-	var layout: Dictionary = layout_script.call("get_layout", int(map.get("room_id")))
-	if layout.has("stairs") and landing_count == 0:
-		return "stairs present but no landing geometry"
-	return ""
-
-
 func _assert_room_map_built(room_pod: Node, label: String) -> String:
 	if room_pod.get_child_count() < 1:
 		return "%s: RoomPod has no child map (configure likely failed)" % label

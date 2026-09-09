@@ -4,10 +4,10 @@ extends Node
 ## Host-authoritative stylized fire: ignites wood-tagged props near flames,
 ## spreads only to the same material group, extinguishable by room flood.
 
-const BURN_TICK: float = 0.15
-const SPREAD_INTERVAL: float = 1.4
-const SPREAD_RADIUS: float = 1.25
-const EXTINGUISH_WATER_LEVEL: float = 0.35
+# ── TUNABLES — tweak these to balance gameplay ──
+const SPREAD_INTERVAL: float = 1.4  # seconds between spread checks
+const SPREAD_RADIUS: float = 1.25  # spread reach (m)
+const EXTINGUISH_WATER_LEVEL: float = 0.35  # flood level to douse
 
 var _burning: Dictionary = {}  # instance_id -> { node, time_left, total, spread_cd }
 

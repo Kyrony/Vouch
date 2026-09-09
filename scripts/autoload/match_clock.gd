@@ -5,10 +5,11 @@ extends Node
 signal clock_updated(progress: float, label: String)
 signal morning_reached
 
-const START_HOUR := 18
-const MATCH_REAL_SECONDS := 1440.0
-const IN_GAME_HOURS := 12.0
-const REAL_SECONDS_PER_GAME_HOUR := 120.0
+# ── TUNABLES — tweak these to balance gameplay ──
+const START_HOUR := 18  # match starts at 6 PM
+const MATCH_REAL_SECONDS := 1440.0  # real match length (24 min)
+const IN_GAME_HOURS := 12.0  # dusk→morning span
+const REAL_SECONDS_PER_GAME_HOUR := 120.0  # real secs per game hour
 const SYNC_EVERY := 0.5
 
 var elapsed_real: float = 0.0
@@ -58,7 +59,8 @@ static func clock_label_for_progress(p: float) -> String:
 	var mins_i := int(round(wrapped))
 	if mins_i >= 24 * 60:
 		mins_i = 0
-	var hour := mins_i / 60
+	@warning_ignore("integer_division")
+	var hour := mins_i / 60  # whole hours, remainder handled below
 	var minute := mins_i % 60
 	var suffix := "AM" if hour < 12 else "PM"
 	var hour12 := hour % 12

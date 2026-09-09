@@ -12,14 +12,15 @@ signal local_phone_state(battery: float, led_on: bool, has_phone: bool)
 const ITEM_ID: String = "phone"
 const ITEM_PRODUCTION_ID: String = "ITEM_DEVICE_SMARTPHONE_01"
 
-const BATTERY_MAX: float = 100.0
+# ── TUNABLES — tweak these to balance gameplay ──
+const BATTERY_MAX: float = 100.0  # full battery cap
 const BATTERY_START: float = 100.0
 const LED_MIN_BATTERY: float = 1.0
 ## Eng-owned. Sheet concept was ~15%/min LED — do not treat as locked TTK.
-const LED_DRAIN_PER_SEC: float = 0.16
+const LED_DRAIN_PER_SEC: float = 0.16  # drain while LED on
 ## Eng-owned. Sheet concept was ~2%/min passive.
-const PASSIVE_DRAIN_PER_SEC: float = 0.03
-const RECHARGE_AMOUNT: float = 55.0
+const PASSIVE_DRAIN_PER_SEC: float = 0.03  # idle drain
+const RECHARGE_AMOUNT: float = 55.0  # per recharge pickup
 
 var local_battery: float = BATTERY_START
 var local_led_on: bool = false

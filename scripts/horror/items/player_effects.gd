@@ -10,12 +10,12 @@ signal meters_changed(peer_id: int, health: float, stamina: float, fear: float)
 signal local_meters_changed(health: float, stamina: float, fear: float)
 signal local_effect_state(effect_id: String, time_left: float, cooldown_left: float, duration: float, cooldown: float)
 
-const DEFAULT_MAX: float = 100.0
+# ── TUNABLES — tweak these to balance gameplay ──
+const DEFAULT_MAX: float = 100.0  # starting cap for meters
 ## Sprint drain / walk-idle regen. Full bar lasts 5s of sprint; refill ~10s.
 const STAMINA_DRAIN_PER_SEC: float = 20.0
 const STAMINA_REGEN_PER_SEC: float = 10.0
-const STAMINA_REGEN: float = STAMINA_REGEN_PER_SEC
-const FEAR_DECAY: float = 3.0
+const FEAR_DECAY: float = 3.0  # fear points shed per second
 
 var _health: Dictionary = {}
 var _stamina: Dictionary = {}
@@ -149,6 +149,19 @@ func server_get_stamina(peer_id: int) -> float:
 	return float(_stamina.get(peer_id, DEFAULT_MAX))
 
 
+## Clear/reduce a survivor's fear meter (painkillers, adrenaline).
+func server_set_fear(peer_id: int, value: float) -> void:
+	if not multiplayer.is_server():
+		return
+	if not _max.has(peer_id):
+		server_init_peer(peer_id)
+	var cap: float = float(_max[peer_id].z)
+	_fear[peer_id] = clampf(value, 0.0, cap)
+	_broadcast_meters(peer_id)
+
+
+
+
 func server_is_sprinting(peer_id: int) -> bool:
 	return bool(_sprinting.get(peer_id, false))
 
@@ -178,6 +191,9 @@ func server_tick(delta: float) -> void:
 
 func server_apply_life_steal(victim_peer: int, pm_peer: int, dist: float, max_range: float, delta: float) -> void:
 	if not multiplayer.is_server():
+		return
+	# A crowbar strike locks out the PM's drain for a few seconds.
+	if PuppetMasterSystem.server_is_pm_stunned():
 		return
 	var rate: float = life_steal_drain_per_sec(dist, max_range)
 	PlayerHealth.server_apply_drain(victim_peer, rate * delta, pm_peer)

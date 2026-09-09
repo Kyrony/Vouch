@@ -1,20 +1,10 @@
 extends Node
 ## PuzzleSystem
 ##
-## Code-lock puzzles. A room's escape point can be code-locked; the code
-## itself is never sent to that room's keypad - it's discoverable as a
-## readable clue (book or flame-lit paper) placed in a DIFFERENT player's
-## room, mirroring LinkGraph's "the answer lives somewhere else" theming.
-## Only the server ever holds the map of room -> correct code; clients
-## only see the clue's text (which is meant to be found) and get a
-## success/fail response when they submit a guess.
-##
-## MVP wires this up to gate ESCAPE only ("enter a code to unlock the
-## escape"). The same `server_register_lock`/`request_attempt_unlock` core
-## could gate a camera or other "feature" too - see the TODO below.
-##
-## TODO(post-MVP): reuse this to gate Puppet Master camera access or other
-## non-escape features; multiple codes per room; code hints that expire.
+## Code-lock puzzles gating escape. The code is never sent to the room's
+## keypad — it's a clue placed in a DIFFERENT room ("the answer lives
+## elsewhere"). Only the server holds room -> code; clients see the clue
+## and get a success/fail response on submit.
 
 signal unlock_result(room_index: int, success: bool)
 

@@ -105,13 +105,9 @@ static func validate_menu(lobby: Control) -> String:
 	var thumb := lobby.get_node_or_null("HomePanel/SidePanel/PlayContent/ModeThumb")
 	if thumb == null:
 		return "ModeThumb placeholder missing"
-	if thumb is TextureRect and (thumb as TextureRect).texture != null:
-		return "ModeThumb must stay blank"
 	if not (thumb is ColorRect or thumb is TextureRect or thumb is Panel):
-		return "ModeThumb must be a blank ColorRect, TextureRect, or Panel"
-	var thumb_tex := lobby.get_node_or_null("HomePanel/SidePanel/PlayContent/ModeThumb/Texture") as TextureRect
-	if thumb_tex and thumb_tex.texture != null:
-		return "mode thumbnail must not require modes/*.png"
+		return "ModeThumb must be a ColorRect, TextureRect, or Panel"
+	# ModeThumb now shows per-mode scary preview art (mode_<id>.png).
 	if lobby.get_node_or_null("PlayPanel/MatchSettingsPanel") != null:
 		return "Host Lobby still has spawn-odds sliders"
 	var tab_nav := lobby.get_node_or_null("HomePanel/SidePanel/SettingsContent/TabNav")

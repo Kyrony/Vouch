@@ -1,17 +1,12 @@
 extends Node
 ## NetworkManager
 ##
-## Host-authoritative bootstrap for Godot's high-level MultiplayerAPI.
-## The host runs an ENetMultiplayerPeer server; clients connect directly by
-## IP. This is the MVP "host/join shell" - lobby codes and NAT-punching
-## relay support are explicitly future work (see docs/MVP_GDD.md).
-##
-## Every RPC that must be trusted (faction assignment, mystery-link
-## resolution, escape approval, ...) lives on an autoload singleton like
-## this one rather than on a per-instance node. Autoload singletons default
-## to multiplayer authority == 1 (the server), so `@rpc("authority", ...)`
-## methods here are automatically "only the host may call this" without any
-## extra setup - a simple, sensible pattern for a host-authoritative game.
+## Host-authoritative bootstrap for Godot's high-level MultiplayerAPI: the
+## host runs an ENet server, clients connect by IP. Trusted RPCs live on
+## autoload singletons (authority == 1), so `@rpc("authority", ...)` means
+## "only the host may call this" with no extra setup.
+
+const HorrorMode := preload("res://scripts/autoload/horror_mode_settings.gd")
 
 signal player_connected(peer_id: int)
 signal player_disconnected(peer_id: int)
@@ -26,8 +21,9 @@ signal faction_assigned(faction_id: String)
 ## it's fine to broadcast to everyone, unlike faction assignment.
 signal lobby_roster_updated(roster: Array)
 
-const DEFAULT_PORT: int = 7777
-const MAX_PLAYERS: int = 8
+# ── TUNABLES — tweak these to balance gameplay ──
+const DEFAULT_PORT: int = 7777  # ENet host/join port
+const MAX_PLAYERS: int = 8  # peer cap per match
 
 var is_hosting: bool = false
 ## Client-side cache of the last roster broadcast, so late UI (e.g. a
@@ -103,7 +99,7 @@ func start_match() -> void:
 	# faction pool entirely - they're a fifth, independent role. See
 	# PuppetMasterSystem / docs/MVP_GDD.md.
 	var pm_peer_id := -1
-	if HorrorModeSettings.is_horror_mode():
+	if HorrorMode.is_horror_mode():
 		if all_peer_ids.size() >= 2:
 			pm_peer_id = all_peer_ids[randi() % all_peer_ids.size()]
 			GameState.server_set_puppet_master(pm_peer_id)

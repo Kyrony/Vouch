@@ -7,8 +7,10 @@ extends Node
 signal health_changed(peer_id: int, health: float, max_health: float)
 signal local_health_changed(health: float, max_health: float)
 
-const DEFAULT_MAX: float = 100.0
-const DRAIN_RATE: float = 18.0
+# ── TUNABLES — tweak these to balance gameplay ──
+const DEFAULT_MAX: float = 100.0  # survivor starting HP
+const DRAIN_RATE: float = 18.0  # PM life-steal HP/sec
+# Reserved for a future PM self-heal tuning (currently heal uses an inline fraction).
 const PM_HEAL_RATE: float = 12.0
 
 var _health: Dictionary = {}

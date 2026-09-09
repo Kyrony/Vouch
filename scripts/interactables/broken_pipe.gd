@@ -13,8 +13,9 @@ class_name BrokenPipe
 ##     flooded room, and EscapeSystem can block escape once a room is
 ##     flooded enough - both purely from local position, no extra RPCs.
 
-const MAX_LEVEL: float = 1.0
-const LEVEL_INCREMENT: float = 0.25
+# ── TUNABLES — tweak these to balance gameplay ──
+const MAX_LEVEL: float = 1.0  # max water level
+const LEVEL_INCREMENT: float = 0.25  # rise per activation
 ## Host-authoritative rise speed (water level units per second). Tunable.
 const TRICKLE_RATE: float = 0.08
 ## Water never visually rises above this fraction of room height, so it
