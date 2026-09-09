@@ -144,7 +144,7 @@ func _broadcast(peer_id: int) -> void:
 	var has_phone := server_has_phone(peer_id)
 	if peer_id == multiplayer.get_unique_id():
 		_apply_local(bat, led, has_phone)
-	else:
+	elif GameState.is_network_peer(peer_id):
 		_client_phone_state.rpc_id(peer_id, bat, led, has_phone)
 
 

@@ -58,6 +58,8 @@ func _on_health_changed(peer_id: int, _hp: float, _cap: float) -> void:
 
 
 func _process(delta: float) -> void:
+	if multiplayer.multiplayer_peer == null:
+		return
 	_poll += delta
 	if _poll < 0.2:
 		return

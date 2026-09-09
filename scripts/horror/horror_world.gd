@@ -272,6 +272,7 @@ func _ensure_spawn_pads() -> void:
 		body.collision_layer = 1
 		body.position = Vector3(pos.x, pos.y - 0.08, pos.z)
 		var col := CollisionShape3D.new()
+		col.name = "Shape"
 		var box := BoxShape3D.new()
 		box.size = Vector3(3.2, 0.2, 3.2)
 		col.shape = box
