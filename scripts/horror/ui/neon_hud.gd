@@ -38,8 +38,6 @@ var interact_sub: String = "Look / Talk"
 var _built: bool = false
 var _health_bar: TextureProgressBar
 var _stamina_bar: TextureProgressBar
-var _health_pct: Label
-var _stamina_pct: Label
 var _battery_bar: TextureProgressBar
 var _battery_pct: Label
 var _signal_icon: TextureRect
@@ -53,6 +51,9 @@ var _prompt_sub: Label
 var _rail: VBoxContainer
 var _rail_wells: Array[TextureRect] = []
 var _rail_icons: Array[TextureRect] = []
+var _objective_toast: Panel
+var _objective_label: Label
+var _objective_tween: Tween
 var _tex_ability: Texture2D
 var _tex_key: Texture2D
 var _tex_child: Texture2D
@@ -171,7 +172,7 @@ func _build() -> void:
 	if _built:
 		return
 	_built = true
-	_build_objective()
+	_build_objective_toast()
 	_build_clock()
 	_build_vitals()
 	_build_prompt()
@@ -180,53 +181,48 @@ func _build() -> void:
 	_build_ability()
 
 
-func _build_objective() -> void:
-	var banner := Panel.new()
-	banner.name = "ObjectiveBanner"
-	banner.set_anchors_preset(PRESET_CENTER_TOP)
-	banner.offset_left = -340
-	banner.offset_top = 16
-	banner.offset_right = 340
-	banner.offset_bottom = 64
-	banner.mouse_filter = MOUSE_FILTER_IGNORE
-	banner.add_theme_stylebox_override("panel", _KIT.panel_focus())
-	add_child(banner)
-	var row := HBoxContainer.new()
-	row.set_anchors_preset(PRESET_FULL_RECT)
-	row.offset_left = 10
-	row.offset_right = -10
-	row.add_theme_constant_override("separation", 10)
-	banner.add_child(row)
-	var icon := TextureRect.new()
-	icon.custom_minimum_size = Vector2(28, 28)
-	icon.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
-	icon.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
-	icon.texture = _tex_child
-	icon.mouse_filter = MOUSE_FILTER_IGNORE
-	row.add_child(icon)
-	var title := Label.new()
-	title.name = "Title"
-	title.text = OBJECTIVE_TITLE
-	title.add_theme_color_override("font_color", _KIT.YELLOW)
-	title.add_theme_font_size_override("font_size", 16)
-	row.add_child(title)
-	var tag := Label.new()
-	tag.name = "AliveTag"
-	tag.text = "  %s  " % OBJECTIVE_TAG
-	tag.add_theme_color_override("font_color", Color(1, 0.85, 0.85))
-	tag.add_theme_font_size_override("font_size", 11)
-	var tag_bg := StyleBoxFlat.new()
-	tag_bg.bg_color = Color(0.55, 0.08, 0.1, 0.95)
-	tag_bg.set_corner_radius_all(8)
-	tag_bg.content_margin_left = 8
-	tag_bg.content_margin_right = 8
-	tag.add_theme_stylebox_override("normal", tag_bg)
-	row.add_child(tag)
-	var sub := Label.new()
-	sub.text = OBJECTIVE_SUB
-	sub.add_theme_color_override("font_color", _KIT.WHITE)
-	sub.add_theme_font_size_override("font_size", 12)
-	row.add_child(sub)
+## Transient objective banner: pops in at top-center and fades after a few
+## seconds. Call show_objective() again for the next objective as play moves on.
+func _build_objective_toast() -> void:
+	_objective_toast = Panel.new()
+	_objective_toast.name = "ObjectiveToast"
+	_objective_toast.set_anchors_preset(PRESET_CENTER_TOP)
+	_objective_toast.offset_left = -320
+	_objective_toast.offset_top = 20
+	_objective_toast.offset_right = 320
+	_objective_toast.offset_bottom = 66
+	_objective_toast.mouse_filter = MOUSE_FILTER_IGNORE
+	_objective_toast.add_theme_stylebox_override("panel", _KIT.panel_focus())
+	_objective_toast.visible = false
+	add_child(_objective_toast)
+	_objective_label = Label.new()
+	_objective_label.name = "Text"
+	_objective_label.set_anchors_preset(PRESET_FULL_RECT)
+	_objective_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	_objective_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	_objective_label.add_theme_color_override("font_color", _KIT.YELLOW)
+	_objective_label.add_theme_font_size_override("font_size", 16)
+	_objective_label.mouse_filter = MOUSE_FILTER_IGNORE
+	_objective_toast.add_child(_objective_label)
+
+
+## Pop a new objective at the top of the screen; it fades out after `seconds`.
+func show_objective(text: String, seconds: float = 5.0) -> void:
+	if not _built:
+		_build()
+	if _objective_toast == null:
+		return
+	_objective_label.text = text
+	_objective_toast.visible = true
+	_objective_toast.modulate.a = 1.0
+	if _objective_tween and _objective_tween.is_valid():
+		_objective_tween.kill()
+	_objective_tween = create_tween()
+	_objective_tween.tween_interval(maxf(seconds - 0.6, 0.2))
+	_objective_tween.tween_property(_objective_toast, "modulate:a", 0.0, 0.6)
+	_objective_tween.tween_callback(func() -> void:
+		_objective_toast.visible = false
+		_objective_toast.modulate.a = 1.0)
 
 
 func _on_match_clock(_progress: float, label: String) -> void:
@@ -251,13 +247,14 @@ func _build_clock() -> void:
 
 
 func _build_vitals() -> void:
+	# Health over stamina, tucked into the bottom-left corner.
 	var box := Control.new()
 	box.name = "Vitals"
-	box.set_anchors_preset(PRESET_TOP_LEFT)
+	box.set_anchors_preset(PRESET_BOTTOM_LEFT)
 	box.offset_left = 16
-	box.offset_top = 16
-	box.offset_right = 340
-	box.offset_bottom = 88
+	box.offset_top = -84
+	box.offset_right = 300
+	box.offset_bottom = -16
 	box.mouse_filter = MOUSE_FILTER_IGNORE
 	add_child(box)
 	var col := VBoxContainer.new()
@@ -294,16 +291,7 @@ func _make_track_meter(parent: VBoxContainer, caption: String, color: Color, bar
 	bar.fill_mode = TextureProgressBar.FILL_LEFT_TO_RIGHT
 	bar.mouse_filter = MOUSE_FILTER_IGNORE
 	row.add_child(bar)
-	var pct := Label.new()
-	pct.name = "%sPct" % caption.capitalize()
-	pct.custom_minimum_size = Vector2(36, 0)
-	pct.add_theme_color_override("font_color", color)
-	pct.add_theme_font_size_override("font_size", 10)
-	row.add_child(pct)
-	if caption == "HEALTH":
-		_health_pct = pct
-	else:
-		_stamina_pct = pct
+	# No numeric percentage — the bar length is the readout.
 	return bar
 
 
@@ -363,7 +351,7 @@ func _build_top_right() -> void:
 	col.alignment = BoxContainer.ALIGNMENT_BEGIN
 	box.add_child(col)
 	_build_signal_widget(col)
-	_build_battery_widget(col)
+	# Battery widget removed from the HUD per design.
 
 
 func _build_signal_widget(parent: VBoxContainer) -> void:
@@ -519,10 +507,8 @@ func _build_ability() -> void:
 func _refresh() -> void:
 	if _health_bar:
 		_health_bar.value = health_ratio
-		_health_pct.text = "%d%%" % int(round(health_ratio * 100.0))
 	if _stamina_bar:
 		_stamina_bar.value = stamina_ratio
-		_stamina_pct.text = "%d%%" % int(round(stamina_ratio * 100.0))
 	_refresh_battery()
 	_refresh_signal()
 	_refresh_ability()
