@@ -21,6 +21,8 @@ var _returning_to_lobby: bool = false
 
 func _ready() -> void:
 	world.visible = false
+	if debug_gui == null:
+		debug_gui = get_node_or_null("DebugGui")
 	GameState.match_started.connect(_on_match_started)
 	GameState.return_to_lobby_requested.connect(_return_to_lobby)
 	pause_menu.exit_requested.connect(_on_pause_exit)
@@ -535,7 +537,7 @@ func _on_pause_settings() -> void:
 
 func _on_pause_debug() -> void:
 	pause_menu.hide_menu()
-	if debug_gui.has_method("_toggle"):
+	if is_instance_valid(debug_gui) and debug_gui.has_method("_toggle"):
 		debug_gui._toggle()
 
 

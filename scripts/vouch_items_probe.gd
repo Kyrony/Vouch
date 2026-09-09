@@ -156,6 +156,25 @@ func _run() -> void:
 	_check(pickup.has_method("server_try_pickup"), "world pickup can be taken")
 	pickup.queue_free()
 
+	# Picking every catalog item used to free the collider in the same tick and crash.
+	for item_id in CAT.survivor_item_ids():
+		PI.reset()
+		PI.server_init_peer(me)
+		var grab: Node = pickup_scene.instantiate()
+		grab.set("item_id", str(item_id))
+		root.add_child(grab)
+		await process_frame
+		_check(bool(grab.call("server_try_pickup", me)), "pickup %s succeeds" % item_id)
+		await process_frame
+		await process_frame
+		_check(
+			not is_instance_valid(grab) or grab.is_queued_for_deletion(),
+			"pickup %s deferred-frees without crashing" % item_id,
+		)
+		for leftover in root.get_tree().get_nodes_in_group("world_pickups"):
+			if leftover == grab:
+				_check(false, "taken pickup %s left in world_pickups" % item_id)
+
 	# Different use times.
 	_check(is_equal_approx(CAT.use_time("medkit"), 3.0), "medkit use time 3s")
 	_check(is_equal_approx(CAT.use_time("flare"), 0.5), "flare use time 0.5s")

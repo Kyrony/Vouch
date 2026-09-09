@@ -3,4 +3,6 @@
 [ext_resource type="Script" path="res://scripts/debug/debug_overlay.gd" id="1"]
 
 [node name="DebugOverlay" type="CanvasLayer"]
+visible = false
+layer = 80
 script = ExtResource("1")

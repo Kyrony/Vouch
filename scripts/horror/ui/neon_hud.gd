@@ -1,8 +1,9 @@
 extends Control
 class_name NeonHud
-## Kyle-locked HUD plate (1280×720): health over stamina (top-left),
-## signal + battery widgets (top-right), 5-slot item rail (right edge).
-## No bottom hotbar. Fill % is eng-owned via TextureProgressBar.
+## Kyle-locked HUD plate (1280×720): health over stamina (bottom-left),
+## cell signal at the very top-right with match time just below, 5-slot
+## item rail on the right edge. Objectives toast in then fade. No battery
+## widget and no persistent MISSING CHILD banner. No bottom hotbar.
 
 const _PACK: GDScript = preload("res://scripts/horror/ui/hud_icon_pack.gd")
 const _KIT: GDScript = preload("res://scripts/horror/ui/ui_kit.gd")
@@ -61,6 +62,9 @@ var _tex_reticle: Texture2D
 var _tex_slot_empty: Texture2D
 var _tex_slot_selected: Texture2D
 var _clock_label: Label
+var _objective_toast: Panel
+var _objective_label: Label
+var _objective_tween: Tween
 
 
 func _ready() -> void:
@@ -236,10 +240,10 @@ func _build_clock() -> void:
 	_clock_label.text = "6:00 PM"
 	_clock_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
 	_clock_label.set_anchors_preset(PRESET_TOP_RIGHT)
-	_clock_label.offset_left = -220
-	_clock_label.offset_top = 10
-	_clock_label.offset_right = -18
-	_clock_label.offset_bottom = 38
+	_clock_label.offset_left = -140
+	_clock_label.offset_top = 52
+	_clock_label.offset_right = -12
+	_clock_label.offset_bottom = 84
 	_clock_label.mouse_filter = MOUSE_FILTER_IGNORE
 	_clock_label.add_theme_font_size_override("font_size", 18)
 	_clock_label.add_theme_color_override("font_color", _KIT.YELLOW)
@@ -354,13 +358,17 @@ func _build_top_right() -> void:
 	# Battery widget removed from the HUD per design.
 
 
-func _build_signal_widget(parent: VBoxContainer) -> void:
+func _build_signal_widget() -> void:
 	var panel := Panel.new()
 	panel.name = "SignalWidget"
-	panel.custom_minimum_size = Vector2(148, 40)
+	panel.set_anchors_preset(PRESET_TOP_RIGHT)
+	panel.offset_left = -140
+	panel.offset_top = 8
+	panel.offset_right = -12
+	panel.offset_bottom = 48
 	panel.mouse_filter = MOUSE_FILTER_IGNORE
 	panel.add_theme_stylebox_override("panel", _KIT.panel(_KIT.GREY, 6, Color(0.02, 0.02, 0.03, 0.82)))
-	parent.add_child(panel)
+	add_child(panel)
 	var row := HBoxContainer.new()
 	row.name = "Row"
 	row.set_anchors_preset(PRESET_FULL_RECT)
@@ -383,47 +391,14 @@ func _build_signal_widget(parent: VBoxContainer) -> void:
 	row.add_child(_signal_label)
 
 
-func _build_battery_widget(parent: VBoxContainer) -> void:
-	var wrap := HBoxContainer.new()
-	wrap.name = "BatteryRow"
-	wrap.add_theme_constant_override("separation", 6)
-	parent.add_child(wrap)
-	_battery_bar = TextureProgressBar.new()
-	_battery_bar.name = "BatteryBar"
-	_battery_bar.min_value = 0.0
-	_battery_bar.max_value = 1.0
-	_battery_bar.step = 0.001
-	_battery_bar.custom_minimum_size = Vector2(108, 36)
-	_battery_bar.size_flags_horizontal = SIZE_EXPAND_FILL
-	_battery_bar.nine_patch_stretch = false
-	var under: Texture2D = _PACK.texture(_PACK.TEX_BATTERY_EMPTY)
-	_battery_bar.texture_under = under
-	var tw := 160
-	var th := 56
-	if under:
-		tw = under.get_width()
-		th = under.get_height()
-	# Leave the nub + rim empty — fill lives inside the shell.
-	_battery_bar.texture_progress = _PACK.make_fill_texture(_PACK.BATTERY, tw, th, 14)
-	_battery_bar.fill_mode = TextureProgressBar.FILL_LEFT_TO_RIGHT
-	_battery_bar.mouse_filter = MOUSE_FILTER_IGNORE
-	wrap.add_child(_battery_bar)
-	_battery_pct = Label.new()
-	_battery_pct.name = "BatteryPct"
-	_battery_pct.custom_minimum_size = Vector2(32, 0)
-	_battery_pct.add_theme_color_override("font_color", _PACK.BATTERY)
-	_battery_pct.add_theme_font_size_override("font_size", 10)
-	wrap.add_child(_battery_pct)
-
-
 func _build_rail() -> void:
 	_rail = VBoxContainer.new()
 	_rail.name = "ItemRail"
 	_rail.set_anchors_preset(PRESET_TOP_RIGHT)
 	_rail.offset_left = -88
-	_rail.offset_top = 148
+	_rail.offset_top = 96
 	_rail.offset_right = -10
-	_rail.offset_bottom = 148 + RAIL_SLOTS * SLOT_PX + (RAIL_SLOTS - 1) * SLOT_GAP
+	_rail.offset_bottom = 96 + RAIL_SLOTS * SLOT_PX + (RAIL_SLOTS - 1) * SLOT_GAP
 	_rail.add_theme_constant_override("separation", SLOT_GAP)
 	_rail.mouse_filter = MOUSE_FILTER_IGNORE
 	add_child(_rail)
@@ -460,10 +435,10 @@ func _build_ability() -> void:
 	_ability_panel = Panel.new()
 	_ability_panel.name = "AbilityCooldown"
 	_ability_panel.set_anchors_preset(PRESET_BOTTOM_LEFT)
-	_ability_panel.offset_left = 16
-	_ability_panel.offset_top = -122
-	_ability_panel.offset_right = 236
-	_ability_panel.offset_bottom = -20
+	_ability_panel.offset_left = 320
+	_ability_panel.offset_top = -78
+	_ability_panel.offset_right = 560
+	_ability_panel.offset_bottom = -16
 	_ability_panel.mouse_filter = MOUSE_FILTER_IGNORE
 	_ability_panel.visible = false
 	_ability_panel.add_theme_stylebox_override("panel", _KIT.panel_violet())

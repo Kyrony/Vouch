@@ -494,10 +494,22 @@ func _update_interact_prompt() -> void:
 	_set_interact_prompt(false)
 
 
+func _pickup_is_live(node: Node) -> bool:
+	if node == null or not is_instance_valid(node) or node.is_queued_for_deletion():
+		return false
+	if bool(node.get("_taken")):
+		return false
+	if node is Node3D and not (node as Node3D).visible:
+		return false
+	if node is CollisionObject3D and (node as CollisionObject3D).collision_layer == 0:
+		return false
+	return true
+
+
 func _find_world_pickup() -> Node:
 	if interact_ray.is_colliding():
 		var hit := interact_ray.get_collider()
-		if hit and hit.is_in_group("world_pickups"):
+		if hit is Node and _pickup_is_live(hit as Node) and (hit as Node).is_in_group("world_pickups"):
 			return hit as Node
 	if not horror_mode:
 		return null
@@ -506,7 +518,7 @@ func _find_world_pickup() -> Node:
 	var best: Node = null
 	var best_dist := 2.8
 	for node in get_tree().get_nodes_in_group("world_pickups"):
-		if not (node is Node3D):
+		if not (node is Node3D) or not _pickup_is_live(node):
 			continue
 		var to: Vector3 = (node as Node3D).global_position - origin
 		var dist := to.length()
@@ -553,11 +565,12 @@ func _try_interact() -> void:
 				return
 
 	var ground_item := _find_world_pickup()
-	if horror_mode and not is_horror_puppet_master and ground_item:
+	if horror_mode and not is_horror_puppet_master and ground_item and _pickup_is_live(ground_item):
 		if multiplayer.is_server():
 			ground_item.call("server_try_pickup", multiplayer.get_unique_id())
 		else:
 			PlayerInventory.request_pickup.rpc_id(1, ground_item.get_path())
+		_set_interact_prompt(false)
 		return
 
 	if not interact_ray.is_colliding():
