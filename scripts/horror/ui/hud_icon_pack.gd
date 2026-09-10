@@ -52,11 +52,11 @@ const TEX_HIDE_PORCH := "hide_porch"
 
 static func texture(stem: String) -> Texture2D:
 	if stem == TEX_SLOT_EMPTY:
-		var k7 := _K7.texture(_K7.SLOT_EMPTY)
+		var k7: Texture2D = _K7.texture(_K7.SLOT_EMPTY)
 		if k7:
 			return k7
 	if stem == TEX_SLOT_SELECTED:
-		var k7s := _K7.texture(_K7.SLOT_SELECTED)
+		var k7s: Texture2D = _K7.texture(_K7.SLOT_SELECTED)
 		if k7s:
 			return k7s
 	var path := "%s/%s.png" % [DIR, stem]
