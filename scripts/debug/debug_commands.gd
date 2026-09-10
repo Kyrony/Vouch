@@ -6,6 +6,7 @@ const PLAYER_SCENE := "res://scenes/Player/Player.tscn"
 const CRATE_SCENE := "res://scenes/Match/Props/Crate.tscn"
 const BARREL_SCENE := "res://scenes/Match/Props/Barrel.tscn"
 const _HORROR: GDScript = preload("res://scripts/horror/match_horror.gd")
+const _PROPS: GDScript = preload("res://scripts/horror/world/farm_props.gd")
 
 
 static func _world() -> Node3D:
@@ -59,7 +60,7 @@ static func spawn_farm_props() -> void:
 	if world == null or not world.multiplayer.is_server():
 		return
 	var origin := _in_front(4.0)
-	FarmProps.install_at(world, origin, true)
+	_PROPS.call("install_at", world, origin, true)
 	print("[Debug] farm props spawned at %s" % origin)
 
 
