@@ -60,7 +60,39 @@ static func attach(parent: Node3D, held: bool = false) -> Node3D:
 	status.rotation_degrees = Vector3(0, 180, 0)
 	status.pixel_size = 0.0011
 	root.add_child(status)
+
+	var hud_quad := QuadMesh.new()
+	hud_quad.size = Vector2(0.058, 0.114) * scale_mul
+	var hud_screen := MeshInstance3D.new()
+	hud_screen.name = "HudScreen"
+	hud_screen.mesh = hud_quad
+	hud_screen.position = Vector3(0, 0.004, -0.0074 * scale_mul)
+	hud_screen.rotation_degrees = Vector3(0, 180, 0)
+	hud_screen.visible = false
+	root.add_child(hud_screen)
 	return root
+
+
+static func bind_hud_viewport(root: Node3D, vp: SubViewport) -> void:
+	if root == null or vp == null:
+		return
+	var hud_screen := root.get_node_or_null("HudScreen") as MeshInstance3D
+	if hud_screen == null:
+		return
+	var mat := StandardMaterial3D.new()
+	mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	mat.albedo_texture = vp.get_texture()
+	mat.texture_filter = BaseMaterial3D.TEXTURE_FILTER_LINEAR
+	mat.uv1_scale = Vector3(1, -1, 1)
+	mat.uv1_offset = Vector3(0, 1, 0)
+	hud_screen.set_surface_override_material(0, mat)
+	hud_screen.visible = true
+	var brand := root.get_node_or_null("VouchMark")
+	if brand:
+		brand.visible = false
+	var status := root.get_node_or_null("StatusMark")
+	if status:
+		status.visible = false
 
 
 static func update_screen(root: Node3D, battery: float, signal_band: String, led_on: bool) -> void:

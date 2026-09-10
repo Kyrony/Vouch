@@ -29,6 +29,15 @@ const PM_MOVE_SPEED: float = 5.9
 const STAMINA_EMPTY: float = 0.5
 const STAMINA_RESUME: float = 12.0
 const JUMP_VELOCITY: float = 3.2  # initial jump impulse
+const PUPPET_MODEL_SCALE: float = 0.25
+const PUPPET_STAMINA_MAX: float = 20.0  # 80% less than the PM's 100 pool
+const PUPPET_SPRINT_MULTIPLIER: float = 2.0
+const PUPPET_JUMP_MULTIPLIER: float = 2.0
+const PHONE_HOLSTER_POS := Vector3(0.14, -0.12, -0.30)
+const PHONE_HOLSTER_ROT := Vector3(-8, 180, -12)
+const PHONE_INSPECT_POS := Vector3(0.0, -0.02, -0.16)
+const PHONE_INSPECT_ROT := Vector3(0, 180, 0)
+const PHONE_INSPECT_SCALE := 1.65
 const MOUSE_SENSITIVITY: float = 0.0025  # radians per pixel
 const TOAST_DURATION: float = 4.5
 const CLIMB_SPEED: float = 3.0  # ladder climb speed (m/s)
@@ -128,9 +137,12 @@ var _tether_immobilized: bool = false
 var _possessed: bool = false
 var _trap_check_accum: float = 0.0
 var _has_puppet: bool = false  # PM: currently wearing the puppet
-var _grab_check_accum: float = 0.0
+var _body_taken: bool = false  # PM: driving a captured survivor
+var _driving_victim: Node = null
+var _air_jumps_left: int = 0
 var _local_health: float = 100.0
 var _local_stamina: float = 100.0
+var _local_stamina_max: float = 100.0
 var _local_max_health: float = 100.0
 var _is_sprinting: bool = false
 var _stamina_exhausted: bool = false
@@ -144,6 +156,7 @@ var _held_phone: Node3D = null
 var _phone_led_spot: SpotLight3D = null
 var _phone_led_omni: OmniLight3D = null
 var _inspecting_phone: bool = false
+var _phone_pose_tween: Tween
 var _local_fear: float = 0.0
 
 
@@ -193,6 +206,12 @@ func _ready() -> void:
 			PuppetStringSystem.local_tether_changed.connect(_on_local_tether)
 			PuppetControlSystem.local_possessed_changed.connect(_on_local_possessed)
 			PuppetControlSystem.local_puppet_state_changed.connect(_on_puppet_state)
+			if PuppetControlSystem.has_signal("local_body_control_changed"):
+				PuppetControlSystem.local_body_control_changed.connect(_on_body_control)
+			if ChildSpawnRNG.has_signal("child_found"):
+				ChildSpawnRNG.child_found.connect(_on_child_found)
+			if PuppetControlSystem.server_has_puppet(multiplayer.get_unique_id()):
+				_on_puppet_state(true)
 		_pause_menu = get_node_or_null("/root/Main/PauseLayer/PauseMenu")
 		_wire_lose_overlay()
 		if horror_mode:
@@ -205,7 +224,28 @@ func _ready() -> void:
 
 
 func _unhandled_input(event: InputEvent) -> void:
+	if _possessed and not is_multiplayer_authority():
+		if event.is_action_pressed("interact"):
+			if multiplayer.is_server():
+				PuppetControlSystem.server_struggle(multiplayer.get_unique_id())
+			else:
+				PuppetControlSystem.request_struggle.rpc_id(1)
+		if event.is_action_pressed("ui_cancel") and GameState.phase == GameState.Phase.IN_MATCH:
+			if is_instance_valid(_pause_menu):
+				if _pause_menu.visible:
+					_pause_menu.hide_menu()
+				else:
+					_pause_menu.show_menu()
+		return
 	if not is_multiplayer_authority():
+		return
+	if _body_taken:
+		if event.is_action_pressed("ui_cancel") and GameState.phase == GameState.Phase.IN_MATCH:
+			if is_instance_valid(_pause_menu):
+				if _pause_menu.visible:
+					_pause_menu.hide_menu()
+				else:
+					_pause_menu.show_menu()
 		return
 	if _eliminated:
 		_handle_eliminated_input(event)
@@ -252,7 +292,10 @@ func _unhandled_input(event: InputEvent) -> void:
 		# Strings are the PM's innate weapon: fire shoots a string into whoever
 		# you're aiming at, or pins a trap to a surface. R ghosts their strings.
 		if event.is_action_pressed("fire"):
-			_pm_fire_string()
+			if _has_puppet and not _body_taken and _try_puppet_capture():
+				pass
+			else:
+				_pm_fire_string()
 		elif event.is_action_pressed("use_item"):
 			_pm_ghost_string()
 	elif horror_mode and not is_horror_puppet_master:
@@ -275,6 +318,11 @@ func _physics_process(delta: float) -> void:
 	if not is_multiplayer_authority():
 		return
 
+	if _body_taken:
+		velocity = Vector3.ZERO
+		move_and_slide()
+		return
+
 	var locked := _is_input_locked() or _eliminated or _inspecting_phone
 
 	if not _eliminated:
@@ -289,10 +337,8 @@ func _physics_process(delta: float) -> void:
 
 		if horror_mode and is_horror_puppet_master:
 			_pm_controller = get_node_or_null("PuppetMasterController")
-			if _pm_controller:
+			if _pm_controller and not _has_puppet:
 				_pm_controller.call("process_movement", delta, locked)
-			if _has_puppet:
-				_pm_puppet_grab_tick(delta)
 
 		move_and_slide()
 
@@ -308,13 +354,20 @@ func _physics_process(delta: float) -> void:
 func _apply_ground_velocity(delta: float, locked: bool) -> void:
 	if not is_on_floor():
 		velocity.y -= _gravity * delta
+	else:
+		_air_jumps_left = 1 if _has_puppet else 0
 
+	var jump_v := JUMP_VELOCITY * (PUPPET_JUMP_MULTIPLIER if _has_puppet else 1.0)
 	var can_jump := is_on_floor()
 	var cheats := get_node_or_null("/root/DebugCheats")
 	if cheats and cheats.has_method("infinite_jump_enabled") and bool(cheats.call("infinite_jump_enabled")):
 		can_jump = true
-	if not locked and Input.is_action_just_pressed("jump") and can_jump:
-		velocity.y = JUMP_VELOCITY
+	if not locked and Input.is_action_just_pressed("jump"):
+		if can_jump:
+			velocity.y = jump_v
+		elif _has_puppet and _air_jumps_left > 0:
+			_air_jumps_left -= 1
+			velocity.y = jump_v
 
 	var input_dir := Vector2.ZERO
 	if not locked:
@@ -327,6 +380,8 @@ func _apply_ground_velocity(delta: float, locked: bool) -> void:
 	var current_room: int = WorldScale.world_position_to_room_index(global_position)
 	var water_level: float = GameState.room_water_levels.get(current_room, 0.0)
 	var want_sprint := (not locked) and (not _crouching) and Input.is_action_pressed("sprint") and direction != Vector3.ZERO
+	if is_horror_puppet_master and not _has_puppet:
+		want_sprint = false
 	if horror_mode and not sprint_allowed(_local_stamina, _stamina_exhausted):
 		want_sprint = false
 	# Puppet strings drag you down; being possessed locks you in place.
@@ -334,7 +389,9 @@ func _apply_ground_velocity(delta: float, locked: bool) -> void:
 		want_sprint = false
 	_is_sprinting = want_sprint
 	var effective_speed := move_speed_for(want_sprint, _crouching, water_level)
-	if is_horror_puppet_master:
+	if is_horror_puppet_master and _has_puppet:
+		effective_speed = puppet_move_speed_for(want_sprint, _crouching, water_level)
+	elif is_horror_puppet_master:
 		# Steady stalk — a touch slower than a survivor at full sprint.
 		effective_speed = PM_MOVE_SPEED
 	if _possessed:
@@ -368,6 +425,15 @@ static func move_speed_for(sprinting: bool, crouching: bool = false, water_level
 	return speed
 
 
+static func puppet_move_speed_for(sprinting: bool, crouching: bool = false, water_level: float = 0.0) -> float:
+	var speed := SPEED * (1.0 - water_level * 0.6)
+	if crouching:
+		return speed * 0.55
+	if sprinting:
+		return speed * PUPPET_SPRINT_MULTIPLIER
+	return speed
+
+
 static func sprint_allowed(stamina: float, exhausted: bool = false) -> bool:
 	if exhausted:
 		return stamina >= STAMINA_RESUME
@@ -378,7 +444,7 @@ func _tick_authority_stamina(delta: float) -> void:
 	if not is_multiplayer_authority() or _eliminated or not horror_mode:
 		return
 	var was_sprinting := _is_sprinting
-	_local_stamina = PlayerEffects.tick_stamina(_local_stamina, _is_sprinting, delta)
+	_local_stamina = PlayerEffects.tick_stamina(_local_stamina, _is_sprinting, delta, _local_stamina_max)
 	if _is_sprinting and _local_stamina <= STAMINA_EMPTY:
 		_stamina_exhausted = true
 		_is_sprinting = false
@@ -400,7 +466,7 @@ func _tick_authority_stamina(delta: float) -> void:
 
 func _refresh_vital_meters() -> void:
 	if _neon_hud:
-		_neon_hud.set_meters(_local_health, _local_max_health, _local_stamina, _local_fear)
+		_neon_hud.set_meters(_local_health, _local_max_health, _local_stamina, _local_fear, _local_stamina_max)
 
 
 func _replicate_stamina(delta: float) -> void:
@@ -523,6 +589,16 @@ func _update_interact_prompt() -> void:
 			_set_highlight(target)
 			return
 	_set_highlight(null)
+	if horror_mode and not is_horror_puppet_master and not ChildSpawnRNG.get("_child_found"):
+		var child_pos: Vector3 = ChildSpawnRNG.get_spawn_position()
+		if child_pos != Vector3.ZERO and global_position.distance_to(child_pos) < 3.5:
+			_set_interact_prompt(true, "[E] · PICK UP CHILD")
+			return
+	if _has_puppet and not _body_taken:
+		var target := _nearest_capture_target()
+		if not target.is_empty():
+			_set_interact_prompt(true, "LMB · CAPTURE")
+			return
 	if _can_inspect_phone():
 		_set_interact_prompt(true, "HOLD [E] · READ PHONE", true, 1.0 if _inspecting_phone else 0.0)
 		return
@@ -561,7 +637,23 @@ func _process_phone_inspect() -> void:
 	_inspecting_phone = want
 	if _neon_hud and _neon_hud.has_method("set_phone_inspect"):
 		_neon_hud.call("set_phone_inspect", want)
+	_tween_phone_inspect(want)
 	_update_phone_led_visuals()
+
+
+func _tween_phone_inspect(inspect: bool) -> void:
+	if _phone_rig == null:
+		return
+	if _phone_pose_tween and _phone_pose_tween.is_valid():
+		_phone_pose_tween.kill()
+	var pos := PHONE_INSPECT_POS if inspect else PHONE_HOLSTER_POS
+	var rot := PHONE_INSPECT_ROT if inspect else PHONE_HOLSTER_ROT
+	var scl := Vector3.ONE * (PHONE_INSPECT_SCALE if inspect else 1.0)
+	_phone_pose_tween = create_tween().set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
+	_phone_pose_tween.set_parallel(true)
+	_phone_pose_tween.tween_property(_phone_rig, "position", pos, 0.28)
+	_phone_pose_tween.tween_property(_phone_rig, "rotation_degrees", rot, 0.28)
+	_phone_pose_tween.tween_property(_phone_rig, "scale", scl, 0.28)
 
 
 func _pickup_is_live(node: Node) -> bool:
@@ -620,11 +712,9 @@ func _try_interact() -> void:
 			return
 	if horror_mode and not is_horror_puppet_master:
 		var child_pos := ChildSpawnRNG.get_spawn_position()
-		if child_pos != Vector3.ZERO and global_position.distance_to(child_pos) < 3.5:
+		if child_pos != Vector3.ZERO and not ChildSpawnRNG.get("_child_found") and global_position.distance_to(child_pos) < 3.5:
 			if multiplayer.is_server():
-				if ChildSpawnRNG.server_try_pickup_child(multiplayer.get_unique_id(), global_position):
-					_show_toast("You found the missing child — reach the escape zone!")
-					_show_objective("Reach the escape zone with the child.")
+				ChildSpawnRNG.server_try_pickup_child(multiplayer.get_unique_id(), global_position)
 			else:
 				_rpc_try_child_pickup.rpc_id(1, global_position)
 			return
@@ -782,7 +872,75 @@ func _process_held_paper(delta: float) -> void:
 func _on_puppet_state(active: bool) -> void:
 	_has_puppet = active
 	if active:
-		_show_toast("You are wearing the puppet — walk into a survivor to seize them.")
+		scale = Vector3.ONE * PUPPET_MODEL_SCALE
+		_local_stamina_max = PUPPET_STAMINA_MAX
+		_local_stamina = minf(_local_stamina, _local_stamina_max)
+		_air_jumps_left = 1
+		_show_toast("You are the puppet — sprint fast, double jump, LMB to capture.")
+	else:
+		scale = Vector3.ONE
+		_local_stamina_max = 100.0
+		_air_jumps_left = 0
+		_leave_stolen_body()
+	_refresh_vital_meters()
+
+
+func _on_body_control(victim_peer: int, active: bool) -> void:
+	if not is_horror_puppet_master:
+		return
+	if active:
+		_enter_stolen_body(victim_peer)
+	else:
+		_leave_stolen_body()
+
+
+func _enter_stolen_body(victim_peer: int) -> void:
+	var victim := _find_player_by_peer(victim_peer)
+	if victim == null or victim == self:
+		return
+	_leave_stolen_body()
+	_driving_victim = victim
+	_body_taken = true
+	_set_puppet_shell_hidden(true)
+	victim.set_physics_process(true)
+	victim.set_process_unhandled_input(true)
+	var victim_cam := victim.get_node_or_null("Head/Camera3D") as Camera3D
+	if victim_cam:
+		victim_cam.current = true
+	if camera:
+		camera.current = false
+	_show_toast("You took their body. They can only watch.")
+
+
+func _leave_stolen_body() -> void:
+	if _driving_victim and is_instance_valid(_driving_victim):
+		var victim_cam := _driving_victim.get_node_or_null("Head/Camera3D") as Camera3D
+		if victim_cam and not _driving_victim.is_multiplayer_authority():
+			victim_cam.current = false
+		if not _driving_victim.is_multiplayer_authority():
+			_driving_victim.set_physics_process(false)
+			_driving_victim.set_process_unhandled_input(false)
+	_driving_victim = null
+	_body_taken = false
+	_set_puppet_shell_hidden(false)
+	if is_multiplayer_authority() and camera:
+		camera.current = true
+
+
+func _set_puppet_shell_hidden(hidden: bool) -> void:
+	visible = not hidden
+	var col := get_node_or_null("CollisionShape3D") as CollisionShape3D
+	if col:
+		col.disabled = hidden
+	if hidden:
+		velocity = Vector3.ZERO
+
+
+func _find_player_by_peer(peer_id: int) -> Node:
+	for node in get_tree().get_nodes_in_group("players"):
+		if str(node.name).to_int() == peer_id:
+			return node
+	return null
 
 
 ## Raycast from the PM camera; returns {"hit": bool, "collider": Node, "pos": Vector3}.
@@ -831,26 +989,37 @@ func _pm_ghost_string() -> void:
 		PuppetStringSystem.request_ghost.rpc_id(1, victim)
 
 
-func _pm_puppet_grab_tick(delta: float) -> void:
-	_grab_check_accum += delta
-	if _grab_check_accum < 0.25:
-		return
-	_grab_check_accum = 0.0
+func _nearest_capture_target() -> Dictionary:
 	var nearest := -1
 	var nearest_d := PuppetControlSystem.GRAB_RANGE
+	var nearest_node: Node = null
 	for node in get_tree().get_nodes_in_group("players"):
 		var pid := _peer_from_node(node)
 		if pid <= 0 or pid == multiplayer.get_unique_id():
+			continue
+		if bool(node.get("is_horror_puppet_master")):
 			continue
 		var d := global_position.distance_to((node as Node3D).global_position)
 		if d <= nearest_d:
 			nearest_d = d
 			nearest = pid
-	if nearest > 0:
-		if multiplayer.is_server():
-			PuppetControlSystem.server_puppet_grab(multiplayer.get_unique_id(), nearest, nearest_d)
-		else:
-			PuppetControlSystem.request_grab.rpc_id(1, nearest, nearest_d)
+			nearest_node = node
+	if nearest <= 0:
+		return {}
+	return {"peer": nearest, "dist": nearest_d, "node": nearest_node}
+
+
+func _try_puppet_capture() -> bool:
+	var target := _nearest_capture_target()
+	if target.is_empty():
+		return false
+	var pid: int = int(target["peer"])
+	var dist: float = float(target["dist"])
+	if multiplayer.is_server():
+		PuppetControlSystem.server_puppet_grab(multiplayer.get_unique_id(), pid, dist)
+	else:
+		PuppetControlSystem.request_grab.rpc_id(1, pid, dist)
+	return true
 
 
 func _peer_from_node(node: Object) -> int:
@@ -1518,10 +1687,6 @@ func _show_toast(text: String) -> void:
 	toast_timer.start(TOAST_DURATION)
 
 
-func _on_toast_timer_timeout() -> void:
-	toast_label.visible = false
-
-
 # --- Horror mode: neon HUD + phone signal --------------------------------
 
 func _build_horror_hud() -> void:
@@ -1604,9 +1769,20 @@ func _on_local_tether(strings: int, _ghost: bool, immobilized: bool) -> void:
 func _on_local_possessed(possessed: bool, struggle: float, needed: float) -> void:
 	_possessed = possessed
 	if possessed:
-		_show_toast("The puppet has you! Mash E to escape your mind (%d/%d)." % [int(struggle), int(needed)])
+		_show_toast("Trapped. You can only watch. Mash E to struggle (%d/%d)." % [int(struggle), int(needed)])
 	if _neon_hud and _neon_hud.has_method("set_possessed"):
 		_neon_hud.call("set_possessed", possessed, struggle, needed)
+
+
+func _on_child_found(carrier_peer: int) -> void:
+	if carrier_peer == multiplayer.get_unique_id():
+		_show_toast("You found the missing child — get her to the west field.")
+		_show_objective("Reach the escape zone with the child.")
+	elif not is_horror_puppet_master:
+		_show_toast("A teammate has the child. Cover them.")
+		_show_objective("Protect the carrier — get the child home.")
+	else:
+		_show_toast("They found the child. Stop the escape.")
 
 
 func _sync_horror_hud_signal() -> void:
@@ -1626,10 +1802,13 @@ func _attach_phone_rig() -> void:
 	_phone_rig = Node3D.new()
 	_phone_rig.name = "PhoneRig"
 	camera.add_child(_phone_rig)
-	_phone_rig.position = Vector3(0.16, -0.14, -0.28)
-	_phone_rig.rotation_degrees = Vector3(12, -22, 8)
+	_phone_rig.position = PHONE_HOLSTER_POS
+	_phone_rig.rotation_degrees = PHONE_HOLSTER_ROT
 	_held_phone = vis_script.attach(_phone_rig, true)
 	_phone_rig.visible = false
+	if _neon_hud and _neon_hud.has_method("get_phone_viewport"):
+		var vp: SubViewport = _neon_hud.call("get_phone_viewport")
+		vis_script.bind_hud_viewport(_held_phone, vp)
 
 	_phone_led_spot = SpotLight3D.new()
 	_phone_led_spot.name = "PhoneLED"
@@ -1654,7 +1833,7 @@ func _update_phone_led_visuals() -> void:
 	var selected := _selected_item_id() == "phone"
 	var led := holding and PhoneDevice.local_led_on and PhoneDevice.local_battery >= 1.0
 	if _phone_rig:
-		_phone_rig.visible = selected and not _inspecting_phone
+		_phone_rig.visible = selected
 	if _held_phone:
 		var vis_script: GDScript = load("res://scripts/horror/items/smartphone_visual.gd")
 		vis_script.update_screen(_held_phone, PhoneDevice.local_battery, TowerRules.signal_band(global_position), led)
@@ -1678,7 +1857,7 @@ func _rpc_try_child_pickup(pos: Vector3) -> void:
 		return
 	var sender := multiplayer.get_remote_sender_id()
 	if ChildSpawnRNG.server_try_pickup_child(sender, pos):
-		pass
+		return
 
 
 func _on_local_inventory_changed(slots: Array, selected: int) -> void:

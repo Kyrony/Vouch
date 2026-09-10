@@ -71,6 +71,7 @@ func _run() -> void:
 	_check(PCS.server_puppet_grab(pm, victim, 1.0), "puppet grabs a survivor in range")
 	_check(PCS.server_is_possessed(victim), "grabbed survivor is possessed")
 	_check(PCS.server_possessor(victim) == pm, "possessor is the PM")
+	_check(int(PCS.get("_controlling").get(pm, 0)) == victim, "PM is driving the captured body")
 	_check(not PCS.server_puppet_grab(pm, victim, 1.0), "can't re-grab an already possessed player")
 
 	# --- Freed by a teammate ---
@@ -86,6 +87,15 @@ func _run() -> void:
 			break
 	_check(freed, "mashing the struggle minigame breaks free")
 	_check(not PCS.server_is_possessed(victim), "self-escape ends the possession")
+
+	var player_script: GDScript = load("res://scripts/player.gd")
+	_check(is_equal_approx(float(player_script.PUPPET_MODEL_SCALE), 0.25), "puppet is 1/4 PM size")
+	_check(is_equal_approx(float(player_script.PUPPET_STAMINA_MAX), 20.0), "puppet stamina is 80% less")
+	_check(is_equal_approx(float(player_script.PUPPET_SPRINT_MULTIPLIER), 2.0), "puppet sprint is 2x")
+	_check(is_equal_approx(float(player_script.PUPPET_JUMP_MULTIPLIER), 2.0), "puppet jump is 2x")
+	var walk: float = float(player_script.SPEED)
+	var puppet_sprint: float = float(player_script.puppet_move_speed_for(true))
+	_check(absf(puppet_sprint / walk - 2.0) < 0.001, "puppet sprint speed is 2x walk")
 
 	if _failed:
 		print("VOUCH PM SYSTEMS PROBE FAILED")

@@ -64,6 +64,43 @@ func _probe() -> String:
 		return "practice dummy missing"
 	if not dummy.is_in_group("practice_dummy"):
 		return "dummy not in practice_dummy group"
+	if arena.get_node_or_null("PlayableProps") == null:
+		net.call("leave_game")
+		main.queue_free()
+		return "practice PlayableProps missing"
+	if arena.get_tree().get_nodes_in_group("fuse_boxes").is_empty():
+		net.call("leave_game")
+		main.queue_free()
+		return "practice fuse box missing"
+	if arena.get_tree().get_nodes_in_group("lockables").is_empty():
+		net.call("leave_game")
+		main.queue_free()
+		return "practice locked gate missing"
+	if arena.get_tree().get_nodes_in_group("dig_sites").is_empty():
+		net.call("leave_game")
+		main.queue_free()
+		return "practice dig site missing"
+	if arena.get_tree().get_nodes_in_group("rope_anchors").is_empty():
+		net.call("leave_game")
+		main.queue_free()
+		return "practice rope anchor missing"
+	var extras := 0
+	for child in arena.get_children():
+		if str(child.name).begins_with("PracticePickup_"):
+			extras += 1
+	if extras < 6:
+		net.call("leave_game")
+		main.queue_free()
+		return "practice extra tool pickups missing (%d)" % extras
+	var clock: Node = root.get_node_or_null("MatchClock")
+	if clock and bool(clock.get("running")):
+		net.call("leave_game")
+		main.queue_free()
+		return "practice should not run the morning clock"
+	if not arena.has_method("spawn_pickup"):
+		net.call("leave_game")
+		main.queue_free()
+		return "practice arena cannot spawn dug pickups"
 	var players := match_node.get_node("PlayersContainer").get_children()
 	var found_player := false
 	for child in players:

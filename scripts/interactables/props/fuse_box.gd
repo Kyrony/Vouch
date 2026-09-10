@@ -17,8 +17,30 @@ func _ready() -> void:
 	super._ready()
 	add_to_group("fuse_boxes")
 	prompt_text = "Fuse box"
+	collision_layer = 2
+	collision_mask = 0
 	if multiplayer.is_server() and has_fuse:
 		_power_circuit(true)
+
+
+func interact(by_peer_id: int) -> void:
+	if multiplayer.is_server():
+		_try_insert(by_peer_id)
+	else:
+		_rpc_try_insert.rpc_id(1)
+
+
+@rpc("any_peer", "call_remote", "reliable")
+func _rpc_try_insert() -> void:
+	if multiplayer.is_server():
+		_try_insert(multiplayer.get_remote_sender_id())
+
+
+func _try_insert(by_peer_id: int) -> void:
+	if not PlayerInventory.server_has_item(by_peer_id, "fuse"):
+		return
+	if server_insert_fuse(by_peer_id):
+		PlayerInventory.server_remove_item(by_peer_id, "fuse")
 
 
 func needs_fuse() -> bool:

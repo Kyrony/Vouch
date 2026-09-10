@@ -145,6 +145,22 @@ func server_set_stamina(peer_id: int, stamina: float, broadcast: bool = false) -
 		_broadcast_meters(peer_id)
 
 
+func server_set_stamina_max(peer_id: int, value: float) -> void:
+	if not multiplayer.is_server():
+		return
+	if not _max.has(peer_id):
+		server_init_peer(peer_id)
+	var caps: Vector3 = _max[peer_id]
+	caps.y = maxf(value, 1.0)
+	_max[peer_id] = caps
+	_stamina[peer_id] = minf(float(_stamina.get(peer_id, caps.y)), caps.y)
+	_broadcast_meters(peer_id)
+
+
+func server_get_stamina_max(peer_id: int) -> float:
+	return float(_max.get(peer_id, Vector3(DEFAULT_MAX, DEFAULT_MAX, DEFAULT_MAX)).y)
+
+
 func server_get_stamina(peer_id: int) -> float:
 	return float(_stamina.get(peer_id, DEFAULT_MAX))
 

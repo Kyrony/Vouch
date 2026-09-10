@@ -51,6 +51,12 @@ static func ensure(root: Control) -> void:
 	heading.position = Vector2(0, 0)
 	heading.size = Vector2(460, 26)
 	_T.apply_label(heading, "ui")
+	var in_pause := root.get_parent() != null and str(root.get_parent().name) == "SettingsDock"
+	heading.visible = not in_pause
+	if in_pause:
+		heading.text = ""
+		heading.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		heading.size = Vector2.ZERO
 	_ensure_tab_nav(root)
 	_ensure_keybinds(root)
 	_ensure_volume_row(root, "MasterVolumeRow", "MASTER VOLUME")
@@ -209,10 +215,10 @@ static func _ensure_tab_nav(root: Control) -> void:
 
 
 static func _shrink_tab_caption(button: Button) -> void:
-	button.add_theme_font_size_override("font_size", 12)
+	button.add_theme_font_size_override("font_size", _T.font_px(12))
 	var caption := button.get_node_or_null("Row/Caption") as Label
 	if caption:
-		caption.add_theme_font_size_override("font_size", 12)
+		caption.add_theme_font_size_override("font_size", _T.font_px(12))
 
 
 static func _ensure_keybinds(root: Control) -> void:
@@ -232,7 +238,7 @@ static func _ensure_keybinds(root: Control) -> void:
 	hint.text = "Current bindings. Remap ships in a later build."
 	hint.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	_T.apply_label(hint, "stone")
-	hint.add_theme_font_size_override("font_size", 13)
+	hint.add_theme_font_size_override("font_size", _T.font_px(13))
 	for action_name in SettingsManager.REMAPPABLE_ACTIONS:
 		var row := panel.get_node_or_null("Bind_%s" % action_name) as HBoxContainer
 		if row == null:
@@ -248,7 +254,7 @@ static func _ensure_keybinds(root: Control) -> void:
 		caption.text = str(ACTION_LABELS.get(action_name, action_name.to_upper()))
 		caption.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		_T.apply_label(caption, "ui")
-		caption.add_theme_font_size_override("font_size", 13)
+		caption.add_theme_font_size_override("font_size", _T.font_px(13))
 		var value := row.get_node_or_null("Value") as Label
 		if value == null:
 			value = Label.new()
@@ -273,7 +279,7 @@ static func _ensure_volume_row(root: Control, node_name: String, caption: String
 		row.add_child(label)
 	label.text = caption
 	_T.apply_label(label, "ui")
-	label.add_theme_font_size_override("font_size", 13)
+	label.add_theme_font_size_override("font_size", _T.font_px(13))
 	var slider := row.get_node_or_null("Slider") as HSlider
 	if slider == null:
 		slider = HSlider.new()

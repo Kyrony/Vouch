@@ -27,6 +27,8 @@ var practice_button: Button
 var friends_lobby_button: Button
 var start_button: Button
 var practice_pm_button: Button
+var practice_survivor_button: Button
+var practice_roles: VBoxContainer
 
 var lobby_code_input: LineEdit
 var friends_join_button: Button
@@ -44,7 +46,7 @@ var status_label: Label
 var player_count_label: Label
 var play_back_button: Button
 
-var _nav_id: String = "play"
+var _nav_id: String = ""
 var _mode_id: String = "classic"
 var _toast_tween: Tween
 
@@ -57,9 +59,43 @@ func _ready() -> void:
 	_NEON.call("apply", self)
 	set_process_unhandled_input(true)
 	_show_home()
-	_set_nav("play")
+	_set_nav("")
 	_set_mode("classic")
 	_on_roster_updated(NetworkManager.lobby_roster)
+
+
+func _ensure_practice_dropdown() -> void:
+	var modes := play_content.get_node_or_null("ModeList") as VBoxContainer
+	if modes == null or practice_button == null:
+		return
+	var leftover := play_content.get_node_or_null("PracticePmButton") as Button
+	if leftover and leftover.get_parent() == play_content:
+		play_content.remove_child(leftover)
+		leftover.queue_free()
+	practice_roles = modes.get_node_or_null("PracticeRoles") as VBoxContainer
+	if practice_roles == null:
+		practice_roles = VBoxContainer.new()
+		practice_roles.name = "PracticeRoles"
+		modes.add_child(practice_roles)
+		modes.move_child(practice_roles, practice_button.get_index() + 1)
+	practice_roles.add_theme_constant_override("separation", 4)
+	practice_roles.visible = false
+	practice_survivor_button = practice_roles.get_node_or_null("PracticeSurvivorButton") as Button
+	if practice_survivor_button == null:
+		practice_survivor_button = Button.new()
+		practice_survivor_button.name = "PracticeSurvivorButton"
+		practice_roles.add_child(practice_survivor_button)
+	practice_survivor_button.text = "SURVIVOR"
+	practice_survivor_button.custom_minimum_size = Vector2(0, 34)
+	_T.apply_action_button(practice_survivor_button, "gold")
+	practice_pm_button = practice_roles.get_node_or_null("PracticePmButton") as Button
+	if practice_pm_button == null:
+		practice_pm_button = Button.new()
+		practice_pm_button.name = "PracticePmButton"
+		practice_roles.add_child(practice_pm_button)
+	practice_pm_button.text = "PUPPET MASTER"
+	practice_pm_button.custom_minimum_size = Vector2(0, 34)
+	_T.apply_action_button(practice_pm_button, "blood")
 
 
 func _cache_nodes() -> void:
@@ -80,19 +116,7 @@ func _cache_nodes() -> void:
 	practice_button = $HomePanel/SidePanel/PlayContent/ModeList/PracticeButton
 	friends_lobby_button = $HomePanel/SidePanel/PlayContent/ModeList/FriendsLobbyButton
 	start_button = $HomePanel/SidePanel/PlayContent/StartButton
-	practice_pm_button = play_content.get_node_or_null("PracticePmButton") as Button
-	if practice_pm_button == null:
-		practice_pm_button = Button.new()
-		practice_pm_button.name = "PracticePmButton"
-		play_content.add_child(practice_pm_button)
-		practice_pm_button.text = "PRACTICE AS PUPPET MASTER"
-		practice_pm_button.set_anchors_preset(Control.PRESET_BOTTOM_WIDE)
-		practice_pm_button.offset_left = 0
-		practice_pm_button.offset_top = -92
-		practice_pm_button.offset_right = 0
-		practice_pm_button.offset_bottom = -48
-		_T.apply_action_button(practice_pm_button, "blood")
-	practice_pm_button.visible = false
+	_ensure_practice_dropdown()
 	lobby_code_input = $HomePanel/SidePanel/FriendsContent/LobbyCodeInput
 	friends_join_button = $HomePanel/SidePanel/FriendsContent/FriendsJoinButton
 	master_volume_slider = $HomePanel/SidePanel/SettingsContent/MasterVolumeRow/Slider
@@ -125,6 +149,8 @@ func _connect_signals() -> void:
 	practice_button.pressed.connect(func(): _set_mode("practice"))
 	friends_lobby_button.pressed.connect(func(): _set_mode("friends-lobby"))
 	start_button.pressed.connect(_on_start_mode)
+	if practice_survivor_button and not practice_survivor_button.pressed.is_connected(_on_practice_survivor):
+		practice_survivor_button.pressed.connect(_on_practice_survivor)
 	if practice_pm_button and not practice_pm_button.pressed.is_connected(_on_practice_pm):
 		practice_pm_button.pressed.connect(_on_practice_pm)
 	friends_join_button.pressed.connect(_on_friends_join)
@@ -207,9 +233,10 @@ func _set_mode(mode_id: String) -> void:
 	if thumb_tex:
 		thumb_tex.texture = _BUILD.call("mode_thumb_texture", mode_id)
 	if start_button:
-		start_button.text = "PRACTICE AS SURVIVOR" if mode_id == "practice" else "START"
-	if practice_pm_button:
-		practice_pm_button.visible = mode_id == "practice"
+		start_button.text = "START"
+		start_button.visible = mode_id != "practice"
+	if practice_roles:
+		practice_roles.visible = mode_id == "practice"
 
 
 func _on_nav_hover(button: Button) -> void:
@@ -229,11 +256,14 @@ func _on_start_mode() -> void:
 		status_label.text = "Classic outdoor neighborhood. Host a match or join by IP."
 		return
 	if _mode_id == "practice":
-		_start_practice(false)
 		return
 	var spec: Dictionary = _T.MODES.get(_mode_id, {})
 	var title: String = spec.get("title", _mode_id.to_upper())
 	_toast("%s is a stub in this build." % title)
+
+
+func _on_practice_survivor() -> void:
+	_start_practice(false)
 
 
 func _on_practice_pm() -> void:

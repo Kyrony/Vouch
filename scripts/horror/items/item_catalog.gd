@@ -67,6 +67,18 @@ const ITEMS: Dictionary = {
 		"label": "Keycard", "color": Color(0.2, 0.7, 0.9),
 		"unlock_range": 3.0, "use_time": 0.6, "consumable": true,
 	},
+	"shovel": {
+		"label": "Shovel", "color": Color(0.45, 0.38, 0.22),
+		"dig_range": 3.0, "use_time": 1.6, "consumable": false,
+	},
+	"rope": {
+		"label": "Rope", "color": Color(0.62, 0.42, 0.22),
+		"climb_range": 4.0, "use_time": 1.0, "consumable": true,
+	},
+	"firearm": {
+		"label": "Firearm", "color": Color(0.28, 0.28, 0.30),
+		"stun_range": 18.0, "stun_seconds": 2.5, "use_time": 0.4, "consumable": false,
+	},
 
 	# --- Puppet Master items ---
 	"strings": {

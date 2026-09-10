@@ -132,6 +132,17 @@ func _ensure_settings_dock() -> void:
 	_settings_root.offset_right = -8
 	_settings_root.offset_bottom = -8
 	_SETTINGS.call("ensure", _settings_root)
+	_settings_root.offset_left = 8
+	_settings_root.offset_top = 52
+	_settings_root.offset_right = -8
+	_settings_root.offset_bottom = -8
+	var heading := _settings_root.get_node_or_null("Heading") as Label
+	if heading:
+		heading.visible = false
+		heading.text = ""
+		heading.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_back_button.z_index = 40
+	_back_button.move_to_front()
 
 
 func _on_resume_pressed() -> void:

@@ -182,6 +182,44 @@ func _run() -> void:
 
 	# Light switch is no longer an item.
 	_check(not CAT.has_item("light_switch"), "light switch is a prop, not an item")
+	_check(CAT.has_item("shovel") and CAT.has_item("rope") and CAT.has_item("firearm"), "shovel/rope/firearm are catalog items")
+	_check(not CAT.is_consumable("shovel") and not CAT.is_consumable("firearm"), "shovel and firearm are reusable")
+	_check(CAT.is_consumable("rope"), "rope is consumed on a successful climb")
+
+	var bay := Node3D.new()
+	bay.set_script(load("res://scripts/horror/practice_world.gd"))
+	bay.add_to_group("horror_world")
+	root.add_child(bay)
+	await process_frame
+
+	var dig := _new_prop("res://scripts/interactables/props/dig_site.gd", {"buried_item": "key"}, Vector3(1.0, 0, 0))
+	var shovel_consumed: bool = PI._apply_use_item(me, "shovel")
+	_check(bool(dig.get("dug")), "shovel digs a nearby site")
+	_check(not shovel_consumed, "shovel is reusable")
+	await process_frame
+	var buried := 0
+	for node in root.get_tree().get_nodes_in_group("world_pickups"):
+		if str(node.get("item_id")) == "key":
+			buried += 1
+	_check(buried >= 1, "digging drops the buried item")
+
+	var start_y := me_node.global_position.y
+	var rope := _new_prop("res://scripts/interactables/props/rope_anchor.gd", {"climb_height": 3.5}, Vector3(0.4, 0, 0))
+	var rope_consumed: bool = PI._apply_use_item(me, "rope")
+	_check(bool(rope.get("used")), "rope attaches to a nearby ledge")
+	_check(rope_consumed, "rope is consumed on a climb")
+	_check(me_node.global_position.y >= start_y + 3.0, "rope lifts the survivor")
+
+	GS.server_set_puppet_master(mate)
+	me_node.global_position = Vector3.ZERO
+	for node in root.get_tree().get_nodes_in_group("players"):
+		if str(node.name) == str(mate) and node is Node3D:
+			(node as Node3D).global_position = Vector3(0, 0, -2.0)
+	PMS.set("_stun_until_ms", 0)
+	var gun_consumed: bool = PI._apply_use_item(me, "firearm")
+	_check(PMS.server_is_pm_stunned(), "firearm stuns the Puppet Master")
+	_check(not gun_consumed, "firearm is reusable")
+
 
 	# Timed hotbar flow: start use -> complete -> consume (medkit) / keep (crowbar).
 	PI.server_add_item(me, "medkit")

@@ -17,7 +17,7 @@ const MENU_FRONT_Z := 5
 ## Centered side-box size (opens in the middle of the page on nav click).
 ## Sized so the mode banner image fills the width and every mode row + START
 ## fits; width stays wide enough for the Settings tab content.
-const SIDE_SIZE := Vector2(496, 470)
+const SIDE_SIZE := Vector2(496, 560)
 ## Mode banner aspect (cropped art is 1280x304).
 const THUMB_ASPECT := 1280.0 / 304.0
 
@@ -361,7 +361,7 @@ static func _ensure_play_content(side: Control) -> void:
 		modes.name = "ModeList"
 		play.add_child(modes)
 	modes.position = Vector2(0, thumb_h + 12.0)
-	modes.size = Vector2(content_w, 300)
+	modes.size = Vector2(content_w, 360)
 	modes.add_theme_constant_override("separation", 6)
 	for mode_id in MODE_ORDER:
 		var node_name: String = MODE_NODE[mode_id]

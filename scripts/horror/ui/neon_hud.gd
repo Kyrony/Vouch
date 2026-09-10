@@ -1,8 +1,9 @@
 extends Control
 class_name NeonHud
 ## K7 diegetic phone HUD. The phone IS the HUD (chrome v2).
-## Holstered PhoneRoot sits bottom-left. Hold E with the phone in-hand
-## inspects it center-screen. Right ItemRail wells are 88×80.
+## PhoneRoot renders inside PhoneViewport and is bound to the 3D phone
+## screen — it is not a left-canvas overlay. Hold E with the phone in-hand
+## brings the 3D phone closer. Right ItemRail wells are 88×80.
 ## InteractPrompt is a phone-toast. Rear/Front camera chrome is visual only.
 
 const _PACK: GDScript = preload("res://scripts/horror/ui/hud_icon_pack.gd")
@@ -52,6 +53,7 @@ var interact_sub: String = "Look / Talk"
 var inspecting: bool = false
 
 var _built: bool = false
+var _phone_vp: SubViewport
 var _phone_root: Control
 var _inspect_dim: ColorRect
 var _health_bar: TextureProgressBar
@@ -126,9 +128,9 @@ func _process(delta: float) -> void:
 		_refresh_ability()
 
 
-func set_meters(hp: float, hp_max: float, stamina: float, fear: float) -> void:
+func set_meters(hp: float, hp_max: float, stamina: float, fear: float, stamina_max: float = 100.0) -> void:
 	health_ratio = clampf(hp / maxf(hp_max, 1.0), 0.0, 1.0)
-	stamina_ratio = clampf(stamina / 100.0, 0.0, 1.0)
+	stamina_ratio = clampf(stamina / maxf(stamina_max, 1.0), 0.0, 1.0)
 	fear_ratio = clampf(fear / 100.0, 0.0, 1.0)
 	panic = fear_ratio >= 0.7
 	if _built:
@@ -213,8 +215,13 @@ func set_phone_inspect(on: bool) -> void:
 		_rail.visible = not on
 	if _prompt_wrap and on:
 		_prompt_wrap.visible = false
-	_layout_phone(on)
 	queue_redraw()
+
+
+func get_phone_viewport() -> SubViewport:
+	if not _built:
+		_build()
+	return _phone_vp
 
 
 func _notification(what: int) -> void:
@@ -241,29 +248,18 @@ func _inspect_phone_size() -> Vector2:
 	return Vector2(w, h)
 
 
-func _layout_phone(inspect: bool) -> void:
+func _layout_phone(_inspect: bool = false) -> void:
 	if _phone_root == null:
 		return
-	if inspect:
-		var sz := _inspect_phone_size()
-		var s := sz.y / float(PHONE_H)
-		_phone_root.scale = Vector2(s, s)
-		_phone_root.pivot_offset = Vector2(PHONE_W * 0.5, PHONE_H * 0.5)
-		_phone_root.z_index = 40
-		_phone_root.set_anchors_preset(PRESET_CENTER)
-		_phone_root.offset_left = -PHONE_W * 0.5
-		_phone_root.offset_top = -PHONE_H * 0.5
-		_phone_root.offset_right = PHONE_W * 0.5
-		_phone_root.offset_bottom = PHONE_H * 0.5
-	else:
-		_phone_root.scale = Vector2.ONE
-		_phone_root.pivot_offset = Vector2.ZERO
-		_phone_root.z_index = 0
-		_phone_root.set_anchors_preset(PRESET_BOTTOM_LEFT)
-		_phone_root.offset_left = 16
-		_phone_root.offset_top = -PHONE_H - 16
-		_phone_root.offset_right = 16 + PHONE_W
-		_phone_root.offset_bottom = -16
+	_phone_root.scale = Vector2.ONE
+	_phone_root.set_anchors_preset(PRESET_TOP_LEFT)
+	_phone_root.position = Vector2.ZERO
+	_phone_root.size = Vector2(PHONE_W, PHONE_H)
+	_phone_root.custom_minimum_size = Vector2(PHONE_W, PHONE_H)
+	_phone_root.offset_left = 0
+	_phone_root.offset_top = 0
+	_phone_root.offset_right = PHONE_W
+	_phone_root.offset_bottom = PHONE_H
 
 
 func _load_textures() -> void:
@@ -299,7 +295,7 @@ func _build() -> void:
 	_inspect_dim = ColorRect.new()
 	_inspect_dim.name = "InspectDim"
 	_inspect_dim.set_anchors_preset(PRESET_FULL_RECT)
-	_inspect_dim.color = Color(0, 0, 0, 0.72)
+	_inspect_dim.color = Color(0, 0, 0, 0.38)
 	_inspect_dim.mouse_filter = MOUSE_FILTER_IGNORE
 	_inspect_dim.visible = false
 	add_child(_inspect_dim)
@@ -362,13 +358,22 @@ func _on_match_clock(_progress: float, label: String) -> void:
 
 
 func _build_phone_root() -> void:
+	_phone_vp = SubViewport.new()
+	_phone_vp.name = "PhoneViewport"
+	_phone_vp.size = Vector2i(PHONE_W, PHONE_H)
+	_phone_vp.transparent_bg = false
+	_phone_vp.disable_3d = true
+	_phone_vp.handle_input_locally = false
+	_phone_vp.gui_disable_input = true
+	_phone_vp.render_target_update_mode = SubViewport.UPDATE_ALWAYS
+	add_child(_phone_vp)
 	_phone_root = Control.new()
 	_phone_root.name = "PhoneRoot"
 	_phone_root.mouse_filter = MOUSE_FILTER_IGNORE
 	_phone_root.texture_filter = TEXTURE_FILTER_LINEAR
 	_phone_root.clip_contents = true
+	_phone_vp.add_child(_phone_root)
 	_layout_phone(false)
-	add_child(_phone_root)
 
 	var bezel := Panel.new()
 	bezel.name = "PhoneFrame"

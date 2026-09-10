@@ -297,8 +297,13 @@ static func validate_live_start_match_world(world_root: Node) -> String:
 	var shell_err := validate_no_building_shells(horror)
 	if not shell_err.is_empty():
 		return shell_err
-	if horror.get_node_or_null("PlaceholderGun") == null:
-		return "PlaceholderGun missing near outdoor spawn"
+	var has_firearm := false
+	for node in horror.get_tree().get_nodes_in_group("world_pickups"):
+		if str(node.get("item_id")) == "firearm":
+			has_firearm = true
+			break
+	if not has_firearm and horror.get_node_or_null("PlaceholderGun") == null:
+		return "firearm pickup missing near outdoor spawn"
 	return validate_world(horror)
 
 
@@ -665,7 +670,7 @@ static func validate_stamina_hud_fill(hud: Control, stamina: float) -> String:
 	if hud == null or not hud.has_method("set_meters"):
 		return "NeonHud missing set_meters"
 	hud.call("set_meters", 100.0, 100.0, stamina, 0.0)
-	var bar := hud.get_node_or_null("Vitals/MeterColumn/StaminaRow/StaminaBar") as TextureProgressBar
+	var bar := hud.find_child("StaminaBar", true, false) as TextureProgressBar
 	if bar == null:
 		return "HUD stamina TextureProgressBar missing"
 	var expected := clampf(stamina / 100.0, 0.0, 1.0)

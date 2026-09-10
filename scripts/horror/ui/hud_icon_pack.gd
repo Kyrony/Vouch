@@ -126,6 +126,12 @@ static func hotbar_label(item_id: String) -> String:
 			return "KEY"
 		"crowbar":
 			return "BAR"
+		"shovel":
+			return "DIG"
+		"rope":
+			return "ROPE"
+		"firearm", "gun":
+			return "GUN"
 		_:
 			return item_id.to_upper()
 

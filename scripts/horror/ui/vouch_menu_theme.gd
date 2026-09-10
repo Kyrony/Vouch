@@ -16,6 +16,7 @@ const PANEL := Color(0.055, 0.011, 0.015, 0.96) ## dark blood-red panel fill
 const GLOW := Color(1.0, 0.84, 0.32, 1.0)
 const PLACEHOLDER := Color(0.0196078, 0.0078431, 0.0117647, 1.0) ## same as BASE — blank field
 const WHITE := Color(0.92, 0.90, 0.86, 1.0)
+const FONT_SCALE := 1.2
 
 const FONT_UI := "res://assets/fonts/Cinzel-Bold.ttf"
 const FONT_UI_REG := "res://assets/fonts/Cinzel-Regular.ttf"
@@ -48,6 +49,10 @@ const MODES := {
 		"desc": "Private lobby. Invite with a code.",
 	},
 }
+
+
+static func font_px(base: int) -> int:
+	return int(round(float(base) * FONT_SCALE))
 
 
 static func load_font(path: String) -> Font:
@@ -110,7 +115,7 @@ static func apply_nav_button(button: Button, selected: bool) -> void:
 	button.add_theme_stylebox_override("pressed", active)
 	button.add_theme_stylebox_override("focus", hover)
 	button.add_theme_font_override("font", ui_font())
-	button.add_theme_font_size_override("font_size", 18)
+	button.add_theme_font_size_override("font_size", font_px(18))
 	var ink := GOLD if selected else STONE
 	button.add_theme_color_override("font_color", ink)
 	button.add_theme_color_override("font_hover_color", GOLD)
@@ -120,11 +125,11 @@ static func apply_nav_button(button: Button, selected: bool) -> void:
 	if diamond:
 		diamond.text = "◆"
 		diamond.add_theme_color_override("font_color", BLOOD if selected else BLOOD_DIM)
-		diamond.add_theme_font_size_override("font_size", 16)
+		diamond.add_theme_font_size_override("font_size", font_px(16))
 	var caption := button.get_node_or_null("Row/Caption") as Label
 	if caption:
 		caption.add_theme_font_override("font", ui_font())
-		caption.add_theme_font_size_override("font_size", 18)
+		caption.add_theme_font_size_override("font_size", font_px(18))
 		caption.add_theme_color_override("font_color", ink)
 	var glyph := button.get_node_or_null("Row/Glyph") as Control
 	if glyph and glyph.has_method("set_ink"):
@@ -145,11 +150,11 @@ static func apply_mode_button(button: Button, selected: bool) -> void:
 	var desc := button.get_node_or_null("Col/Desc") as Label
 	if title:
 		title.add_theme_font_override("font", ui_font())
-		title.add_theme_font_size_override("font_size", 16)
+		title.add_theme_font_size_override("font_size", font_px(16))
 		title.add_theme_color_override("font_color", GOLD if selected else STONE)
 	if desc:
 		desc.add_theme_font_override("font", stone_font())
-		desc.add_theme_font_size_override("font_size", 13)
+		desc.add_theme_font_size_override("font_size", font_px(13))
 		desc.add_theme_color_override("font_color", STONE if selected else STONE_DIM)
 
 
@@ -161,7 +166,7 @@ static func apply_action_button(button: Button, kind: String = "gold") -> void:
 	button.add_theme_stylebox_override("pressed", box(BLOOD, Color(BLOOD.r, BLOOD.g, BLOOD.b, 0.18), 2, 2, true))
 	button.add_theme_stylebox_override("focus", box(GOLD, fill, 2, 2, true))
 	button.add_theme_font_override("font", ui_font())
-	button.add_theme_font_size_override("font_size", 16)
+	button.add_theme_font_size_override("font_size", font_px(16))
 	button.add_theme_color_override("font_color", GOLD)
 	button.add_theme_color_override("font_hover_color", GOLD.lightened(0.15))
 	button.add_theme_color_override("font_pressed_color", BLOOD)
@@ -187,7 +192,7 @@ static func apply_line_edit(edit: LineEdit) -> void:
 	edit.add_theme_stylebox_override("normal", box(GOLD_DIM, Color(0.02, 0.01, 0.012, 0.95), 1))
 	edit.add_theme_stylebox_override("focus", box(GOLD, Color(0.04, 0.02, 0.015, 0.95), 2, 2, true))
 	edit.add_theme_font_override("font", stone_font())
-	edit.add_theme_font_size_override("font_size", 16)
+	edit.add_theme_font_size_override("font_size", font_px(16))
 	edit.add_theme_color_override("font_color", STONE)
 	edit.add_theme_color_override("font_placeholder_color", STONE_DIM)
 
@@ -196,13 +201,13 @@ static func apply_label(label: Label, kind: String = "body") -> void:
 	match kind:
 		"ui":
 			label.add_theme_font_override("font", ui_font())
-			label.add_theme_font_size_override("font_size", 16)
+			label.add_theme_font_size_override("font_size", font_px(16))
 			label.add_theme_color_override("font_color", GOLD)
 		"stone":
 			label.add_theme_font_override("font", stone_font())
-			label.add_theme_font_size_override("font_size", 14)
+			label.add_theme_font_size_override("font_size", font_px(14))
 			label.add_theme_color_override("font_color", STONE)
 		_:
 			label.add_theme_font_override("font", ui_font_reg())
-			label.add_theme_font_size_override("font_size", 14)
+			label.add_theme_font_size_override("font_size", font_px(14))
 			label.add_theme_color_override("font_color", STONE)
