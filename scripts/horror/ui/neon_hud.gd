@@ -1102,6 +1102,7 @@ func _refresh_prompt() -> void:
 		_prompt_overlay.texture = _tex_prompt_hold
 	else:
 		_prompt_overlay.texture = _tex_prompt
+	_prompt_overlay.visible = _prompt_overlay.texture != null and interact_action.to_upper().contains("SEARCH")
 	_prompt_action.text = interact_action.to_upper()
 	_prompt_sub.text = interact_sub
 	_prompt_hold_bar.visible = interact_hold
