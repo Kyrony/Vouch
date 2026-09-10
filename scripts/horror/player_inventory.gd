@@ -115,6 +115,23 @@ func _broadcast(peer_id: int) -> void:
 		_client_inventory.rpc_id(peer_id, slots, sel)
 
 
+## Re-emit the local hotbar. Spawn grants the phone before Player._ready connects.
+func pull_local() -> void:
+	var me := multiplayer.get_unique_id()
+	if multiplayer.is_server():
+		if _inventories.has(me):
+			local_inventory_changed.emit(server_get_slots(me), server_get_selected(me))
+		return
+	_rpc_request_sync.rpc_id(1)
+
+
+@rpc("any_peer", "call_remote", "reliable")
+func _rpc_request_sync() -> void:
+	if not multiplayer.is_server():
+		return
+	_broadcast(multiplayer.get_remote_sender_id())
+
+
 @rpc("authority", "call_remote", "reliable")
 func _client_inventory(slots: Array, selected: int) -> void:
 	local_inventory_changed.emit(slots, selected)

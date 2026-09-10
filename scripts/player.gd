@@ -187,6 +187,7 @@ func _ready() -> void:
 		if horror_mode:
 			PlayerHealth.local_health_changed.connect(_on_local_health_changed)
 			PlayerInventory.local_inventory_changed.connect(_on_local_inventory_changed)
+			PlayerInventory.pull_local()
 			PlayerEffects.local_meters_changed.connect(_on_local_meters_changed)
 			PhoneDevice.local_phone_state.connect(_on_local_phone_state)
 			PuppetStringSystem.local_tether_changed.connect(_on_local_tether)
