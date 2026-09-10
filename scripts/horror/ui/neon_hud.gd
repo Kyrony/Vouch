@@ -13,14 +13,14 @@ const RAIL_SLOTS := 5
 const SLOT_PX := 88
 const SLOT_H := 80
 const SLOT_GAP := 12
-const PHONE_W := 296
+const PHONE_W := 348
 const PHONE_H := 620
 const INSPECT_W := 430
 const INSPECT_H := 680
 const SEGMENTS := 10
 const ECG_SAMPLES := 320
 ## Seconds of ECG paper on-screen. ~2 beats at rest so the TP flatline reads.
-const ECG_WINDOW := 1.85
+const ECG_WINDOW := 2.15
 const PINK := Color(1.0, 0.28, 0.62)
 const CARD := Color(0.07, 0.07, 0.09, 0.96)
 
@@ -221,12 +221,21 @@ func _notification(what: int) -> void:
 
 
 func _inspect_phone_size() -> Vector2:
-	## Hold-E read mode: phone fills most of the viewport so chrome is readable.
+	## Hold-E read mode: scale the phone up, keep tall-phone aspect, fill height.
 	var vp := get_viewport_rect().size
 	if vp.x < 8.0 or vp.y < 8.0:
 		return Vector2(INSPECT_W, INSPECT_H)
-	var w := clampf(vp.x * 0.46, 420.0, 760.0)
-	var h := clampf(vp.y * 0.92, 560.0, 1100.0)
+	var aspect := float(PHONE_W) / float(PHONE_H)
+	var s := minf(vp.y * 0.92 / float(PHONE_H), vp.x * 0.48 / float(PHONE_W))
+	s = maxf(s, 1.15)
+	var w := float(PHONE_W) * s
+	var h := float(PHONE_H) * s
+	if h > vp.y * 0.94:
+		h = vp.y * 0.94
+		w = h * aspect
+	if w > vp.x * 0.55:
+		w = vp.x * 0.55
+		h = w / aspect
 	return Vector2(w, h)
 
 
@@ -235,42 +244,24 @@ func _layout_phone(inspect: bool) -> void:
 		return
 	if inspect:
 		var sz := _inspect_phone_size()
+		var s := sz.y / float(PHONE_H)
+		_phone_root.scale = Vector2(s, s)
+		_phone_root.pivot_offset = Vector2(PHONE_W * 0.5, PHONE_H * 0.5)
 		_phone_root.z_index = 40
 		_phone_root.set_anchors_preset(PRESET_CENTER)
-		_phone_root.offset_left = -sz.x * 0.5
-		_phone_root.offset_top = -sz.y * 0.5
-		_phone_root.offset_right = sz.x * 0.5
-		_phone_root.offset_bottom = sz.y * 0.5
-		_apply_inspect_fonts(true)
+		_phone_root.offset_left = -PHONE_W * 0.5
+		_phone_root.offset_top = -PHONE_H * 0.5
+		_phone_root.offset_right = PHONE_W * 0.5
+		_phone_root.offset_bottom = PHONE_H * 0.5
 	else:
+		_phone_root.scale = Vector2.ONE
+		_phone_root.pivot_offset = Vector2.ZERO
 		_phone_root.z_index = 0
 		_phone_root.set_anchors_preset(PRESET_BOTTOM_LEFT)
 		_phone_root.offset_left = 16
 		_phone_root.offset_top = -PHONE_H - 16
 		_phone_root.offset_right = 16 + PHONE_W
 		_phone_root.offset_bottom = -16
-		_apply_inspect_fonts(false)
-
-
-func _apply_inspect_fonts(inspect: bool) -> void:
-	if _phone_root == null:
-		return
-	var scale := 1.42 if inspect else 1.0
-	_scale_label_fonts(_phone_root, scale)
-
-
-func _scale_label_fonts(node: Node, scale: float) -> void:
-	if node is Label:
-		var lab := node as Label
-		var base := int(lab.get_meta("base_font", 0))
-		if base <= 0:
-			base = lab.get_theme_font_size("font_size")
-			if base <= 0:
-				base = 12
-			lab.set_meta("base_font", base)
-		lab.add_theme_font_size_override("font_size", maxi(int(round(float(base) * scale)), 10))
-	for child in node.get_children():
-		_scale_label_fonts(child, scale)
 
 
 func _load_textures() -> void:
@@ -373,6 +364,7 @@ func _build_phone_root() -> void:
 	_phone_root.name = "PhoneRoot"
 	_phone_root.mouse_filter = MOUSE_FILTER_IGNORE
 	_phone_root.texture_filter = TEXTURE_FILTER_LINEAR
+	_phone_root.clip_contents = true
 	_layout_phone(false)
 	add_child(_phone_root)
 
@@ -397,10 +389,10 @@ func _build_phone_root() -> void:
 	var screen := MarginContainer.new()
 	screen.name = "Screen"
 	screen.set_anchors_preset(PRESET_FULL_RECT)
-	screen.add_theme_constant_override("margin_left", 18)
-	screen.add_theme_constant_override("margin_right", 18)
-	screen.add_theme_constant_override("margin_top", 28)
-	screen.add_theme_constant_override("margin_bottom", 16)
+	screen.add_theme_constant_override("margin_left", 14)
+	screen.add_theme_constant_override("margin_right", 14)
+	screen.add_theme_constant_override("margin_top", 26)
+	screen.add_theme_constant_override("margin_bottom", 14)
 	screen.mouse_filter = MOUSE_FILTER_IGNORE
 	_phone_root.add_child(screen)
 
@@ -412,6 +404,7 @@ func _build_phone_root() -> void:
 
 	_build_status_row(col)
 	_build_camera_header(col)
+	_build_live_stage(col)
 	_build_camera_card(col)
 	_build_flashlight_card(col)
 	_build_vitals_row(col)
@@ -465,6 +458,16 @@ func _build_camera_header(parent: VBoxContainer) -> void:
 	right.add_child(rear)
 
 
+func _build_live_stage(parent: VBoxContainer) -> void:
+	var stage := ColorRect.new()
+	stage.name = "LiveStage"
+	stage.color = Color(0.03, 0.03, 0.04, 0.9)
+	stage.custom_minimum_size = Vector2(0, 36)
+	stage.size_flags_vertical = SIZE_EXPAND_FILL
+	stage.mouse_filter = MOUSE_FILTER_IGNORE
+	parent.add_child(stage)
+
+
 func _build_camera_card(parent: VBoxContainer) -> void:
 	var card := _phone_card("CameraSwitch")
 	parent.add_child(card)
@@ -476,7 +479,7 @@ func _build_camera_card(parent: VBoxContainer) -> void:
 	copy.mouse_filter = MOUSE_FILTER_IGNORE
 	row.add_child(copy)
 	copy.add_child(_phone_label("CAMERA SWITCH", 12, Color.WHITE))
-	copy.add_child(_phone_label("Toggle between rear and front camera", 10, Color(0.55, 0.56, 0.6)))
+	copy.add_child(_phone_label("Toggle rear and front camera", 10, Color(0.55, 0.56, 0.6)))
 	row.add_child(_chip("REAR", true))
 	row.add_child(_chip("FRONT", false))
 
@@ -525,13 +528,12 @@ func _build_vitals_row(parent: VBoxContainer) -> void:
 	var row := HBoxContainer.new()
 	row.name = "VitalsRow"
 	row.add_theme_constant_override("separation", 6)
-	row.size_flags_vertical = SIZE_EXPAND_FILL
 	row.mouse_filter = MOUSE_FILTER_IGNORE
 	parent.add_child(row)
 
 	var ecg_card := _phone_card("EcgChrome")
 	ecg_card.size_flags_horizontal = SIZE_EXPAND_FILL
-	ecg_card.custom_minimum_size = Vector2(0, 92)
+	ecg_card.custom_minimum_size = Vector2(0, 86)
 	row.add_child(ecg_card)
 	var ecg_col := VBoxContainer.new()
 	ecg_col.add_theme_constant_override("separation", 2)
@@ -548,8 +550,8 @@ func _build_vitals_row(parent: VBoxContainer) -> void:
 	ecg_head.add_child(_bpm_label)
 	_ecg_plot = Control.new()
 	_ecg_plot.name = "EcgPlot"
-	_ecg_plot.custom_minimum_size = Vector2(0, 56)
-	_ecg_plot.size_flags_vertical = SIZE_EXPAND_FILL
+	_ecg_plot.custom_minimum_size = Vector2(0, 52)
+	_ecg_plot.size_flags_vertical = SIZE_FILL
 	_ecg_plot.clip_contents = true
 	_ecg_plot.mouse_filter = MOUSE_FILTER_IGNORE
 	ecg_col.add_child(_ecg_plot)
@@ -574,7 +576,7 @@ func _build_vitals_row(parent: VBoxContainer) -> void:
 	_ecg_plot.add_child(_ecg_wave)
 
 	var stam_card := _phone_card("StaminaTrack")
-	stam_card.custom_minimum_size = Vector2(86, 78)
+	stam_card.custom_minimum_size = Vector2(78, 78)
 	row.add_child(stam_card)
 	var stam_col := VBoxContainer.new()
 	stam_col.mouse_filter = MOUSE_FILTER_IGNORE
@@ -583,7 +585,7 @@ func _build_vitals_row(parent: VBoxContainer) -> void:
 	_place_segments(_stamina_segs, stam_col, null, "StaminaSeg")
 
 	_build_phone_signal()
-	_signal_widget.custom_minimum_size = Vector2(78, 78)
+	_signal_widget.custom_minimum_size = Vector2(72, 78)
 	row.add_child(_signal_widget)
 
 
@@ -972,7 +974,7 @@ func _lead_ii_sample(time_s: float, bpm: float, hp: float) -> float:
 	var y := 0.0
 	if t < qrs_start:
 		var p_mu := p_dur * 0.5
-		y = 0.15 * _gauss(t, p_mu, p_dur * 0.26)
+		y = 0.11 * _gauss(t, p_mu, p_dur * 0.24)
 	elif t < qrs_start + qrs_dur:
 		var u := (t - qrs_start) / qrs_dur
 		if u < 0.16:
@@ -988,7 +990,7 @@ func _lead_ii_sample(time_s: float, bpm: float, hp: float) -> float:
 	elif t < complex_end:
 		var u := (t - (qrs_start + qrs_dur + st_dur)) / maxf(t_dur, 0.001)
 		var sig := 0.20 if u < 0.45 else 0.28
-		y = 0.30 * _gauss(u, 0.45, sig)
+		y = 0.24 * _gauss(u, 0.45, sig)
 	else:
 		y = 0.0
 	if hp < 0.28:
