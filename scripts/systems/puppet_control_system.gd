@@ -38,7 +38,7 @@ func server_take_puppet(pm_peer: int) -> bool:
 	PlayerEffects.server_set_stamina_max(pm_peer, 20.0)
 	if pm_peer == multiplayer.get_unique_id():
 		local_puppet_state_changed.emit(true)
-	else:
+	elif GameState.is_network_peer(pm_peer):
 		_client_puppet_state.rpc_id(pm_peer, true)
 	return true
 
@@ -53,7 +53,7 @@ func server_drop_puppet(pm_peer: int) -> void:
 	PlayerEffects.server_set_stamina_max(pm_peer, PlayerEffects.DEFAULT_MAX)
 	if pm_peer == multiplayer.get_unique_id():
 		local_puppet_state_changed.emit(false)
-	else:
+	elif GameState.is_network_peer(pm_peer):
 		_client_puppet_state.rpc_id(pm_peer, false)
 
 
@@ -124,7 +124,7 @@ func _broadcast_possess(victim_peer: int) -> void:
 	var struggle := server_struggle_value(victim_peer)
 	if victim_peer == multiplayer.get_unique_id():
 		local_possessed_changed.emit(possessed, struggle, ESCAPE_STRUGGLE_NEEDED)
-	else:
+	elif GameState.is_network_peer(victim_peer):
 		_client_possessed.rpc_id(victim_peer, possessed, struggle, ESCAPE_STRUGGLE_NEEDED)
 
 
@@ -133,13 +133,14 @@ func _broadcast_control(pm_peer: int, victim_peer: int, active: bool) -> void:
 		return
 	if pm_peer == multiplayer.get_unique_id():
 		local_body_control_changed.emit(victim_peer, active)
-	else:
+	elif GameState.is_network_peer(pm_peer):
 		_client_body_control.rpc_id(pm_peer, victim_peer, active)
 
 
 func _sync_body_authority(victim_peer: int, auth: int) -> void:
 	_apply_body_authority(victim_peer, auth)
-	_rpc_body_authority.rpc(victim_peer, auth)
+	if not multiplayer.get_peers().is_empty():
+		_rpc_body_authority.rpc(victim_peer, auth)
 
 
 func _apply_body_authority(victim_peer: int, auth: int) -> void:

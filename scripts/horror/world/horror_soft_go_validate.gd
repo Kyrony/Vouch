@@ -665,7 +665,7 @@ static func validate_stamina_hud_fill(hud: Control, stamina: float) -> String:
 	if hud == null or not hud.has_method("set_meters"):
 		return "NeonHud missing set_meters"
 	hud.call("set_meters", 100.0, 100.0, stamina, 0.0)
-	var bar := hud.get_node_or_null("Vitals/MeterColumn/StaminaRow/StaminaBar") as TextureProgressBar
+	var bar := hud.find_child("StaminaBar", true, false) as TextureProgressBar
 	if bar == null:
 		return "HUD stamina TextureProgressBar missing"
 	var expected := clampf(stamina / 100.0, 0.0, 1.0)
