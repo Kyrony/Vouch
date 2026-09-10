@@ -108,11 +108,11 @@ static func _server_build_practice(match_node: Node) -> void:
 	if GameState.practice_as_pm:
 		PlayerInventory.server_init_peer(peer_id)
 		PlayerInventory.server_add_item(peer_id, "puppet")
-		else:
-			for item_id in ["crowbar", "medkit", "scissors", "flare", "energy_drink", "adrenaline", "bandage"]:
-				PlayerInventory.server_add_item(peer_id, str(item_id))
-			# Phone stays slot 0 (granted at spawn) so the survivor starts holding it.
-			PlayerInventory.server_set_selected(peer_id, 0)
+	else:
+		for item_id in ["crowbar", "medkit", "scissors", "flare", "energy_drink", "adrenaline", "bandage"]:
+			PlayerInventory.server_add_item(peer_id, str(item_id))
+		# Phone stays slot 0 (granted at spawn) so the survivor starts holding it.
+		PlayerInventory.server_set_selected(peer_id, 0)
 	print("PRACTICE ready role=%s dummy=%s" % [
 		"pm" if GameState.practice_as_pm else "survivor",
 		arena.get_node_or_null("9001") != null,
