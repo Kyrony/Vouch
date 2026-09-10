@@ -143,6 +143,7 @@ var _phone_rig: Node3D = null
 var _held_phone: Node3D = null
 var _phone_led_spot: SpotLight3D = null
 var _phone_led_omni: OmniLight3D = null
+var _inspecting_phone: bool = false
 var _local_fear: float = 0.0
 
 
@@ -186,6 +187,7 @@ func _ready() -> void:
 		if horror_mode:
 			PlayerHealth.local_health_changed.connect(_on_local_health_changed)
 			PlayerInventory.local_inventory_changed.connect(_on_local_inventory_changed)
+			PlayerInventory.pull_local()
 			PlayerEffects.local_meters_changed.connect(_on_local_meters_changed)
 			PhoneDevice.local_phone_state.connect(_on_local_phone_state)
 			PuppetStringSystem.local_tether_changed.connect(_on_local_tether)
@@ -236,13 +238,15 @@ func _unhandled_input(event: InputEvent) -> void:
 		# jump/destroy/fire (handled in _physics_process), no interact.
 		return
 
-	if event is InputEventMouseMotion and Input.mouse_mode == Input.MOUSE_MODE_CAPTURED:
+	if event is InputEventMouseMotion and Input.mouse_mode == Input.MOUSE_MODE_CAPTURED and not _inspecting_phone:
 		var sensitivity := MOUSE_SENSITIVITY * SettingsManager.mouse_sensitivity
 		rotate_y(-event.relative.x * sensitivity)
 		head.rotate_x(-event.relative.y * sensitivity)
 		head.rotation.x = clamp(head.rotation.x, -1.3, 1.3)
 
 	if event.is_action_pressed("interact"):
+		if _can_inspect_phone():
+			return
 		_try_interact()
 	elif horror_mode and is_horror_puppet_master:
 		# Strings are the PM's innate weapon: fire shoots a string into whoever
@@ -271,7 +275,7 @@ func _physics_process(delta: float) -> void:
 	if not is_multiplayer_authority():
 		return
 
-	var locked := _is_input_locked() or _eliminated
+	var locked := _is_input_locked() or _eliminated or _inspecting_phone
 
 	if not _eliminated:
 		_update_crouch_state()
@@ -292,6 +296,7 @@ func _physics_process(delta: float) -> void:
 
 		move_and_slide()
 
+		_process_phone_inspect()
 		_update_interact_prompt()
 		_process_destroy_hold(delta)
 		_process_held_paper(delta)
@@ -475,6 +480,10 @@ func _set_interact_prompt(shown: bool, hint: String = "", hold: bool = false, ho
 
 
 func _update_interact_prompt() -> void:
+	if _inspecting_phone:
+		_set_highlight(null)
+		_set_interact_prompt(false)
+		return
 	if _is_input_locked() or _eliminated:
 		_set_highlight(null)
 		_set_interact_prompt(false)
@@ -514,7 +523,45 @@ func _update_interact_prompt() -> void:
 			_set_highlight(target)
 			return
 	_set_highlight(null)
+	if _can_inspect_phone():
+		_set_interact_prompt(true, "HOLD [E] · READ PHONE", true, 1.0 if _inspecting_phone else 0.0)
+		return
 	_set_interact_prompt(false)
+
+
+func _has_world_interact_target() -> bool:
+	if _find_world_pickup() != null:
+		return true
+	if not interact_ray.is_colliding():
+		return false
+	var collider := interact_ray.get_collider()
+	if collider == null:
+		return false
+	if _PATHS.is_ladder(collider) or collider.is_in_group("flammable_props"):
+		return true
+	return _PATHS.is_interactable(collider)
+
+
+func _can_inspect_phone() -> bool:
+	if not horror_mode or is_horror_puppet_master or _eliminated:
+		return false
+	if _is_input_locked() and not _inspecting_phone:
+		return false
+	if _selected_item_id() != "phone":
+		return false
+	if _inspecting_phone:
+		return true
+	return not _has_world_interact_target()
+
+
+func _process_phone_inspect() -> void:
+	var want := _can_inspect_phone() and Input.is_action_pressed("interact")
+	if want == _inspecting_phone:
+		return
+	_inspecting_phone = want
+	if _neon_hud and _neon_hud.has_method("set_phone_inspect"):
+		_neon_hud.call("set_phone_inspect", want)
+	_update_phone_led_visuals()
 
 
 func _pickup_is_live(node: Node) -> bool:
@@ -1607,7 +1654,7 @@ func _update_phone_led_visuals() -> void:
 	var selected := _selected_item_id() == "phone"
 	var led := holding and PhoneDevice.local_led_on and PhoneDevice.local_battery >= 1.0
 	if _phone_rig:
-		_phone_rig.visible = selected
+		_phone_rig.visible = selected and not _inspecting_phone
 	if _held_phone:
 		var vis_script: GDScript = load("res://scripts/horror/items/smartphone_visual.gd")
 		vis_script.update_screen(_held_phone, PhoneDevice.local_battery, TowerRules.signal_band(global_position), led)

@@ -25,6 +25,13 @@ func _run() -> void:
 	hud.call("set_interact_prompt", true, "Open door", "Look / Talk")
 	hud.call("apply_example_rail")
 	await process_frame
+	await process_frame
+	var r_peak: float = float(hud.call("_lead_ii_sample", 0.20, 72.0, 1.0))
+	var tp_flat: float = float(hud.call("_lead_ii_sample", 0.70, 72.0, 1.0))
+	if r_peak < 0.85 or absf(tp_flat) > 0.06:
+		push_error("HUD RAIL CAPTURE FAILED: ECG lead-II shape r=%.2f flat=%.2f" % [r_peak, tp_flat])
+		quit(1)
+		return
 	var phone := hud.get_node_or_null("PhoneRoot") as Control
 	if phone == null:
 		push_error("HUD RAIL CAPTURE FAILED: PhoneRoot missing")
@@ -60,8 +67,8 @@ func _run() -> void:
 		push_error("HUD RAIL CAPTURE FAILED: battery widget still live")
 		quit(1)
 		return
-	var signal_w := hud.get_node_or_null("PhoneRoot/SignalWidget") as Control
-	var clock := hud.get_node_or_null("PhoneRoot/MatchClockLabel") as Label
+	var signal_w := hud.find_child("SignalWidget", true, false) as Control
+	var clock := hud.find_child("MatchClockLabel", true, false) as Label
 	if signal_w == null or clock == null:
 		push_error("HUD RAIL CAPTURE FAILED: phone signal/clock missing")
 		quit(1)
@@ -112,7 +119,7 @@ func _run() -> void:
 		push_error("HUD RAIL CAPTURE FAILED: signal band not applied")
 		quit(1)
 		return
-	var frame := hud.get_node_or_null("PhoneRoot/PhoneFrame") as TextureRect
+	var frame := hud.get_node_or_null("PhoneRoot/PhoneFrame") as Control
 	if frame == null or frame.mouse_filter != Control.MOUSE_FILTER_IGNORE:
 		push_error("HUD RAIL CAPTURE FAILED: PhoneFrame overlay must IGNORE mouse")
 		quit(1)
