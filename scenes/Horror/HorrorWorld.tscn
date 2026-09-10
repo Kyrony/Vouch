@@ -19,11 +19,7 @@ fog_aerial_perspective = 0.35
 fog_sky_affect = 0.55
 fog_height = -6.0
 fog_height_density = 0.28
-volumetric_fog_enabled = true
-volumetric_fog_density = 0.007
-volumetric_fog_albedo = Color(0.62, 0.56, 0.68, 1)
-volumetric_fog_emission = Color(0.12, 0.10, 0.16, 1)
-volumetric_fog_length = 96.0
+volumetric_fog_enabled = false
 
 [sub_resource type="StandardMaterial3D" id="Mat_grass"]
 albedo_color = Color(0.42, 0.50, 0.24, 1)
@@ -128,11 +124,18 @@ material = SubResource("Mat_cliff")
 [sub_resource type="BoxShape3D" id="Sh_cliff_wall"]
 size = Vector3(1, 1, 1)
 
-[sub_resource type="FogMaterial" id="Fog_cliff"]
-density = 0.42
-albedo = Color(0.62, 0.58, 0.68, 1)
+[sub_resource type="StandardMaterial3D" id="Mat_cliff_fog"]
+transparency = 1
+shading_mode = 0
+cull_mode = 2
+albedo_color = Color(0.62, 0.58, 0.68, 0.10)
+emission_enabled = true
 emission = Color(0.14, 0.12, 0.18, 1)
-height_falloff = 0.35
+emission_energy_multiplier = 0.28
+
+[sub_resource type="BoxMesh" id="Box_cliff_fog"]
+size = Vector3(88, 48, 248)
+material = SubResource("Mat_cliff_fog")
 
 [sub_resource type="BoxMesh" id="Box_pad_FamilyA"]
 size = Vector3(13.5, 2.6, 11.0)
@@ -2909,10 +2912,10 @@ mesh = SubResource("Box_cliff_wall")
 [node name="CollisionShape3D" type="CollisionShape3D" parent="Outdoor/EastCliff/CliffRock_14"]
 shape = SubResource("Sh_cliff_wall")
 
-[node name="CliffFog" type="FogVolume" parent="Outdoor/EastCliff"]
+[node name="CliffFog" type="MeshInstance3D" parent="Outdoor/EastCliff"]
 transform = Transform3D(1.00000, 0.00000, 0.00000, 0.00000, 1.00000, -0.00000, -0.00000, 0.00000, 1.00000, 106.000, -6.000, 0.000)
-size = Vector3(88, 48, 248)
-material = SubResource("Fog_cliff")
+mesh = SubResource("Box_cliff_fog")
+cast_shadow = 0
 
 [node name="MainHouse" type="Node3D" parent="Outdoor"]
 transform = Transform3D(1.00000, 0.00000, 0.00000, 0.00000, 1.00000, -0.00000, -0.00000, 0.00000, 1.00000, 44.000, 13.108, -12.000)

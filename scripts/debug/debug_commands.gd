@@ -34,40 +34,48 @@ static func _local_player() -> Node3D:
 
 static func _in_front(distance: float = 3.2) -> Vector3:
 	var player := _local_player()
+	var at := Vector3.ZERO
 	if player == null:
 		var world := _world()
 		if world and world.has_method("get_family_spawn_transform"):
-			return world.call("get_family_spawn_transform", 0).origin + Vector3(0, 0.4, 3.0)
-		return Vector3.ZERO
-	var forward := -player.global_transform.basis.z
-	forward.y = 0.0
-	if forward.length_squared() < 0.01:
-		forward = Vector3(0, 0, 1)
-	return player.global_position + forward.normalized() * distance + Vector3(0, 0.15, 0)
+			at = world.call("get_family_spawn_transform", 0).origin + Vector3(0, 0.0, 3.0)
+		else:
+			at = Vector3.ZERO
+	else:
+		var forward := -player.global_transform.basis.z
+		forward.y = 0.0
+		if forward.length_squared() < 0.01:
+			forward = Vector3(0, 0, 1)
+		at = player.global_position + forward.normalized() * distance
+	var world_snap := _world()
+	if world_snap and world_snap.has_method("ground_at"):
+		at = world_snap.call("ground_at", at)
+	at.y += 0.15
+	return at
+
+
+static func spawn_farm_props() -> void:
+	var world := _world()
+	if world == null or not world.multiplayer.is_server():
+		return
+	var origin := _in_front(4.0)
+	FarmProps.install_at(world, origin, true)
+	print("[Debug] farm props spawned at %s" % origin)
 
 
 static func spawn_playtest_kit() -> void:
 	var world := _world()
 	if world == null or not world.multiplayer.is_server():
 		return
-	if world.get_node_or_null("TestProps") != null:
-		return
-	var origin: Vector3
-	if world.has_method("get_family_spawn_transform"):
-		origin = world.call("get_family_spawn_transform", 0).origin + Vector3(2.4, 0.0, 4.2)
-	else:
-		origin = _in_front(4.0)
-	_spawn_box_prop(world, "res://scripts/interactables/props/fuse_box.gd", origin + Vector3(-1.6, 0.55, 0.0), Vector3(0.42, 0.55, 0.16), Color(0.35, 0.28, 0.16), "FuseBox", {"room_index": 0})
-	_spawn_box_prop(world, "res://scripts/interactables/props/locked_gate.gd", origin + Vector3(1.8, 0.9, 1.2), Vector3(2.2, 1.8, 0.16), Color(0.42, 0.44, 0.48), "LockedGate", {"locked": true, "kind": "gate"})
-	_spawn_box_prop(world, "res://scripts/interactables/props/wall_light_switch.gd", origin + Vector3(-2.4, 1.2, -0.4), Vector3(0.12, 0.18, 0.08), Color(0.82, 0.78, 0.55), "WallSwitch", {"room_index": 0})
+	var old: Node = world.get_node_or_null("TestProps")
+	if old:
+		old.name = "TestPropsOld"
+		old.queue_free()
+	spawn_farm_props()
+	var origin := _in_front(3.2)
+	_spawn_box_prop(world, "res://scripts/interactables/props/wall_light_switch.gd", origin + Vector3(-1.4, 1.1, -0.4), Vector3(0.12, 0.18, 0.08), Color(0.82, 0.78, 0.55), "WallSwitch", {"room_index": 0})
 	_instance_prop(world, CRATE_SCENE, origin + Vector3(0.4, 0.0, -0.8))
 	_instance_prop(world, BARREL_SCENE, origin + Vector3(-0.6, 0.0, -1.1))
-	var lamp := Node3D.new()
-	lamp.name = "StreetLight"
-	lamp.set_script(load("res://scripts/interactables/props/street_light.gd"))
-	lamp.set("starts_on", true)
-	lamp.position = origin + Vector3(2.8, 0.0, -1.6)
-	_folder(world).add_child(lamp)
 	print("[Debug] playtest props spawned at %s" % origin)
 
 
@@ -78,14 +86,18 @@ static func spawn_test_items() -> void:
 	if not world.multiplayer.is_server():
 		return
 	var catalog: GDScript = load("res://scripts/horror/items/item_catalog.gd")
-	var ids: Array = catalog.survivor_item_ids()
+	var ids: Array = ["shovel", "rope", "fuse", "key", "crowbar", "firearm", "medkit", "lockpick"]
+	for extra in catalog.survivor_item_ids():
+		if not ids.has(str(extra)):
+			ids.append(str(extra))
 	var base := _in_front(2.4)
 	var i := 0
 	for item_id in ids:
 		var angle := float(i) * TAU / float(max(ids.size(), 1))
-		world.call("spawn_pickup", str(item_id), base + Vector3(cos(angle) * 1.6, 0.35, sin(angle) * 1.6))
+		world.call("spawn_pickup", str(item_id), base + Vector3(cos(angle) * 1.8, 0.0, sin(angle) * 1.8))
 		i += 1
-	world.call("spawn_pickup", "puppet", base + Vector3(0.0, 0.4, 2.2))
+	world.call("spawn_pickup", "puppet", base + Vector3(0.0, 0.0, 2.4))
+	print("[Debug] test items spawned at %s" % base)
 
 
 static func spawn_debug_pawn(as_puppet_master: bool) -> Node:
@@ -98,9 +110,12 @@ static func spawn_debug_pawn(as_puppet_master: bool) -> Node:
 	var pawn: Node = packed.instantiate()
 	if pawn == null:
 		return null
-	var id := 9000 + match_node.get_tree().get_nodes_in_group("debug_pawns").size()
-	pawn.name = "DebugPawn_%d" % id
+	## Numeric name so LMB capture / possession lookup works (`str(name).to_int()`).
+	var id := 9102 + match_node.get_tree().get_nodes_in_group("debug_pawns").size()
+	pawn.name = str(id)
+	pawn.set_meta("peer_id", id)
 	pawn.add_to_group("debug_pawns")
+	pawn.add_to_group("players")
 	pawn.set("horror_mode", true)
 	pawn.set("is_horror_puppet_master", as_puppet_master)
 	pawn.set("faction_id", "debug")
@@ -119,8 +134,20 @@ static func spawn_debug_pawn(as_puppet_master: bool) -> Node:
 	if as_puppet_master:
 		_HORROR.call("attach_pm_controller", pawn)
 	_tint_pawn(pawn, Color(0.62, 0.18, 0.72) if as_puppet_master else Color(0.55, 0.62, 0.42))
-	print("[Debug] spawned %s at %s" % [pawn.name, pawn.position])
+	print("[Debug] spawned capturable pawn %s at %s" % [pawn.name, pawn.position])
 	return pawn
+
+
+static func wear_puppet() -> void:
+	apply_local_character(true)
+	var player := _local_player()
+	if player == null or not player.multiplayer.is_server():
+		return
+	var id := player.multiplayer.get_unique_id()
+	var pcs: Node = player.get_tree().root.get_node_or_null("/root/PuppetControlSystem")
+	if pcs and pcs.has_method("server_take_puppet"):
+		pcs.call("server_take_puppet", id)
+	print("[Debug] local player wearing puppet peer=%d" % id)
 
 
 static func apply_local_character(as_puppet_master: bool) -> void:
@@ -131,8 +158,17 @@ static func apply_local_character(as_puppet_master: bool) -> void:
 	player.set("horror_mode", true)
 	var loop := Engine.get_main_loop() as SceneTree
 	var gs: Node = loop.root.get_node_or_null("/root/GameState") if loop else null
+	var id := player.multiplayer.get_unique_id()
 	if gs:
 		gs.set("local_is_puppet_master", as_puppet_master)
+		if as_puppet_master:
+			if gs.has_method("server_set_puppet_master"):
+				gs.call("server_set_puppet_master", id)
+		elif int(gs.get("puppet_master_peer_id")) == id:
+			gs.set("puppet_master_peer_id", -1)
+			var roster: Dictionary = gs.get("players")
+			if roster.has(id):
+				roster[id]["is_puppet_master"] = false
 	if as_puppet_master:
 		_HORROR.call("attach_pm_controller", player)
 		_tint_pawn(player, Color(0.62, 0.18, 0.72))
@@ -141,6 +177,8 @@ static func apply_local_character(as_puppet_master: bool) -> void:
 		if ctrl:
 			ctrl.queue_free()
 		_tint_pawn(player, Color(0.55, 0.56, 0.58))
+	if player.has_method("apply_debug_role"):
+		player.call("apply_debug_role", as_puppet_master)
 	print("[Debug] local character -> %s" % ("Puppet Master" if as_puppet_master else "Survivor"))
 
 

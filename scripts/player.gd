@@ -130,6 +130,7 @@ var _stamina_bar: ProgressBar = null
 var _fear_bar: ProgressBar = null
 var _hotbar_labels: Array[Label] = []
 var _neon_hud: Control = null
+var _puppet_hud: Control = null
 
 # Puppet Master string tether / possession state (replicated to this survivor).
 var _tether_slow: float = 0.0
@@ -877,11 +878,20 @@ func _on_puppet_state(active: bool) -> void:
 		_local_stamina = minf(_local_stamina, _local_stamina_max)
 		_air_jumps_left = 1
 		_show_toast("You are the puppet — sprint fast, double jump, LMB to capture.")
+		_attach_puppet_hud()
+		if _neon_hud and _neon_hud.has_method("set_predator_mode"):
+			_neon_hud.call("set_predator_mode", true)
+		if _puppet_hud and _puppet_hud.has_method("set_role"):
+			_puppet_hud.call("set_role", "puppet")
 	else:
 		scale = Vector3.ONE
 		_local_stamina_max = 100.0
 		_air_jumps_left = 0
 		_leave_stolen_body()
+		if _neon_hud and _neon_hud.has_method("set_predator_mode"):
+			_neon_hud.call("set_predator_mode", is_horror_puppet_master)
+		if is_horror_puppet_master and _puppet_hud and _puppet_hud.has_method("set_role"):
+			_puppet_hud.call("set_role", "pm")
 	_refresh_vital_meters()
 
 
@@ -901,15 +911,20 @@ func _enter_stolen_body(victim_peer: int) -> void:
 	_leave_stolen_body()
 	_driving_victim = victim
 	_body_taken = true
-	_set_puppet_shell_hidden(true)
-	victim.set_physics_process(true)
-	victim.set_process_unhandled_input(true)
 	var victim_cam := victim.get_node_or_null("Head/Camera3D") as Camera3D
 	if victim_cam:
+		_set_puppet_shell_hidden(true)
+		victim.set_physics_process(true)
+		victim.set_process_unhandled_input(true)
 		victim_cam.current = true
-	if camera:
-		camera.current = false
+		if camera:
+			camera.current = false
 	_show_toast("You took their body. They can only watch.")
+	_attach_puppet_hud()
+	if _neon_hud:
+		_neon_hud.visible = false
+	if _puppet_hud and _puppet_hud.has_method("set_role"):
+		_puppet_hud.call("set_role", "driving")
 
 
 func _leave_stolen_body() -> void:
@@ -925,6 +940,10 @@ func _leave_stolen_body() -> void:
 	_set_puppet_shell_hidden(false)
 	if is_multiplayer_authority() and camera:
 		camera.current = true
+	if _neon_hud:
+		_neon_hud.visible = true
+	if is_horror_puppet_master and _puppet_hud and _puppet_hud.has_method("set_role"):
+		_puppet_hud.call("set_role", "puppet" if _has_puppet else "pm")
 
 
 func _set_puppet_shell_hidden(hidden: bool) -> void:
@@ -938,7 +957,7 @@ func _set_puppet_shell_hidden(hidden: bool) -> void:
 
 func _find_player_by_peer(peer_id: int) -> Node:
 	for node in get_tree().get_nodes_in_group("players"):
-		if str(node.name).to_int() == peer_id:
+		if _peer_from_node(node) == peer_id:
 			return node
 	return null
 
@@ -1025,9 +1044,16 @@ func _try_puppet_capture() -> bool:
 func _peer_from_node(node: Object) -> int:
 	if node == null or not (node is Node):
 		return -1
-	if not (node as Node).is_in_group("players"):
-		return -1
-	return str((node as Node).name).to_int()
+	var n := node as Node
+	while n:
+		if n.is_in_group("players"):
+			if n.has_meta("peer_id"):
+				return int(n.get_meta("peer_id"))
+			var named := str(n.name).to_int()
+			if named > 0:
+				return named
+		n = n.get_parent()
+	return -1
 
 
 func _fire_gun() -> void:
@@ -1452,6 +1478,15 @@ func _on_escape_locked(feedback: String) -> void:
 # --- Puppet Master camera / sabotage panel ------------------------------
 
 func _on_you_are_puppet_master(camera_targets: Array, eliminable_targets: Array) -> void:
+	is_horror_puppet_master = true
+	GameState.local_is_puppet_master = true
+	if horror_mode:
+		_attach_puppet_hud()
+		if _neon_hud and _neon_hud.has_method("set_predator_mode"):
+			_neon_hud.call("set_predator_mode", true)
+		if _puppet_hud and _puppet_hud.has_method("set_role"):
+			_puppet_hud.call("set_role", "pm")
+		return
 	camera_panel.visible = true
 	for child in camera_feed_box.get_children():
 		child.queue_free()
@@ -1702,9 +1737,14 @@ func _build_horror_hud() -> void:
 	hud.add_child(_neon_hud)
 	_neon_hud.set_meters(100.0, 100.0, 100.0, 0.0)
 	_attach_phone_rig()
+	_attach_puppet_hud()
 	if is_horror_puppet_master:
 		_neon_hud.call("set_steal", false, 0.0, 1.0)
+		if _neon_hud.has_method("set_predator_mode"):
+			_neon_hud.call("set_predator_mode", true)
 		_show_objective("Hunt the survivors before they escape.")
+		if _puppet_hud and _puppet_hud.has_method("set_role"):
+			_puppet_hud.call("set_role", "pm")
 	else:
 		_show_objective("Find the missing child — bring her home.")
 	faction_label.visible = false
@@ -1712,6 +1752,42 @@ func _build_horror_hud() -> void:
 	var cross := hud.get_node_or_null("CrosshairLabel") as Label
 	if cross:
 		cross.visible = false
+
+
+func _attach_puppet_hud() -> void:
+	if _puppet_hud != null:
+		return
+	if hud == null:
+		return
+	var script: GDScript = load("res://scripts/horror/ui/puppet_hud.gd")
+	if script == null:
+		return
+	_puppet_hud = script.new()
+	hud.add_child(_puppet_hud)
+
+
+func apply_debug_role(as_pm: bool) -> void:
+	is_horror_puppet_master = as_pm
+	horror_mode = true
+	if as_pm:
+		GameState.local_is_puppet_master = true
+		_attach_puppet_hud()
+		if _neon_hud and _neon_hud.has_method("set_predator_mode"):
+			_neon_hud.call("set_predator_mode", true)
+		if _puppet_hud and _puppet_hud.has_method("set_role"):
+			_puppet_hud.call("set_role", "pm")
+		_show_objective("Hunt the survivors before they escape.")
+	else:
+		GameState.local_is_puppet_master = false
+		if _has_puppet:
+			if multiplayer.is_server():
+				PuppetControlSystem.server_drop_puppet(multiplayer.get_unique_id())
+			_on_puppet_state(false)
+		if _neon_hud and _neon_hud.has_method("set_predator_mode"):
+			_neon_hud.call("set_predator_mode", false)
+		if _puppet_hud and _puppet_hud.has_method("set_role"):
+			_puppet_hud.call("set_role", "")
+		_show_objective("Find the missing child — bring her home.")
 
 
 func _style_horror_phone_panel() -> void:
@@ -1769,9 +1845,21 @@ func _on_local_tether(strings: int, _ghost: bool, immobilized: bool) -> void:
 func _on_local_possessed(possessed: bool, struggle: float, needed: float) -> void:
 	_possessed = possessed
 	if possessed:
+		_attach_puppet_hud()
 		_show_toast("Trapped. You can only watch. Mash E to struggle (%d/%d)." % [int(struggle), int(needed)])
-	if _neon_hud and _neon_hud.has_method("set_possessed"):
-		_neon_hud.call("set_possessed", possessed, struggle, needed)
+		if _neon_hud:
+			_neon_hud.visible = false
+		if _puppet_hud and _puppet_hud.has_method("set_trapped"):
+			_puppet_hud.call("set_trapped", true, struggle, needed)
+		return
+	if _neon_hud:
+		_neon_hud.visible = true
+	if _puppet_hud and _puppet_hud.has_method("set_trapped"):
+		_puppet_hud.call("set_trapped", false, 0.0, needed)
+	if is_horror_puppet_master and _puppet_hud and _puppet_hud.has_method("set_role"):
+		_puppet_hud.call("set_role", "puppet" if _has_puppet else "pm")
+	elif _puppet_hud and _puppet_hud.has_method("set_role"):
+		_puppet_hud.call("set_role", "")
 
 
 func _on_child_found(carrier_peer: int) -> void:

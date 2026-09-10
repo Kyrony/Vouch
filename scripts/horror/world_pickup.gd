@@ -122,7 +122,8 @@ func server_try_pickup(peer_id: int) -> bool:
 	if _taken or is_queued_for_deletion():
 		return false
 	if item_id == "puppet":
-		PuppetControlSystem.server_take_puppet(peer_id)
+		if not PuppetControlSystem.server_take_puppet(peer_id):
+			return false
 	elif not PlayerInventory.server_add_item(peer_id, item_id):
 		return false
 	_taken = true

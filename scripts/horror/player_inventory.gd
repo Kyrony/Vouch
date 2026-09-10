@@ -302,7 +302,7 @@ func _apply_use_item(peer_id: int, item_id: String) -> bool:
 			return false
 		"puppet":
 			PuppetControlSystem.server_take_puppet(peer_id)
-			return false  # reusable — the PM wears it
+			return false  # reusable — only the PM can wear it
 		"strings":
 			return false  # shot with fire; nothing to do on R
 		_:
