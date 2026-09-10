@@ -120,6 +120,9 @@ static func _server_build_practice(match_node: Node) -> void:
 
 
 static func _spawn_world(match_node: Node) -> void:
+	## Instantiating HorrorWorld compiles Environment + FogVolume shaders.
+	## GL Compatibility cannot compile shader_type fog — keep FogVolume out
+	## of HorrorWorld.tscn and strip volumetric fog in HorrorWorld._ready.
 	var scene: PackedScene = load(HORROR_WORLD_SCENE)
 	if scene == null:
 		push_error("MatchHorror: failed to load %s" % HORROR_WORLD_SCENE)

@@ -17,6 +17,7 @@ func _ready() -> void:
 	_bind_authored_spawns()
 	_ensure_spawn_pads()
 	_ensure_terrain_texture()
+	_compat_environment()
 	## Mask placement must not block Start Match / player spawn.
 	call_deferred("_run_semantic_maps")
 	## Drop a sample of every survival item near the first family pad.
@@ -41,6 +42,26 @@ func _show_child_marker() -> void:
 	var rng := get_node_or_null("/root/ChildSpawnRNG")
 	if rng and rng.has_method("ensure_marker"):
 		rng.call("ensure_marker", self)
+
+
+func _compat_environment() -> void:
+	## GL Compatibility cannot compile volumetric fog or FogVolume shaders.
+	for node in find_children("*", "WorldEnvironment", true, false):
+		var we := node as WorldEnvironment
+		if we and we.environment:
+			we.environment.volumetric_fog_enabled = false
+			we.environment.volumetric_fog_density = 0.0
+	for fog in find_children("*", "FogVolume", true, false):
+		fog.queue_free()
+
+
+## Walkable ground at xz. Used to plant props on the heightfield, not in the air/dirt.
+func ground_at(origin: Vector3) -> Vector3:
+	var y := _sample_heightfield_y(origin.x, origin.z)
+	if y < -8.0:
+		return origin
+	origin.y = y + 0.04
+	return origin
 
 
 func _ensure_terrain_texture() -> void:
@@ -280,6 +301,9 @@ func _spawn_pickup_local(item_id: String, at: Vector3) -> void:
 	if pickup == null:
 		return
 	pickup.set("item_id", item_id)
+	if has_method("ground_at"):
+		at = ground_at(at)
+		at.y += 0.35
 	pickup.position = at
 	var folder: Node = get_node_or_null("Pickups")
 	if folder == null:

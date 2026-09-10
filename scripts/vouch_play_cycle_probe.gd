@@ -93,6 +93,14 @@ func _run() -> void:
 	_check(world.get_node_or_null("PlayableProps/LockedGate") != null, "locked gate spawned")
 	_check(world.get_node_or_null("PlayableProps/DigSiteKey") != null, "shovel dig site spawned")
 	_check(world.get_node_or_null("PlayableProps/RopeAnchor") != null, "rope anchor spawned")
+	_check(PROPS.has_method("install_at"), "FarmProps.install_at can drop props at a test origin")
+	var cmds: GDScript = load("res://scripts/debug/debug_commands.gd")
+	_check(cmds.has_method("spawn_farm_props") and cmds.has_method("wear_puppet"), "debug GUI can spawn farm props and wear the puppet")
+	_check(cmds.has_method("spawn_debug_pawn"), "debug GUI can spawn a capturable dummy")
+	var hud_script: GDScript = load("res://scripts/horror/ui/puppet_hud.gd")
+	_check(hud_script != null, "predator HUD script loads")
+	var tscn := FileAccess.get_file_as_string("res://scenes/Horror/HorrorWorld.tscn")
+	_check(not tscn.contains("FogVolume") and not tscn.contains("FogMaterial"), "farm scene has no OpenGL FogVolume")
 
 	var practice := Node3D.new()
 	practice.name = "PracticeRoot"

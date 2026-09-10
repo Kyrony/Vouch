@@ -64,11 +64,5 @@ func _rpc_set_invincible(on: bool) -> void:
 func _on_match_started() -> void:
 	if not is_enabled():
 		return
-	# Wait until Match has instantiated HorrorWorld on this same signal.
-	call_deferred("_spawn_playtest_kit")
-
-
-func _spawn_playtest_kit() -> void:
-	if get_tree().get_first_node_in_group("horror_world") == null:
-		await get_tree().process_frame
-	DebugCommands.spawn_playtest_kit()
+	## Farm props install from HorrorWorld. Debug spawns stay on the Home GUI
+	## so they land in front of the player instead of (0,0,0).

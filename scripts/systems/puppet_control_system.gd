@@ -30,9 +30,11 @@ func reset() -> void:
 	_controlling.clear()
 
 
-## PM dons the puppet (found it / used the item). Returns true once active.
+## PM dons the puppet (found it / used the item). Survivors cannot wear it.
 func server_take_puppet(pm_peer: int) -> bool:
 	if not multiplayer.is_server():
+		return false
+	if not _is_puppet_master(pm_peer):
 		return false
 	_pm_has_puppet[pm_peer] = true
 	PlayerEffects.server_set_stamina_max(pm_peer, 20.0)
@@ -59,6 +61,14 @@ func server_drop_puppet(pm_peer: int) -> void:
 
 func server_has_puppet(pm_peer: int) -> bool:
 	return bool(_pm_has_puppet.get(pm_peer, false))
+
+
+func _is_puppet_master(peer_id: int) -> bool:
+	if peer_id <= 0:
+		return false
+	if GameState.puppet_master_peer_id == peer_id:
+		return true
+	return bool(GameState.players.get(peer_id, {}).get("is_puppet_master", false))
 
 
 ## Puppet tries to grab a survivor at `dist`. Possesses them if in range and
@@ -154,6 +164,8 @@ func _player_node(peer_id: int) -> Node:
 	if tree == null:
 		return null
 	for node in tree.get_nodes_in_group("players"):
+		if node.has_meta("peer_id") and int(node.get_meta("peer_id")) == peer_id:
+			return node
 		if str(node.name).to_int() == peer_id:
 			return node
 	return null
