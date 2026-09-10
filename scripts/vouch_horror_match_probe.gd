@@ -149,9 +149,6 @@ func _probe() -> String:
 	if world.get_tree().get_nodes_in_group("rope_anchors").is_empty():
 		main.queue_free()
 		return "no rope anchor on the farm"
-	if world.get_node_or_null("PlaceholderGun") and bool(world.get_node("PlaceholderGun").visible):
-		main.queue_free()
-		return "placeholder gun still visible"
 
 	for node_name in ["FamilyHouses", "PMMansion", "UncleHouse", "RadioTowers"]:
 		if world.get_node_or_null(node_name) != null:

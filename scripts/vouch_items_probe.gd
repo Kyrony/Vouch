@@ -211,6 +211,7 @@ func _run() -> void:
 	_check(me_node.global_position.y >= start_y + 3.0, "rope lifts the survivor")
 
 	GS.server_set_puppet_master(mate)
+	me_node.global_position = Vector3.ZERO
 	for node in root.get_tree().get_nodes_in_group("players"):
 		if str(node.name) == str(mate) and node is Node3D:
 			(node as Node3D).global_position = Vector3(0, 0, -2.0)

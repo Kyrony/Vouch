@@ -16,7 +16,6 @@ func _ready() -> void:
 	_suppress_parallel_worlds()
 	_bind_authored_spawns()
 	_ensure_spawn_pads()
-	_ensure_placeholder_gun()
 	_ensure_terrain_texture()
 	## Mask placement must not block Start Match / player spawn.
 	call_deferred("_run_semantic_maps")
@@ -31,13 +30,6 @@ func _ready() -> void:
 		_family_spawns.size(), get_tree().get_nodes_in_group("child_spawn_points").size(),
 	])
 	call_deferred("_snap_spawned_players")
-
-
-func _ensure_placeholder_gun() -> void:
-	var gun := get_node_or_null("PlaceholderGun") as Node3D
-	if gun:
-		gun.visible = false
-		gun.process_mode = Node.PROCESS_MODE_DISABLED
 
 
 func _install_playable_props() -> void:
