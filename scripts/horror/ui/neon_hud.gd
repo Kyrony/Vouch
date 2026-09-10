@@ -64,6 +64,8 @@ var _flash_state: Label
 var _flash_track: Panel
 var _flash_knob: Panel
 var _status_battery: Label
+var _status_wifi: Control
+var _header_signal: Control
 var _signal_state: Label
 var _tex_flash_on: Texture2D
 var _tex_flash_off: Texture2D
@@ -226,7 +228,7 @@ func _inspect_phone_size() -> Vector2:
 	if vp.x < 8.0 or vp.y < 8.0:
 		return Vector2(INSPECT_W, INSPECT_H)
 	var aspect := float(PHONE_W) / float(PHONE_H)
-	var s := minf(vp.y * 0.92 / float(PHONE_H), vp.x * 0.48 / float(PHONE_W))
+	var s := minf(vp.y * 0.96 / float(PHONE_H), vp.x * 0.52 / float(PHONE_W))
 	s = maxf(s, 1.15)
 	var w := float(PHONE_W) * s
 	var h := float(PHONE_H) * s
@@ -404,11 +406,15 @@ func _build_phone_root() -> void:
 
 	_build_status_row(col)
 	_build_camera_header(col)
-	_build_live_stage(col)
 	_build_camera_card(col)
 	_build_flashlight_card(col)
 	_build_vitals_row(col)
 	_build_phone_vitals()
+	var spacer := Control.new()
+	spacer.name = "NavSpacer"
+	spacer.size_flags_vertical = SIZE_EXPAND_FILL
+	spacer.mouse_filter = MOUSE_FILTER_IGNORE
+	col.add_child(spacer)
 	_build_bottom_nav(col)
 
 
@@ -425,13 +431,20 @@ func _build_status_row(parent: VBoxContainer) -> void:
 	_clock_label.add_theme_color_override("font_color", Color(0.92, 0.93, 0.95))
 	_clock_label.mouse_filter = MOUSE_FILTER_IGNORE
 	row.add_child(_clock_label)
+	var status_right := HBoxContainer.new()
+	status_right.add_theme_constant_override("separation", 6)
+	status_right.mouse_filter = MOUSE_FILTER_IGNORE
+	row.add_child(status_right)
+	_status_wifi = _glyph("wifi", Color(0.78, 0.8, 0.84), Vector2(16, 12))
+	_status_wifi.name = "StatusWifi"
+	status_right.add_child(_status_wifi)
 	_status_battery = Label.new()
 	_status_battery.name = "StatusBattery"
 	_status_battery.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
 	_status_battery.add_theme_font_size_override("font_size", 12)
 	_status_battery.add_theme_color_override("font_color", Color(0.78, 0.8, 0.84))
 	_status_battery.mouse_filter = MOUSE_FILTER_IGNORE
-	row.add_child(_status_battery)
+	status_right.add_child(_status_battery)
 
 
 func _build_camera_header(parent: VBoxContainer) -> void:
@@ -456,16 +469,10 @@ func _build_camera_header(parent: VBoxContainer) -> void:
 	var rear := _phone_label("REAR CAMERA", 10, Color(0.7, 0.72, 0.76))
 	rear.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
 	right.add_child(rear)
-
-
-func _build_live_stage(parent: VBoxContainer) -> void:
-	var stage := ColorRect.new()
-	stage.name = "LiveStage"
-	stage.color = Color(0.03, 0.03, 0.04, 0.9)
-	stage.custom_minimum_size = Vector2(0, 36)
-	stage.size_flags_vertical = SIZE_EXPAND_FILL
-	stage.mouse_filter = MOUSE_FILTER_IGNORE
-	parent.add_child(stage)
+	_header_signal = _glyph("signal", Color(0.35, 0.95, 0.45), Vector2(16, 12))
+	_header_signal.name = "HeaderSignal"
+	_header_signal.size_flags_horizontal = SIZE_SHRINK_END
+	right.add_child(_header_signal)
 
 
 func _build_camera_card(parent: VBoxContainer) -> void:
@@ -480,8 +487,8 @@ func _build_camera_card(parent: VBoxContainer) -> void:
 	row.add_child(copy)
 	copy.add_child(_phone_label("CAMERA SWITCH", 12, Color.WHITE))
 	copy.add_child(_phone_label("Toggle rear and front camera", 10, Color(0.55, 0.56, 0.6)))
-	row.add_child(_chip("REAR", true))
-	row.add_child(_chip("FRONT", false))
+	row.add_child(_cam_chip("REAR", "camera", true))
+	row.add_child(_cam_chip("FRONT", "person", false))
 
 
 func _build_flashlight_card(parent: VBoxContainer) -> void:
@@ -631,7 +638,7 @@ func _phone_label(text: String, size: int, color: Color) -> Label:
 	return lab
 
 
-func _chip(text: String, on: bool) -> PanelContainer:
+func _cam_chip(text: String, icon: String, on: bool) -> PanelContainer:
 	var chip := PanelContainer.new()
 	chip.mouse_filter = MOUSE_FILTER_IGNORE
 	var box := StyleBoxFlat.new()
@@ -644,8 +651,80 @@ func _chip(text: String, on: bool) -> PanelContainer:
 	box.content_margin_top = 6
 	box.content_margin_bottom = 6
 	chip.add_theme_stylebox_override("panel", box)
-	chip.add_child(_phone_label(text, 10, PINK if on else Color(0.7, 0.7, 0.74)))
+	var col := VBoxContainer.new()
+	col.add_theme_constant_override("separation", 2)
+	col.mouse_filter = MOUSE_FILTER_IGNORE
+	chip.add_child(col)
+	var ink := PINK if on else Color(0.7, 0.7, 0.74)
+	var glyph := _glyph(icon, ink, Vector2(22, 16))
+	glyph.size_flags_horizontal = SIZE_SHRINK_CENTER
+	col.add_child(glyph)
+	var lab := _phone_label(text, 9, ink)
+	lab.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	col.add_child(lab)
 	return chip
+
+
+func _glyph(kind: String, ink: Color, px: Vector2) -> Control:
+	var g := Control.new()
+	g.custom_minimum_size = px
+	g.mouse_filter = MOUSE_FILTER_IGNORE
+	g.set_meta("kind", kind)
+	g.set_meta("ink", ink)
+	g.draw.connect(_draw_glyph.bind(g))
+	return g
+
+
+func _draw_glyph(g: Control) -> void:
+	if g == null:
+		return
+	var kind := str(g.get_meta("kind"))
+	var ink: Color = g.get_meta("ink")
+	var w := g.size.x
+	var h := g.size.y
+	match kind:
+		"grid":
+			var s := minf(w, h) * 0.32
+			var gap := minf(w, h) * 0.14
+			var ox := (w - s * 2.0 - gap) * 0.5
+			var oy := (h - s * 2.0 - gap) * 0.5
+			g.draw_rect(Rect2(ox, oy, s, s), ink, false, 1.4)
+			g.draw_rect(Rect2(ox + s + gap, oy, s, s), ink, false, 1.4)
+			g.draw_rect(Rect2(ox, oy + s + gap, s, s), ink, false, 1.4)
+			g.draw_rect(Rect2(ox + s + gap, oy + s + gap, s, s), ink, false, 1.4)
+		"heart":
+			var c := Vector2(w * 0.5, h * 0.42)
+			g.draw_circle(c + Vector2(-w * 0.16, 0.0), h * 0.18, ink)
+			g.draw_circle(c + Vector2(w * 0.16, 0.0), h * 0.18, ink)
+			var pts := PackedVector2Array([
+				Vector2(w * 0.18, h * 0.48),
+				Vector2(w * 0.5, h * 0.92),
+				Vector2(w * 0.82, h * 0.48),
+			])
+			g.draw_colored_polygon(pts, ink)
+		"person":
+			g.draw_circle(Vector2(w * 0.5, h * 0.28), h * 0.16, ink)
+			g.draw_arc(Vector2(w * 0.5, h * 1.05), w * 0.32, PI * 1.15, PI * 1.85, 12, ink, 1.6, true)
+		"gear":
+			g.draw_arc(Vector2(w * 0.5, h * 0.5), minf(w, h) * 0.22, 0.0, TAU, 16, ink, 1.5, true)
+			for i in 4:
+				var a := float(i) * TAU * 0.25
+				var inner := Vector2(w, h) * 0.5 + Vector2(cos(a), sin(a)) * minf(w, h) * 0.18
+				var outer := Vector2(w, h) * 0.5 + Vector2(cos(a), sin(a)) * minf(w, h) * 0.42
+				g.draw_line(inner, outer, ink, 1.6, true)
+		"camera":
+			g.draw_rect(Rect2(w * 0.12, h * 0.28, w * 0.76, h * 0.52), ink, false, 1.4)
+			g.draw_circle(Vector2(w * 0.5, h * 0.54), h * 0.16, ink)
+			g.draw_rect(Rect2(w * 0.58, h * 0.16, w * 0.18, h * 0.14), ink)
+		"wifi", "signal":
+			var n := 4
+			var bar_w := w / 7.0
+			for i in n:
+				var bh := h * (0.35 + 0.22 * float(i))
+				var x := 2.0 + (bar_w * 1.6) * float(i)
+				g.draw_rect(Rect2(x, h - bh, bar_w, bh), ink)
+		_:
+			pass
 
 
 func _build_bottom_nav(parent: VBoxContainer) -> void:
@@ -655,16 +734,21 @@ func _build_bottom_nav(parent: VBoxContainer) -> void:
 	nav.add_theme_constant_override("separation", 10)
 	nav.mouse_filter = MOUSE_FILTER_IGNORE
 	parent.add_child(nav)
-	for item in [["GRID", true], ["ECG", false], ["PROFILE", false], ["SETTINGS", false]]:
+	for item in [["GRID", "grid", true], ["ECG", "heart", false], ["PROFILE", "person", false], ["SETTINGS", "gear", false]]:
 		var cell := VBoxContainer.new()
 		cell.size_flags_horizontal = SIZE_EXPAND_FILL
 		cell.add_theme_constant_override("separation", 2)
 		cell.mouse_filter = MOUSE_FILTER_IGNORE
 		nav.add_child(cell)
-		var lab := _phone_label(str(item[0]), 10, PINK if bool(item[1]) else Color(0.55, 0.56, 0.6))
+		var on := bool(item[2])
+		var ink := PINK if on else Color(0.55, 0.56, 0.6)
+		var icon := _glyph(str(item[1]), ink, Vector2(20, 18))
+		icon.size_flags_horizontal = SIZE_SHRINK_CENTER
+		cell.add_child(icon)
+		var lab := _phone_label(str(item[0]), 9, ink)
 		lab.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 		cell.add_child(lab)
-		if bool(item[1]):
+		if on:
 			var underline := ColorRect.new()
 			underline.custom_minimum_size = Vector2(28, 2)
 			underline.color = PINK
@@ -1051,20 +1135,28 @@ func _refresh_signal() -> void:
 		band = _PACK.band_from_strength(tower_strength)
 		signal_band = band
 	_fill_segments(_signal_segs, _signal_fill())
+	var ink := Color(0.42, 0.44, 0.48)
 	if _signal_state:
 		match band:
 			"full":
 				_signal_state.text = "STRONG"
-				_signal_state.add_theme_color_override("font_color", Color(0.35, 0.95, 0.45))
+				ink = Color(0.35, 0.95, 0.45)
 			"weak":
 				_signal_state.text = "WEAK"
-				_signal_state.add_theme_color_override("font_color", Color(0.98, 0.82, 0.2))
+				ink = Color(0.98, 0.82, 0.2)
 			"empty":
 				_signal_state.text = "LOW"
-				_signal_state.add_theme_color_override("font_color", Color(1.0, 0.45, 0.2))
+				ink = Color(1.0, 0.45, 0.2)
 			_:
 				_signal_state.text = "DEAD"
-				_signal_state.add_theme_color_override("font_color", Color(1.0, 0.25, 0.28))
+				ink = Color(1.0, 0.25, 0.28)
+		_signal_state.add_theme_color_override("font_color", ink)
+	if _status_wifi:
+		_status_wifi.set_meta("ink", ink)
+		_status_wifi.queue_redraw()
+	if _header_signal:
+		_header_signal.set_meta("ink", ink)
+		_header_signal.queue_redraw()
 
 
 func _fill_segments(rects: Array[Control], ratio: float) -> void:
