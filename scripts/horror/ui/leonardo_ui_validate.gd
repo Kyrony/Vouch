@@ -211,7 +211,7 @@ static func validate_hud() -> String:
 	if hud_script == null:
 		return "neon_hud.gd failed to load"
 	var hud: Object = hud_script.new()
-	for method_name in ["set_meters", "set_signal_band", "set_phone_device", "set_interact_prompt", "set_interact_hold", "set_steal", "set_hotbar", "apply_example_rail"]:
+	for method_name in ["set_meters", "set_signal_band", "set_phone_device", "set_interact_prompt", "set_interact_hold", "set_phone_inspect", "set_steal", "set_hotbar", "apply_example_rail"]:
 		if not hud.has_method(method_name):
 			hud.free()
 			return "NeonHud missing %s" % method_name
@@ -313,6 +313,21 @@ static func validate_hud() -> String:
 		return "HudIconPack missing rail_texture"
 	if not hud_src.contains("MatchClockLabel") or not hud_src.contains("_on_match_clock"):
 		return "NeonHud must keep MatchClockLabel wired to MatchClock"
+	if not hud_src.contains("set_phone_inspect"):
+		return "NeonHud must inspect the phone HUD on hold-E"
+	if not hud_src.contains("_lead_ii_sample"):
+		return "NeonHud ECG must use a lead-II heartbeat then isoelectric flatline"
+	var shape: Object = hud_script.new()
+	var r_peak: float = float(shape.call("_lead_ii_sample", 0.20, 72.0, 1.0))
+	var tp_flat: float = float(shape.call("_lead_ii_sample", 0.70, 72.0, 1.0))
+	var asystole: float = float(shape.call("_lead_ii_sample", 0.20, 72.0, 0.0))
+	shape.free()
+	if r_peak < 0.85:
+		return "ECG R-wave must spike (got %.2f at 0.20s)" % r_peak
+	if absf(tp_flat) > 0.06:
+		return "ECG TP segment must be a flatline (got %.2f at 0.70s)" % tp_flat
+	if absf(asystole) > 0.02:
+		return "ECG asystole must be isoelectric"
 	var k7_err := _validate_k7_overlays()
 	if not k7_err.is_empty():
 		return k7_err

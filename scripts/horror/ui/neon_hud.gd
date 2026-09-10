@@ -1,8 +1,9 @@
 extends Control
 class_name NeonHud
-## K7 diegetic phone HUD. Overlays sit on functional Controls.
-## PhoneRoot chrome + meters (center view stays clear). Right ItemRail
-## wells are 88×80. InteractPrompt is a phone-toast. No camera switch.
+## K7 diegetic phone HUD. The phone IS the HUD (chrome v2).
+## Holstered PhoneRoot sits bottom-left. Hold E with the phone in-hand
+## inspects it center-screen. Right ItemRail wells are 88×80.
+## InteractPrompt is a phone-toast. Rear/Front camera chrome is visual only.
 
 const _PACK: GDScript = preload("res://scripts/horror/ui/hud_icon_pack.gd")
 const _KIT: GDScript = preload("res://scripts/horror/ui/ui_kit.gd")
@@ -14,7 +15,14 @@ const SLOT_H := 80
 const SLOT_GAP := 12
 const PHONE_W := 296
 const PHONE_H := 620
+const INSPECT_W := 430
+const INSPECT_H := 680
 const SEGMENTS := 10
+const ECG_SAMPLES := 320
+## Seconds of ECG paper on-screen. ~2 beats at rest so the TP flatline reads.
+const ECG_WINDOW := 1.85
+const PINK := Color(1.0, 0.28, 0.62)
+const CARD := Color(0.07, 0.07, 0.09, 0.96)
 
 var OBJECTIVE_TITLE: String = "MISSING CHILD"
 var OBJECTIVE_TAG: String = "ALIVE ONLY"
@@ -41,19 +49,29 @@ var interact_hold: bool = false
 var interact_hold_ratio: float = 0.0
 var interact_action: String = "INTERACT"
 var interact_sub: String = "Look / Talk"
+var inspecting: bool = false
 
 var _built: bool = false
 var _phone_root: Control
+var _inspect_dim: ColorRect
 var _health_bar: TextureProgressBar
 var _stamina_bar: TextureProgressBar
-var _stamina_segs: Array[TextureRect] = []
-var _signal_segs: Array[TextureRect] = []
+var _stamina_segs: Array[Control] = []
+var _signal_segs: Array[Control] = []
 var _signal_widget: Control
 var _flashlight: TextureRect
+var _flash_state: Label
+var _flash_track: Panel
+var _flash_knob: Panel
+var _status_battery: Label
+var _signal_state: Label
 var _tex_flash_on: Texture2D
 var _tex_flash_off: Texture2D
 var _bpm_label: Label
 var _ecg_wave: Line2D
+var _ecg_glow: Line2D
+var _ecg_plot: Control
+var _ecg_baseline: ColorRect
 var _ability_panel: Panel
 var _ability_timer: Label
 var _ability_bar: ProgressBar
@@ -77,6 +95,7 @@ var _tex_slot_selected: Texture2D
 var _tex_slot_empty_selected: Texture2D
 var _clock_label: Label
 var _wave_t: float = 0.0
+var _inspect_tween: Tween
 
 
 func _ready() -> void:
@@ -100,7 +119,7 @@ func _ready() -> void:
 
 func _process(delta: float) -> void:
 	_wave_t += delta
-	_refresh_ecg_wave()
+	_refresh_ecg_wave(delta)
 	if _built:
 		_refresh_ability()
 
@@ -182,6 +201,78 @@ func set_interact_hold(shown: bool, action: String = "HOLD [E] · SEARCH", hold_
 	set_interact_prompt(shown, action, "Hold", true, hold_ratio)
 
 
+func set_phone_inspect(on: bool) -> void:
+	inspecting = on
+	if not _built:
+		_build()
+	if _inspect_dim:
+		_inspect_dim.visible = on
+	if _rail:
+		_rail.visible = not on
+	if _prompt_wrap and on:
+		_prompt_wrap.visible = false
+	_layout_phone(on)
+	queue_redraw()
+
+
+func _notification(what: int) -> void:
+	if what == NOTIFICATION_RESIZED and _built:
+		_layout_phone(inspecting)
+
+
+func _inspect_phone_size() -> Vector2:
+	## Hold-E read mode: phone fills most of the viewport so chrome is readable.
+	var vp := get_viewport_rect().size
+	if vp.x < 8.0 or vp.y < 8.0:
+		return Vector2(INSPECT_W, INSPECT_H)
+	var w := clampf(vp.x * 0.46, 420.0, 760.0)
+	var h := clampf(vp.y * 0.92, 560.0, 1100.0)
+	return Vector2(w, h)
+
+
+func _layout_phone(inspect: bool) -> void:
+	if _phone_root == null:
+		return
+	if inspect:
+		var sz := _inspect_phone_size()
+		_phone_root.z_index = 40
+		_phone_root.set_anchors_preset(PRESET_CENTER)
+		_phone_root.offset_left = -sz.x * 0.5
+		_phone_root.offset_top = -sz.y * 0.5
+		_phone_root.offset_right = sz.x * 0.5
+		_phone_root.offset_bottom = sz.y * 0.5
+		_apply_inspect_fonts(true)
+	else:
+		_phone_root.z_index = 0
+		_phone_root.set_anchors_preset(PRESET_BOTTOM_LEFT)
+		_phone_root.offset_left = 16
+		_phone_root.offset_top = -PHONE_H - 16
+		_phone_root.offset_right = 16 + PHONE_W
+		_phone_root.offset_bottom = -16
+		_apply_inspect_fonts(false)
+
+
+func _apply_inspect_fonts(inspect: bool) -> void:
+	if _phone_root == null:
+		return
+	var scale := 1.42 if inspect else 1.0
+	_scale_label_fonts(_phone_root, scale)
+
+
+func _scale_label_fonts(node: Node, scale: float) -> void:
+	if node is Label:
+		var lab := node as Label
+		var base := int(lab.get_meta("base_font", 0))
+		if base <= 0:
+			base = lab.get_theme_font_size("font_size")
+			if base <= 0:
+				base = 12
+			lab.set_meta("base_font", base)
+		lab.add_theme_font_size_override("font_size", maxi(int(round(float(base) * scale)), 10))
+	for child in node.get_children():
+		_scale_label_fonts(child, scale)
+
+
 func _load_textures() -> void:
 	_tex_ability = _PACK.texture(_PACK.TEX_ABILITY)
 	_tex_reticle = _KIT.texture("reticle_white")
@@ -212,6 +303,13 @@ func _build() -> void:
 	if _built:
 		return
 	_built = true
+	_inspect_dim = ColorRect.new()
+	_inspect_dim.name = "InspectDim"
+	_inspect_dim.set_anchors_preset(PRESET_FULL_RECT)
+	_inspect_dim.color = Color(0, 0, 0, 0.72)
+	_inspect_dim.mouse_filter = MOUSE_FILTER_IGNORE
+	_inspect_dim.visible = false
+	add_child(_inspect_dim)
 	_build_obj_banner()
 	_build_phone_root()
 	_build_prompt()
@@ -273,91 +371,303 @@ func _on_match_clock(_progress: float, label: String) -> void:
 func _build_phone_root() -> void:
 	_phone_root = Control.new()
 	_phone_root.name = "PhoneRoot"
-	_phone_root.set_anchors_preset(PRESET_BOTTOM_LEFT)
-	_phone_root.offset_left = 16
-	_phone_root.offset_top = -PHONE_H - 16
-	_phone_root.offset_right = 16 + PHONE_W
-	_phone_root.offset_bottom = -16
 	_phone_root.mouse_filter = MOUSE_FILTER_IGNORE
 	_phone_root.texture_filter = TEXTURE_FILTER_LINEAR
+	_layout_phone(false)
 	add_child(_phone_root)
 
-	var frame := _overlay("PhoneFrame", _K7.texture(_K7.PHONE_FRAME))
-	frame.set_anchors_preset(PRESET_FULL_RECT)
-	frame.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT
-	_phone_root.add_child(frame)
+	var bezel := Panel.new()
+	bezel.name = "PhoneFrame"
+	bezel.set_anchors_preset(PRESET_FULL_RECT)
+	bezel.mouse_filter = MOUSE_FILTER_IGNORE
+	bezel.add_theme_stylebox_override("panel", _phone_bezel())
+	_phone_root.add_child(bezel)
 
-	# Functional fills on the phone screen; remaining chrome IGNORE-overlays on top.
-	_build_phone_vitals()
-	_build_phone_signal()
-	_build_clock()
-
-	var island := _overlay("IslandNotch", _K7.texture(_K7.ISLAND_NOTCH))
+	var island := Panel.new()
+	island.name = "IslandNotch"
 	island.set_anchors_preset(PRESET_CENTER_TOP)
-	island.offset_left = -70
+	island.offset_left = -42
 	island.offset_top = 10
-	island.offset_right = 70
-	island.offset_bottom = 42
+	island.offset_right = 42
+	island.offset_bottom = 24
+	island.mouse_filter = MOUSE_FILTER_IGNORE
+	island.add_theme_stylebox_override("panel", _pill(Color(0.04, 0.04, 0.05)))
 	_phone_root.add_child(island)
 
-	var notch := _overlay("PhoneNotch", _K7.texture(_K7.PHONE_NOTCH))
-	notch.set_anchors_preset(PRESET_CENTER_TOP)
-	notch.offset_left = -48
-	notch.offset_top = 14
-	notch.offset_right = 48
-	notch.offset_bottom = 36
-	_phone_root.add_child(notch)
+	var screen := MarginContainer.new()
+	screen.name = "Screen"
+	screen.set_anchors_preset(PRESET_FULL_RECT)
+	screen.add_theme_constant_override("margin_left", 18)
+	screen.add_theme_constant_override("margin_right", 18)
+	screen.add_theme_constant_override("margin_top", 28)
+	screen.add_theme_constant_override("margin_bottom", 16)
+	screen.mouse_filter = MOUSE_FILTER_IGNORE
+	_phone_root.add_child(screen)
 
-	var status := _overlay("StatusBar", _K7.texture(_K7.STATUS_BAR))
-	status.set_anchors_preset(PRESET_TOP_WIDE)
-	status.offset_left = 18
-	status.offset_top = 40
-	status.offset_right = -18
-	status.offset_bottom = 72
-	_phone_root.add_child(status)
+	var col := VBoxContainer.new()
+	col.name = "ScreenColumn"
+	col.add_theme_constant_override("separation", 8)
+	col.mouse_filter = MOUSE_FILTER_IGNORE
+	screen.add_child(col)
 
-	var ecg := _overlay("EcgChrome", _K7.texture(_K7.ECG_CHROME))
-	ecg.set_anchors_preset(PRESET_TOP_WIDE)
-	ecg.offset_left = 20
-	ecg.offset_top = 86
-	ecg.offset_right = -20
-	ecg.offset_bottom = 210
-	_phone_root.add_child(ecg)
-	_build_phone_ecg()
+	_build_status_row(col)
+	_build_camera_header(col)
+	_build_camera_card(col)
+	_build_flashlight_card(col)
+	_build_vitals_row(col)
+	_build_phone_vitals()
+	_build_bottom_nav(col)
 
-	var stam_track := _overlay("StaminaTrack", _K7.texture(_K7.STAMINA_TRACK))
-	stam_track.set_anchors_preset(PRESET_TOP_WIDE)
-	stam_track.offset_left = 20
-	stam_track.offset_top = 218
-	stam_track.offset_right = -20
-	stam_track.offset_bottom = 286
-	_phone_root.add_child(stam_track)
-	_place_segments(_stamina_segs, stam_track, _K7.texture(_K7.STAMINA_SEGMENT), "StaminaSeg")
 
-	var sig_track := _overlay("SignalTrack", _K7.texture(_K7.SIGNAL_TRACK))
-	sig_track.set_anchors_preset(PRESET_TOP_WIDE)
-	sig_track.offset_left = 20
-	sig_track.offset_top = 294
-	sig_track.offset_right = -20
-	sig_track.offset_bottom = 362
-	_signal_widget.add_child(sig_track)
-	_place_segments(_signal_segs, sig_track, _K7.texture(_K7.SIGNAL_SEGMENT), "SignalSeg")
+func _build_status_row(parent: VBoxContainer) -> void:
+	var row := HBoxContainer.new()
+	row.name = "StatusBar"
+	row.mouse_filter = MOUSE_FILTER_IGNORE
+	parent.add_child(row)
+	_clock_label = Label.new()
+	_clock_label.name = "MatchClockLabel"
+	_clock_label.text = "6:00 PM"
+	_clock_label.size_flags_horizontal = SIZE_EXPAND_FILL
+	_clock_label.add_theme_font_size_override("font_size", 13)
+	_clock_label.add_theme_color_override("font_color", Color(0.92, 0.93, 0.95))
+	_clock_label.mouse_filter = MOUSE_FILTER_IGNORE
+	row.add_child(_clock_label)
+	_status_battery = Label.new()
+	_status_battery.name = "StatusBattery"
+	_status_battery.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+	_status_battery.add_theme_font_size_override("font_size", 12)
+	_status_battery.add_theme_color_override("font_color", Color(0.78, 0.8, 0.84))
+	_status_battery.mouse_filter = MOUSE_FILTER_IGNORE
+	row.add_child(_status_battery)
 
-	_flashlight = _overlay("Flashlight", _tex_flash_off)
-	_flashlight.set_anchors_preset(PRESET_CENTER_BOTTOM)
-	_flashlight.offset_left = -56
-	_flashlight.offset_top = -118
-	_flashlight.offset_right = 56
-	_flashlight.offset_bottom = -82
-	_phone_root.add_child(_flashlight)
 
-	var nav := _overlay("BottomNav", _K7.texture(_K7.BOTTOM_NAV))
-	nav.set_anchors_preset(PRESET_BOTTOM_WIDE)
-	nav.offset_left = 18
-	nav.offset_top = -78
-	nav.offset_right = -18
-	nav.offset_bottom = -12
-	_phone_root.add_child(nav)
+func _build_camera_header(parent: VBoxContainer) -> void:
+	var row := HBoxContainer.new()
+	row.name = "CameraHeader"
+	row.mouse_filter = MOUSE_FILTER_IGNORE
+	parent.add_child(row)
+	var left := VBoxContainer.new()
+	left.size_flags_horizontal = SIZE_EXPAND_FILL
+	left.add_theme_constant_override("separation", 0)
+	left.mouse_filter = MOUSE_FILTER_IGNORE
+	row.add_child(left)
+	var cam := _phone_label("CAMERA", 16, Color.WHITE)
+	cam.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT
+	left.add_child(cam)
+	var live := _phone_label("● LIVE", 10, PINK)
+	live.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT
+	left.add_child(live)
+	var right := VBoxContainer.new()
+	right.mouse_filter = MOUSE_FILTER_IGNORE
+	row.add_child(right)
+	var rear := _phone_label("REAR CAMERA", 10, Color(0.7, 0.72, 0.76))
+	rear.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+	right.add_child(rear)
+
+
+func _build_camera_card(parent: VBoxContainer) -> void:
+	var card := _phone_card("CameraSwitch")
+	parent.add_child(card)
+	var row := HBoxContainer.new()
+	row.mouse_filter = MOUSE_FILTER_IGNORE
+	card.add_child(row)
+	var copy := VBoxContainer.new()
+	copy.size_flags_horizontal = SIZE_EXPAND_FILL
+	copy.mouse_filter = MOUSE_FILTER_IGNORE
+	row.add_child(copy)
+	copy.add_child(_phone_label("CAMERA SWITCH", 12, Color.WHITE))
+	copy.add_child(_phone_label("Toggle between rear and front camera", 10, Color(0.55, 0.56, 0.6)))
+	row.add_child(_chip("REAR", true))
+	row.add_child(_chip("FRONT", false))
+
+
+func _build_flashlight_card(parent: VBoxContainer) -> void:
+	var card := _phone_card("FlashlightCard")
+	parent.add_child(card)
+	var row := HBoxContainer.new()
+	row.mouse_filter = MOUSE_FILTER_IGNORE
+	card.add_child(row)
+	var copy := VBoxContainer.new()
+	copy.size_flags_horizontal = SIZE_EXPAND_FILL
+	copy.mouse_filter = MOUSE_FILTER_IGNORE
+	row.add_child(copy)
+	copy.add_child(_phone_label("FLASHLIGHT", 12, Color.WHITE))
+	copy.add_child(_phone_label("Hold phone · press R", 10, Color(0.55, 0.56, 0.6)))
+	var switch_wrap := Control.new()
+	switch_wrap.name = "LedSwitch"
+	switch_wrap.custom_minimum_size = Vector2(64, 30)
+	switch_wrap.mouse_filter = MOUSE_FILTER_IGNORE
+	row.add_child(switch_wrap)
+	_flash_track = Panel.new()
+	_flash_track.name = "Track"
+	_flash_track.set_anchors_preset(PRESET_FULL_RECT)
+	_flash_track.offset_top = 2
+	_flash_track.offset_bottom = -2
+	_flash_track.mouse_filter = MOUSE_FILTER_IGNORE
+	switch_wrap.add_child(_flash_track)
+	_flash_knob = Panel.new()
+	_flash_knob.name = "Knob"
+	_flash_knob.mouse_filter = MOUSE_FILTER_IGNORE
+	switch_wrap.add_child(_flash_knob)
+	_flashlight = TextureRect.new()
+	_flashlight.name = "Flashlight"
+	_flashlight.set_anchors_preset(PRESET_FULL_RECT)
+	_flashlight.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	_flashlight.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	_flashlight.mouse_filter = MOUSE_FILTER_IGNORE
+	switch_wrap.add_child(_flashlight)
+	_flash_state = _phone_label("OFF", 14, Color.WHITE)
+	_flash_state.name = "FlashState"
+	row.add_child(_flash_state)
+
+
+func _build_vitals_row(parent: VBoxContainer) -> void:
+	var row := HBoxContainer.new()
+	row.name = "VitalsRow"
+	row.add_theme_constant_override("separation", 6)
+	row.size_flags_vertical = SIZE_EXPAND_FILL
+	row.mouse_filter = MOUSE_FILTER_IGNORE
+	parent.add_child(row)
+
+	var ecg_card := _phone_card("EcgChrome")
+	ecg_card.size_flags_horizontal = SIZE_EXPAND_FILL
+	ecg_card.custom_minimum_size = Vector2(0, 92)
+	row.add_child(ecg_card)
+	var ecg_col := VBoxContainer.new()
+	ecg_col.add_theme_constant_override("separation", 2)
+	ecg_col.mouse_filter = MOUSE_FILTER_IGNORE
+	ecg_card.add_child(ecg_col)
+	var ecg_head := HBoxContainer.new()
+	ecg_head.mouse_filter = MOUSE_FILTER_IGNORE
+	ecg_col.add_child(ecg_head)
+	ecg_head.add_child(_phone_label("ECG", 10, PINK))
+	_bpm_label = _phone_label("72 BPM", 12, PINK)
+	_bpm_label.name = "BpmLabel"
+	_bpm_label.size_flags_horizontal = SIZE_EXPAND_FILL
+	_bpm_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+	ecg_head.add_child(_bpm_label)
+	_ecg_plot = Control.new()
+	_ecg_plot.name = "EcgPlot"
+	_ecg_plot.custom_minimum_size = Vector2(0, 56)
+	_ecg_plot.size_flags_vertical = SIZE_EXPAND_FILL
+	_ecg_plot.clip_contents = true
+	_ecg_plot.mouse_filter = MOUSE_FILTER_IGNORE
+	ecg_col.add_child(_ecg_plot)
+	_ecg_baseline = ColorRect.new()
+	_ecg_baseline.name = "Isoelectric"
+	_ecg_baseline.color = Color(PINK.r, PINK.g, PINK.b, 0.16)
+	_ecg_baseline.mouse_filter = MOUSE_FILTER_IGNORE
+	_ecg_plot.add_child(_ecg_baseline)
+	_ecg_glow = Line2D.new()
+	_ecg_glow.name = "EcgGlow"
+	_ecg_glow.width = 5.5
+	_ecg_glow.default_color = Color(1.0, 0.28, 0.62, 0.22)
+	_ecg_glow.antialiased = true
+	_ecg_glow.joint_mode = Line2D.LINE_JOINT_SHARP
+	_ecg_plot.add_child(_ecg_glow)
+	_ecg_wave = Line2D.new()
+	_ecg_wave.name = "EcgWave"
+	_ecg_wave.width = 2.15
+	_ecg_wave.default_color = PINK
+	_ecg_wave.antialiased = true
+	_ecg_wave.joint_mode = Line2D.LINE_JOINT_SHARP
+	_ecg_plot.add_child(_ecg_wave)
+
+	var stam_card := _phone_card("StaminaTrack")
+	stam_card.custom_minimum_size = Vector2(86, 78)
+	row.add_child(stam_card)
+	var stam_col := VBoxContainer.new()
+	stam_col.mouse_filter = MOUSE_FILTER_IGNORE
+	stam_card.add_child(stam_col)
+	stam_col.add_child(_phone_label("STAMINA", 10, Color(1.0, 0.82, 0.2)))
+	_place_segments(_stamina_segs, stam_col, null, "StaminaSeg")
+
+	_build_phone_signal()
+	_signal_widget.custom_minimum_size = Vector2(78, 78)
+	row.add_child(_signal_widget)
+
+
+func _phone_bezel() -> StyleBoxFlat:
+	var box := StyleBoxFlat.new()
+	box.bg_color = Color(0.05, 0.05, 0.07, 0.97)
+	box.border_color = Color(0.18, 0.18, 0.22)
+	box.set_border_width_all(2)
+	box.set_corner_radius_all(28)
+	box.shadow_color = Color(1.0, 0.2, 0.55, 0.18)
+	box.shadow_size = 8
+	return box
+
+
+func _pill(fill: Color) -> StyleBoxFlat:
+	var box := StyleBoxFlat.new()
+	box.bg_color = fill
+	box.set_corner_radius_all(10)
+	return box
+
+
+func _phone_card(node_name: String) -> PanelContainer:
+	var card := PanelContainer.new()
+	card.name = node_name
+	card.mouse_filter = MOUSE_FILTER_IGNORE
+	var box := StyleBoxFlat.new()
+	box.bg_color = CARD
+	box.set_corner_radius_all(12)
+	box.content_margin_left = 10
+	box.content_margin_right = 10
+	box.content_margin_top = 8
+	box.content_margin_bottom = 8
+	card.add_theme_stylebox_override("panel", box)
+	return card
+
+
+func _phone_label(text: String, size: int, color: Color) -> Label:
+	var lab := Label.new()
+	lab.text = text
+	lab.add_theme_font_size_override("font_size", size)
+	lab.add_theme_color_override("font_color", color)
+	lab.mouse_filter = MOUSE_FILTER_IGNORE
+	return lab
+
+
+func _chip(text: String, on: bool) -> PanelContainer:
+	var chip := PanelContainer.new()
+	chip.mouse_filter = MOUSE_FILTER_IGNORE
+	var box := StyleBoxFlat.new()
+	box.bg_color = Color(0.09, 0.08, 0.12)
+	box.border_color = PINK if on else Color(0.22, 0.22, 0.26)
+	box.set_border_width_all(1)
+	box.set_corner_radius_all(8)
+	box.content_margin_left = 8
+	box.content_margin_right = 8
+	box.content_margin_top = 6
+	box.content_margin_bottom = 6
+	chip.add_theme_stylebox_override("panel", box)
+	chip.add_child(_phone_label(text, 10, PINK if on else Color(0.7, 0.7, 0.74)))
+	return chip
+
+
+func _build_bottom_nav(parent: VBoxContainer) -> void:
+	var nav := HBoxContainer.new()
+	nav.name = "BottomNav"
+	nav.alignment = BoxContainer.ALIGNMENT_CENTER
+	nav.add_theme_constant_override("separation", 10)
+	nav.mouse_filter = MOUSE_FILTER_IGNORE
+	parent.add_child(nav)
+	for item in [["GRID", true], ["ECG", false], ["PROFILE", false], ["SETTINGS", false]]:
+		var cell := VBoxContainer.new()
+		cell.size_flags_horizontal = SIZE_EXPAND_FILL
+		cell.add_theme_constant_override("separation", 2)
+		cell.mouse_filter = MOUSE_FILTER_IGNORE
+		nav.add_child(cell)
+		var lab := _phone_label(str(item[0]), 10, PINK if bool(item[1]) else Color(0.55, 0.56, 0.6))
+		lab.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		cell.add_child(lab)
+		if bool(item[1]):
+			var underline := ColorRect.new()
+			underline.custom_minimum_size = Vector2(28, 2)
+			underline.color = PINK
+			underline.mouse_filter = MOUSE_FILTER_IGNORE
+			cell.add_child(underline)
 
 
 func _build_phone_vitals() -> void:
@@ -379,6 +689,7 @@ func _build_phone_vitals() -> void:
 	_stamina_bar = _make_track_meter(col, "STAMINA", _PACK.STAMINA, _PACK.TEX_STAMINA)
 	_health_bar.modulate.a = 0.0
 	_stamina_bar.modulate.a = 0.0
+	box.visible = false
 
 
 func _make_track_meter(parent: VBoxContainer, caption: String, color: Color, bar_stem: String) -> TextureProgressBar:
@@ -409,77 +720,35 @@ func _make_track_meter(parent: VBoxContainer, caption: String, color: Color, bar
 	return bar
 
 
-func _build_phone_ecg() -> void:
-	_ecg_wave = Line2D.new()
-	_ecg_wave.name = "EcgWave"
-	_ecg_wave.width = 2.0
-	_ecg_wave.default_color = Color(1.0, 0.28, 0.62, 0.95)
-	_ecg_wave.antialiased = true
-	_phone_root.add_child(_ecg_wave)
-	_bpm_label = Label.new()
-	_bpm_label.name = "BpmLabel"
-	_bpm_label.set_anchors_preset(PRESET_TOP_LEFT)
-	_bpm_label.offset_left = 64
-	_bpm_label.offset_top = 178
-	_bpm_label.offset_right = 140
-	_bpm_label.offset_bottom = 204
-	_bpm_label.add_theme_font_size_override("font_size", 14)
-	_bpm_label.add_theme_color_override("font_color", Color(0.82, 0.84, 0.88))
-	_bpm_label.mouse_filter = MOUSE_FILTER_IGNORE
-	_phone_root.add_child(_bpm_label)
-
-
 func _build_phone_signal() -> void:
-	_signal_widget = Control.new()
-	_signal_widget.name = "SignalWidget"
-	_signal_widget.set_anchors_preset(PRESET_TOP_WIDE)
-	_signal_widget.offset_left = 20
-	_signal_widget.offset_top = 294
-	_signal_widget.offset_right = -20
-	_signal_widget.offset_bottom = 362
-	_signal_widget.mouse_filter = MOUSE_FILTER_IGNORE
-	_phone_root.add_child(_signal_widget)
+	_signal_widget = _phone_card("SignalWidget")
+	var col := VBoxContainer.new()
+	col.mouse_filter = MOUSE_FILTER_IGNORE
+	_signal_widget.add_child(col)
+	col.add_child(_phone_label("SIGNAL", 10, Color(0.35, 0.95, 0.45)))
+	_place_segments(_signal_segs, col, null, "SignalSeg")
+	_signal_state = _phone_label("DEAD", 10, Color(0.55, 0.56, 0.6))
+	_signal_state.name = "SignalState"
+	_signal_state.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT
+	col.add_child(_signal_state)
 
 
-func _place_segments(store: Array[TextureRect], track: TextureRect, tex: Texture2D, stem: String) -> void:
+func _place_segments(store: Array[Control], parent: Control, _tex: Texture2D, stem: String) -> void:
 	var row := HBoxContainer.new()
 	row.name = "%sRow" % stem
-	row.set_anchors_preset(PRESET_BOTTOM_WIDE)
-	row.offset_left = 14
-	row.offset_top = -28
-	row.offset_right = -14
-	row.offset_bottom = -8
-	row.add_theme_constant_override("separation", 4)
+	row.add_theme_constant_override("separation", 3)
 	row.mouse_filter = MOUSE_FILTER_IGNORE
-	track.add_child(row)
+	parent.add_child(row)
 	store.clear()
+	var on := Color(1.0, 0.82, 0.2) if stem.begins_with("Stamina") else Color(0.25, 0.92, 0.38)
 	for i in SEGMENTS:
-		var seg := TextureRect.new()
+		var seg := ColorRect.new()
 		seg.name = "%s%d" % [stem, i + 1]
-		seg.texture = tex
-		seg.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
-		seg.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
-		seg.custom_minimum_size = Vector2(18, 16)
-		seg.size_flags_horizontal = SIZE_EXPAND_FILL
-		_K7.apply_overlay_rect(seg)
+		seg.custom_minimum_size = Vector2(6, 16)
+		seg.color = on
+		seg.mouse_filter = MOUSE_FILTER_IGNORE
 		row.add_child(seg)
 		store.append(seg)
-
-
-func _build_clock() -> void:
-	_clock_label = Label.new()
-	_clock_label.name = "MatchClockLabel"
-	_clock_label.text = "6:00 PM"
-	_clock_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT
-	_clock_label.set_anchors_preset(PRESET_TOP_LEFT)
-	_clock_label.offset_left = 28
-	_clock_label.offset_top = 44
-	_clock_label.offset_right = 140
-	_clock_label.offset_bottom = 70
-	_clock_label.mouse_filter = MOUSE_FILTER_IGNORE
-	_clock_label.add_theme_font_size_override("font_size", 14)
-	_clock_label.add_theme_color_override("font_color", Color(0.9, 0.91, 0.94))
-	_phone_root.add_child(_clock_label)
 
 
 func _build_prompt() -> void:
@@ -637,48 +906,127 @@ func _refresh() -> void:
 	_refresh_prompt()
 	_refresh_rail()
 	_refresh_bpm()
+	if _status_battery:
+		_status_battery.text = "%d%%" % int(round(phone_battery))
+
+
+func _bpm_value() -> float:
+	return clampf(72.0 + (1.0 - health_ratio) * 48.0 + fear_ratio * 28.0, 42.0, 170.0)
 
 
 func _refresh_bpm() -> void:
 	if _bpm_label == null:
 		return
-	var bpm := int(round(52.0 + (1.0 - health_ratio) * 68.0 + fear_ratio * 36.0))
-	_bpm_label.text = str(bpm)
-
-
-func _refresh_ecg_wave() -> void:
-	if _ecg_wave == null or _phone_root == null:
+	if health_ratio <= 0.04:
+		_bpm_label.text = "FLAT"
 		return
-	var origin := Vector2(36, 148)
-	var w := 224.0
-	var amp := 16.0 * maxf(health_ratio, 0.12)
+	_bpm_label.text = "%d BPM" % int(round(_bpm_value()))
+
+
+func _refresh_ecg_wave(_delta: float = 0.016) -> void:
+	## Scrolling lead-II paper: sharp QRS, then a long isoelectric TP flatline.
+	if _ecg_wave == null or _ecg_plot == null:
+		return
+	var bpm := _bpm_value()
+	var sz := _ecg_plot.size
+	if sz.x < 8.0 or sz.y < 8.0:
+		sz = Vector2(160, 56)
+	var baseline := sz.y * 0.64
+	var amp := sz.y * 0.46
+	if _ecg_baseline:
+		_ecg_baseline.position = Vector2(0, baseline)
+		_ecg_baseline.size = Vector2(sz.x, 1)
 	var pts: PackedVector2Array = PackedVector2Array()
-	var steps := 48
-	for i in steps:
-		var u := float(i) / float(steps - 1)
-		var x := origin.x + u * w
-		var phase := u * TAU * 2.2 + _wave_t * (2.4 + fear_ratio * 2.0)
-		var y := origin.y
-		var beat := fposmod(phase, TAU)
-		if beat > 1.2 and beat < 1.7:
-			var t := (beat - 1.2) / 0.5
-			if t < 0.35:
-				y -= amp * (t / 0.35)
-			elif t < 0.55:
-				y += amp * 1.15 * ((t - 0.35) / 0.2)
-			else:
-				y -= amp * 0.35 * (1.0 - (t - 0.55) / 0.45)
-		else:
-			y += sin(phase * 3.0) * 1.6
+	var last := float(ECG_SAMPLES - 1)
+	for i in ECG_SAMPLES:
+		var t := _wave_t - ECG_WINDOW * (1.0 - float(i) / last)
+		var x := sz.x * float(i) / last
+		var y := baseline - _lead_ii_sample(t, bpm, health_ratio) * amp
 		pts.append(Vector2(x, y))
 	_ecg_wave.points = pts
+	if _ecg_glow:
+		_ecg_glow.points = pts
+
+
+func _lead_ii_sample(time_s: float, bpm: float, hp: float) -> float:
+	## Resting lead II. Intervals in seconds, then TP isoelectric until the next P.
+	## R peak is at 0.20s into the RR at 72 BPM so probes can lock the shape.
+	if hp <= 0.04:
+		return 0.0
+	var period := 60.0 / maxf(bpm, 30.0)
+	var t := fposmod(time_s, period)
+	var p_dur := 0.08
+	var qrs_start := 0.16
+	var qrs_dur := 0.10
+	var st_dur := 0.10
+	var t_dur := 0.16
+	var complex_end := qrs_start + qrs_dur + st_dur + t_dur
+	if complex_end > period * 0.70:
+		var scale := (period * 0.70) / complex_end
+		p_dur *= scale
+		qrs_start *= scale
+		qrs_dur *= scale
+		st_dur *= scale
+		t_dur *= scale
+		complex_end = qrs_start + qrs_dur + st_dur + t_dur
+	var y := 0.0
+	if t < qrs_start:
+		var p_mu := p_dur * 0.5
+		y = 0.15 * _gauss(t, p_mu, p_dur * 0.26)
+	elif t < qrs_start + qrs_dur:
+		var u := (t - qrs_start) / qrs_dur
+		if u < 0.16:
+			y = lerpf(0.0, -0.16, u / 0.16)
+		elif u < 0.40:
+			y = lerpf(-0.16, 1.12, (u - 0.16) / 0.24)
+		elif u < 0.62:
+			y = lerpf(1.12, -0.38, (u - 0.40) / 0.22)
+		else:
+			y = lerpf(-0.38, 0.0, (u - 0.62) / 0.38)
+	elif t < qrs_start + qrs_dur + st_dur:
+		y = 0.0
+	elif t < complex_end:
+		var u := (t - (qrs_start + qrs_dur + st_dur)) / maxf(t_dur, 0.001)
+		var sig := 0.20 if u < 0.45 else 0.28
+		y = 0.30 * _gauss(u, 0.45, sig)
+	else:
+		y = 0.0
+	if hp < 0.28:
+		y *= 0.45 + hp
+	return y
+
+
+func _gauss(t: float, mu: float, sigma: float) -> float:
+	var d := (t - mu) / maxf(sigma, 0.001)
+	return exp(-0.5 * d * d)
 
 
 func _refresh_flashlight() -> void:
-	if _flashlight == null:
-		return
-	_flashlight.texture = _tex_flash_on if phone_led_on else _tex_flash_off
-	_flashlight.modulate = Color.WHITE if has_phone else Color(1, 1, 1, 0.55)
+	var on := phone_led_on
+	if _flashlight:
+		_flashlight.texture = _tex_flash_on if on else _tex_flash_off
+		_flashlight.visible = _flashlight.texture != null
+		_flashlight.modulate = Color.WHITE if has_phone else Color(1, 1, 1, 0.55)
+	if _flash_track:
+		var track := StyleBoxFlat.new()
+		track.bg_color = Color(0.72, 0.22, 0.85) if on else Color(0.22, 0.22, 0.26)
+		track.set_corner_radius_all(14)
+		_flash_track.add_theme_stylebox_override("panel", track)
+		_flash_track.visible = _flashlight == null or _flashlight.texture == null
+	if _flash_knob:
+		var knob := StyleBoxFlat.new()
+		knob.bg_color = Color.WHITE
+		knob.set_corner_radius_all(11)
+		_flash_knob.add_theme_stylebox_override("panel", knob)
+		var wrap_w := 64.0
+		if _flash_track and _flash_track.get_parent() is Control:
+			wrap_w = maxf((_flash_track.get_parent() as Control).size.x, 64.0)
+		_flash_knob.size = Vector2(24, 24)
+		_flash_knob.position = Vector2(wrap_w - 28 if on else 4, 3)
+		_flash_knob.visible = _flash_track.visible if _flash_track else true
+	if _flash_state:
+		_flash_state.text = "ON" if on else "OFF"
+		_flash_state.add_theme_color_override("font_color", PINK if on else Color(0.75, 0.76, 0.8))
 
 
 func _signal_fill() -> float:
@@ -701,13 +1049,26 @@ func _refresh_signal() -> void:
 		band = _PACK.band_from_strength(tower_strength)
 		signal_band = band
 	_fill_segments(_signal_segs, _signal_fill())
+	if _signal_state:
+		match band:
+			"full":
+				_signal_state.text = "STRONG"
+				_signal_state.add_theme_color_override("font_color", Color(0.35, 0.95, 0.45))
+			"weak":
+				_signal_state.text = "WEAK"
+				_signal_state.add_theme_color_override("font_color", Color(0.98, 0.82, 0.2))
+			"empty":
+				_signal_state.text = "LOW"
+				_signal_state.add_theme_color_override("font_color", Color(1.0, 0.45, 0.2))
+			_:
+				_signal_state.text = "DEAD"
+				_signal_state.add_theme_color_override("font_color", Color(1.0, 0.25, 0.28))
 
 
-func _fill_segments(rects: Array[TextureRect], ratio: float) -> void:
+func _fill_segments(rects: Array[Control], ratio: float) -> void:
 	var n := int(round(clampf(ratio, 0.0, 1.0) * float(SEGMENTS)))
 	for i in rects.size():
-		rects[i].visible = i < n
-		rects[i].modulate = Color.WHITE
+		rects[i].modulate.a = 1.0 if i < n else 0.18
 
 
 func _refresh_ability() -> void:
@@ -728,6 +1089,9 @@ func _refresh_ability() -> void:
 
 func _refresh_prompt() -> void:
 	if _prompt_wrap == null:
+		return
+	if inspecting:
+		_prompt_wrap.visible = false
 		return
 	_prompt_wrap.visible = interact_visible
 	if not interact_visible:
@@ -796,6 +1160,8 @@ func _draw() -> void:
 
 
 func _draw_reticle() -> void:
+	if inspecting:
+		return
 	var c := size * 0.5
 	if _tex_reticle:
 		draw_texture_rect(_tex_reticle, Rect2(c - Vector2(16, 16), Vector2(32, 32)), false)

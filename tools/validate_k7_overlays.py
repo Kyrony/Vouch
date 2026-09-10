@@ -53,6 +53,8 @@ def main() -> int:
         "MOUSE_FILTER_IGNORE",
         "TEXTURE_FILTER_LINEAR",
         "set_interact_hold",
+        "set_phone_inspect",
+        "_lead_ii_sample",
     ):
         if needle not in src:
             errors.append(f"neon_hud.gd missing {needle}")
