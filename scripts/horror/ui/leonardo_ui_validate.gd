@@ -211,10 +211,13 @@ static func validate_hud() -> String:
 	if hud_script == null:
 		return "neon_hud.gd failed to load"
 	var hud: Object = hud_script.new()
-	for method_name in ["set_meters", "set_signal_band", "set_phone_device", "set_interact_prompt", "set_steal", "set_hotbar", "apply_example_rail"]:
+	for method_name in ["set_meters", "set_signal_band", "set_phone_device", "set_interact_prompt", "set_interact_hold", "set_steal", "set_hotbar", "apply_example_rail"]:
 		if not hud.has_method(method_name):
 			hud.free()
 			return "NeonHud missing %s" % method_name
+	if int(hud.get("SLOT_PX")) != 88 or int(hud.get("SLOT_H")) != 80:
+		hud.free()
+		return "ItemRail wells must be 88×80"
 	if str(hud.get("OBJECTIVE_TITLE")) != "MISSING CHILD":
 		hud.free()
 		return "objective banner title mismatch"
@@ -229,6 +232,10 @@ static func validate_hud() -> String:
 	if not bool(hud.get("interact_visible")):
 		hud.free()
 		return "interact prompt did not show"
+	hud.call("set_interact_hold", true, "HOLD [E] · SEARCH", 0.4)
+	if not bool(hud.get("interact_hold")):
+		hud.free()
+		return "interact hold prompt did not show"
 	hud.free()
 	var pack: GDScript = load("res://scripts/horror/ui/hud_icon_pack.gd")
 	if pack == null:
@@ -278,6 +285,12 @@ static func validate_hud() -> String:
 		return "HudIconPack must generate fill textures in-engine"
 	if not hud_src.contains("ItemRail"):
 		return "NeonHud must build a right-edge ItemRail"
+	if not hud_src.contains("PhoneRoot"):
+		return "NeonHud must build PhoneRoot diegetic chrome"
+	if not hud_src.contains("InteractPrompt"):
+		return "NeonHud must build InteractPrompt"
+	if hud_src.contains("current = true") or hud_src.contains("make_current"):
+		return "HUD must not switch the camera"
 	if hud_src.contains('name = "Hotbar"'):
 		return "NeonHud must not keep a bottom hotbar"
 	if not hud_src.contains("SignalWidget"):
@@ -289,11 +302,38 @@ static func validate_hud() -> String:
 	if not hud_src.contains("show_objective") or not hud_src.contains("ObjectiveToast"):
 		return "NeonHud must toast objectives then fade them"
 	if not hud_src.contains("PRESET_BOTTOM_LEFT"):
-		return "NeonHud vitals must sit bottom-left"
+		return "PhoneRoot must sit bottom-left so the center view stays clear"
+	if not hud_src.contains("MOUSE_FILTER_IGNORE"):
+		return "K7 overlays must use mouse_filter IGNORE"
+	if not hud_src.contains("TEXTURE_FILTER_LINEAR"):
+		return "K7 overlays must use Linear filter"
 	if int(pack.RAIL_SLOTS) != 5:
 		return "item rail must be 5 wells"
 	if not pack.has_method("rail_texture"):
 		return "HudIconPack missing rail_texture"
 	if not hud_src.contains("MatchClockLabel") or not hud_src.contains("_on_match_clock"):
 		return "NeonHud must keep MatchClockLabel wired to MatchClock"
+	var k7_err := _validate_k7_overlays()
+	if not k7_err.is_empty():
+		return k7_err
+	return ""
+
+
+static func _validate_k7_overlays() -> String:
+	var pack: GDScript = load("res://scripts/horror/ui/k7_overlays.gd")
+	if pack == null:
+		return "k7_overlays.gd failed to load"
+	if not FileAccess.file_exists("res://hud/k7_overlays/README.md"):
+		return "k7 overlay README missing"
+	for path in pack.REQUIRED_OVERLAYS:
+		if not FileAccess.file_exists(path) and not ResourceLoader.exists(path):
+			continue
+		var sidecar := "%s.import" % path
+		if not FileAccess.file_exists(sidecar):
+			return "%s.import missing" % path
+		var txt := FileAccess.get_file_as_string(sidecar)
+		if not txt.contains("mipmaps/generate=false"):
+			return "%s must keep mipmaps off" % sidecar
+		if not txt.contains("compress/mode=0"):
+			return "%s must keep lossless RGBA (compress/mode=0)" % sidecar
 	return ""

@@ -1,5 +1,5 @@
 extends SceneTree
-## Headless check + screenshot of Kyle-locked item-rail HUD plate.
+## Headless check + screenshot of the K7 diegetic phone HUD plate.
 
 
 func _initialize() -> void:
@@ -25,17 +25,22 @@ func _run() -> void:
 	hud.call("set_interact_prompt", true, "Open door", "Look / Talk")
 	hud.call("apply_example_rail")
 	await process_frame
-	if hud.get_node_or_null("Vitals/MeterColumn") == null:
-		push_error("HUD RAIL CAPTURE FAILED: Vitals/MeterColumn missing")
+	var phone := hud.get_node_or_null("PhoneRoot") as Control
+	if phone == null:
+		push_error("HUD RAIL CAPTURE FAILED: PhoneRoot missing")
 		quit(1)
 		return
-	var health := hud.get_node_or_null("Vitals/MeterColumn/HealthRow/HealthBar") as TextureProgressBar
-	var stamina := hud.get_node_or_null("Vitals/MeterColumn/StaminaRow/StaminaBar") as TextureProgressBar
+	if hud.get_node_or_null("PhoneRoot/Vitals/MeterColumn") == null:
+		push_error("HUD RAIL CAPTURE FAILED: PhoneRoot/Vitals/MeterColumn missing")
+		quit(1)
+		return
+	var health := hud.get_node_or_null("PhoneRoot/Vitals/MeterColumn/HealthRow/HealthBar") as TextureProgressBar
+	var stamina := hud.get_node_or_null("PhoneRoot/Vitals/MeterColumn/StaminaRow/StaminaBar") as TextureProgressBar
 	if health == null or stamina == null:
 		push_error("HUD RAIL CAPTURE FAILED: stacked health/stamina bars missing")
 		quit(1)
 		return
-	if hud.get_node_or_null("Vitals/MeterColumn/FearRow") != null:
+	if hud.get_node_or_null("PhoneRoot/Vitals/MeterColumn/FearRow") != null:
 		push_error("HUD RAIL CAPTURE FAILED: fear bar still live")
 		quit(1)
 		return
@@ -55,15 +60,25 @@ func _run() -> void:
 		push_error("HUD RAIL CAPTURE FAILED: battery widget still live")
 		quit(1)
 		return
-	var signal_icon := hud.get_node_or_null("SignalWidget/Row/SignalIcon") as TextureRect
-	var clock := hud.get_node_or_null("MatchClockLabel") as Label
-	if signal_icon == null or clock == null:
-		push_error("HUD RAIL CAPTURE FAILED: top-right signal/clock missing")
+	var signal_w := hud.get_node_or_null("PhoneRoot/SignalWidget") as Control
+	var clock := hud.get_node_or_null("PhoneRoot/MatchClockLabel") as Label
+	if signal_w == null or clock == null:
+		push_error("HUD RAIL CAPTURE FAILED: phone signal/clock missing")
+		quit(1)
+		return
+	var prompt := hud.get_node_or_null("InteractPrompt") as Control
+	if prompt == null or prompt.get_node_or_null("Overlay") == null:
+		push_error("HUD RAIL CAPTURE FAILED: InteractPrompt overlay missing")
 		quit(1)
 		return
 	var rail := hud.get_node_or_null("ItemRail") as VBoxContainer
 	if rail == null or rail.get_child_count() != 5:
 		push_error("HUD RAIL CAPTURE FAILED: ItemRail must have 5 wells")
+		quit(1)
+		return
+	var slot := hud.get_node_or_null("ItemRail/RailSlot1") as Control
+	if slot == null or slot.custom_minimum_size.x != 88.0 or slot.custom_minimum_size.y != 80.0:
+		push_error("HUD RAIL CAPTURE FAILED: wells must be 88×80")
 		quit(1)
 		return
 	var selected_well := hud.get_node_or_null("ItemRail/RailSlot3/Well") as TextureRect
@@ -81,24 +96,12 @@ func _run() -> void:
 		push_error("HUD RAIL CAPTURE FAILED: fill ratios health=%.2f stamina=%.2f" % [health.value, stamina.value])
 		quit(1)
 		return
-	if health.global_position.y > stamina.global_position.y:
-		push_error("HUD RAIL CAPTURE FAILED: health must stack over stamina")
+	if phone.global_position.x > 80.0:
+		push_error("HUD RAIL CAPTURE FAILED: PhoneRoot is not on the left")
 		quit(1)
 		return
-	if health.global_position.y < 400.0:
-		push_error("HUD RAIL CAPTURE FAILED: vitals are not bottom-left")
-		quit(1)
-		return
-	if signal_icon.global_position.x < health.global_position.x + 200.0:
-		push_error("HUD RAIL CAPTURE FAILED: signal widget is not top-right")
-		quit(1)
-		return
-	if signal_icon.global_position.y > 80.0:
-		push_error("HUD RAIL CAPTURE FAILED: signal widget is not at the very top right")
-		quit(1)
-		return
-	if clock.global_position.y < signal_icon.global_position.y + 8.0:
-		push_error("HUD RAIL CAPTURE FAILED: match clock is not below the signal")
+	if phone.global_position.x + phone.size.x > 520.0:
+		push_error("HUD RAIL CAPTURE FAILED: PhoneRoot covers the center view")
 		quit(1)
 		return
 	if rail.global_position.x < 1000.0:
@@ -109,13 +112,18 @@ func _run() -> void:
 		push_error("HUD RAIL CAPTURE FAILED: signal band not applied")
 		quit(1)
 		return
-	print("HEALTH=%.2f STAMINA=%.2f SIGNAL=%s RAIL=%d" % [
+	var frame := hud.get_node_or_null("PhoneRoot/PhoneFrame") as TextureRect
+	if frame == null or frame.mouse_filter != Control.MOUSE_FILTER_IGNORE:
+		push_error("HUD RAIL CAPTURE FAILED: PhoneFrame overlay must IGNORE mouse")
+		quit(1)
+		return
+	print("HEALTH=%.2f STAMINA=%.2f SIGNAL=%s RAIL=%d PHONE=%s" % [
 		hud.get("health_ratio"), hud.get("stamina_ratio"),
 		hud.get("signal_band"),
 		rail.get_child_count(),
+		phone.name,
 	])
-	print("TRACKS=%s %s" % [health.texture_under.resource_path, stamina.texture_under.resource_path])
-	var shot := _compose_plate(hud, health, stamina, signal_icon, rail)
+	var shot := _compose_plate(hud, health, stamina, phone, rail, prompt)
 	var out := "user://hud_rail_layout.png"
 	var err := shot.save_png(out)
 	if err != OK:
@@ -127,22 +135,26 @@ func _run() -> void:
 	quit(0)
 
 
-func _compose_plate(hud: Control, health: TextureProgressBar, stamina: TextureProgressBar, signal_icon: TextureRect, rail: VBoxContainer) -> Image:
+func _compose_plate(hud: Control, health: TextureProgressBar, stamina: TextureProgressBar, phone: Control, rail: VBoxContainer, prompt: Control) -> Image:
 	var plate := Image.create(1280, 720, false, Image.FORMAT_RGBA8)
 	plate.fill(Color(0.024, 0.02, 0.031, 1.0))
-	_blit(plate, health.texture_under, health.global_position, Vector2(280, 28))
+	var frame := phone.get_node_or_null("PhoneFrame") as TextureRect
+	if frame and frame.texture:
+		_blit(plate, frame.texture, phone.global_position, phone.size)
+	_blit(plate, health.texture_under, health.global_position, Vector2(220, 28))
 	_fill_bar(plate, health, Color(0.55, 0.06, 0.10))
-	_blit(plate, stamina.texture_under, stamina.global_position, Vector2(280, 28))
+	_blit(plate, stamina.texture_under, stamina.global_position, Vector2(220, 28))
 	_fill_bar(plate, stamina, Color(1.0, 0.70, 0.0))
-	_blit(plate, signal_icon.texture, signal_icon.global_position, Vector2(48, 36))
 	for cell in rail.get_children():
 		var well := cell.get_node_or_null("Well") as TextureRect
 		var icon := cell.get_node_or_null("Icon") as TextureRect
 		if well and well.texture:
-			_blit(plate, well.texture, well.global_position, Vector2(72, 72))
+			_blit(plate, well.texture, well.global_position, Vector2(88, 80))
 		if icon and icon.texture and icon.visible:
-			_blit(plate, icon.texture, icon.global_position, Vector2(48, 48))
-	# Reticle — HUD is full-rect on the 1280×720 plate.
+			_blit(plate, icon.texture, icon.global_position, Vector2(56, 52))
+	var overlay := prompt.get_node_or_null("Overlay") as TextureRect
+	if overlay and overlay.texture and prompt.visible:
+		_blit(plate, overlay.texture, prompt.global_position, prompt.size)
 	var c := hud.size * 0.5
 	_rect(plate, int(c.x) - 2, int(c.y) - 10, 4, 8, Color(1, 1, 1, 0.75))
 	_rect(plate, int(c.x) - 2, int(c.y) + 2, 4, 8, Color(1, 1, 1, 0.75))
@@ -154,7 +166,7 @@ func _compose_plate(hud: Control, health: TextureProgressBar, stamina: TexturePr
 func _fill_bar(plate: Image, bar: TextureProgressBar, color: Color) -> void:
 	var pos := bar.global_position
 	var ratio := clampf(float(bar.value), 0.0, 1.0)
-	_rect(plate, int(pos.x + 8), int(pos.y + 6), int(244.0 * ratio), 16, color)
+	_rect(plate, int(pos.x + 8), int(pos.y + 6), int(200.0 * ratio), 16, color)
 
 
 func _blit(plate: Image, tex: Texture2D, pos: Vector2, size: Vector2) -> void:
@@ -164,7 +176,7 @@ func _blit(plate: Image, tex: Texture2D, pos: Vector2, size: Vector2) -> void:
 	if src == null:
 		return
 	src = src.duplicate()
-	src.resize(int(size.x), int(size.y), Image.INTERPOLATE_LANCZOS)
+	src.resize(maxi(int(size.x), 1), maxi(int(size.y), 1), Image.INTERPOLATE_LANCZOS)
 	var dest := Vector2i(int(pos.x), int(pos.y))
 	plate.blend_rect(src, Rect2i(Vector2i.ZERO, src.get_size()), dest)
 
@@ -174,4 +186,3 @@ func _rect(plate: Image, x: int, y: int, w: int, h: int, color: Color) -> void:
 		for xx in range(maxi(x, 0), mini(x + w, plate.get_width())):
 			var prev := plate.get_pixel(xx, yy)
 			plate.set_pixel(xx, yy, prev.blend(color))
-
