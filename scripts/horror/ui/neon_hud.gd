@@ -160,6 +160,14 @@ func set_steal(active: bool, duration_ratio: float, cooldown_ratio: float) -> vo
 		_refresh_ability()
 
 
+func set_predator_mode(on: bool) -> void:
+	## Puppet Master does not use the survivor phone rail.
+	if _rail:
+		_rail.visible = not on
+	if _phone_vp:
+		_phone_vp.render_target_update_mode = SubViewport.UPDATE_DISABLED if on else SubViewport.UPDATE_ALWAYS
+
+
 func set_tower_strength(value: float) -> void:
 	tower_strength = clampf(value, 0.0, 1.0)
 	if signal_band.is_empty():

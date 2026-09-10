@@ -146,6 +146,8 @@ func apply_to_world(world: Node3D) -> void:
 		env.ambient_light_source = Environment.AMBIENT_SOURCE_COLOR
 		env.ambient_light_color = look["amb"]
 		env.ambient_light_energy = look["amb_e"]
+		env.volumetric_fog_enabled = false
+		env.volumetric_fog_density = 0.0
 	var sun := world.get_node_or_null("SunMoon") as DirectionalLight3D
 	if sun:
 		sun.light_color = look["lit"]

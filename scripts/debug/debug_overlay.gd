@@ -62,12 +62,12 @@ func _build() -> void:
 	_panel.name = "Panel"
 	_panel.mouse_filter = Control.MOUSE_FILTER_STOP
 	_panel.set_anchors_preset(Control.PRESET_TOP_RIGHT)
-	_panel.offset_left = -340
-	_panel.offset_top = 14
-	_panel.offset_right = -14
-	_panel.offset_bottom = 14 + 540
+	_panel.offset_left = -372
+	_panel.offset_top = 12
+	_panel.offset_right = -12
+	_panel.offset_bottom = 12 + 640
 	_panel.grow_horizontal = Control.GROW_DIRECTION_BEGIN
-	_panel.add_theme_stylebox_override("panel", _T.box(Color(_T.GOLD.r, _T.GOLD.g, _T.GOLD.b, 0.55), _T.PANEL, 1, 2, false))
+	_panel.add_theme_stylebox_override("panel", _T.box(_T.BLOOD, Color(0.05, 0.01, 0.015, 0.96), 2, 2, true))
 	blocker.add_child(_panel)
 
 	var margin := MarginContainer.new()
@@ -84,15 +84,15 @@ func _build() -> void:
 	var header := HBoxContainer.new()
 	root.add_child(header)
 	var title := Label.new()
-	title.text = "DEBUG"
+	title.text = "NIGHT TOOLS"
 	title.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	_T.apply_label(title, "ui")
-	title.add_theme_color_override("font_color", _T.GOLD)
+	title.add_theme_color_override("font_color", _T.BLOOD)
 	header.add_child(title)
 	var close_btn := Button.new()
 	close_btn.text = "HOME"
 	close_btn.custom_minimum_size = Vector2(72, 28)
-	_T.apply_action_button(close_btn, "gold")
+	_T.apply_action_button(close_btn, "blood")
 	close_btn.pressed.connect(_toggle)
 	header.add_child(close_btn)
 
@@ -123,11 +123,14 @@ func _build() -> void:
 	body.add_child(_character)
 	_add_button(body, "Apply character", _apply_character)
 
-	_add_section(body, "SPAWN")
-	_host(_add_button(body, "Spawn survivor", func() -> void: DebugCommands.spawn_debug_pawn(false)))
-	_host(_add_button(body, "Spawn puppet master", func() -> void: DebugCommands.spawn_debug_pawn(true)))
-	_host(_add_button(body, "Spawn test items", DebugCommands.spawn_test_items))
-	_host(_add_button(body, "Spawn test props", DebugCommands.spawn_playtest_kit))
+	_add_section(body, "SPAWN IN FRONT OF YOU")
+	_host(_add_button(body, "Farm props (fuse / gate / dig / rope)", DebugCommands.spawn_farm_props, "blood"))
+	_host(_add_button(body, "Tools + puppet pickup", DebugCommands.spawn_test_items, "gold"))
+	_host(_add_button(body, "Capturable dummy (body takeover)", func() -> void: DebugCommands.spawn_debug_pawn(false), "blood"))
+	_host(_add_button(body, "Wear the puppet", DebugCommands.wear_puppet, "blood"))
+	_host(_add_button(body, "Spawn extra crates", DebugCommands.spawn_playtest_kit, "gold"))
+	_host(_add_button(body, "Spawn survivor pawn", func() -> void: DebugCommands.spawn_debug_pawn(false)))
+	_host(_add_button(body, "Spawn puppet master pawn", func() -> void: DebugCommands.spawn_debug_pawn(true)))
 
 	_add_section(body, "WORLD")
 	_host(_add_button(body, "Toggle room power", _toggle_power))
@@ -139,7 +142,7 @@ func _add_section(parent: Control, text: String) -> void:
 	var row := HBoxContainer.new()
 	parent.add_child(row)
 	var line := ColorRect.new()
-	line.color = Color(_T.GOLD.r, _T.GOLD.g, _T.GOLD.b, 0.35)
+	line.color = Color(_T.BLOOD.r, _T.BLOOD.g, _T.BLOOD.b, 0.55)
 	line.custom_minimum_size = Vector2(18, 1)
 	line.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	row.add_child(line)
@@ -147,7 +150,7 @@ func _add_section(parent: Control, text: String) -> void:
 	lab.text = text
 	_T.apply_label(lab, "ui")
 	lab.add_theme_font_size_override("font_size", 12)
-	lab.add_theme_color_override("font_color", _T.GOLD_DIM)
+	lab.add_theme_color_override("font_color", _T.BLOOD)
 	row.add_child(lab)
 
 
@@ -165,11 +168,11 @@ func _add_check(parent: Control, text: String, cb: Callable) -> CheckBox:
 	return box
 
 
-func _add_button(parent: Control, text: String, cb: Callable) -> Button:
+func _add_button(parent: Control, text: String, cb: Callable, kind: String = "gold") -> Button:
 	var btn := Button.new()
 	btn.text = text
-	btn.custom_minimum_size = Vector2(0, 34)
-	_T.apply_action_button(btn, "gold")
+	btn.custom_minimum_size = Vector2(0, 36)
+	_T.apply_action_button(btn, kind)
 	btn.pressed.connect(cb)
 	parent.add_child(btn)
 	return btn
@@ -190,7 +193,7 @@ func _refresh() -> void:
 	var net: Node = get_node_or_null("/root/NetworkManager")
 	var is_host: bool = net != null and net.has_method("is_server") and bool(net.call("is_server"))
 	if is_host:
-		_status.text = "Host tools — Home to close"
+		_status.text = "Host — spawn drops at your feet. Home closes."
 	else:
 		_status.text = "Client — cheats are local, spawns need host"
 	var cheats: Node = get_node_or_null("/root/DebugCheats")

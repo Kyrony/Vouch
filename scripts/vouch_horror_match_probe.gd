@@ -76,6 +76,26 @@ func _probe() -> String:
 		main.queue_free()
 		return "HorrorWorld missing after Start Match"
 
+	if world.find_children("*", "FogVolume", true, false).size() > 0:
+		net.call("leave_game")
+		main.queue_free()
+		return "FogVolume still in HorrorWorld (OpenGL fog shader crash)"
+	var sky := world.get_node_or_null("FarmSky") as WorldEnvironment
+	if sky and sky.environment and sky.environment.volumetric_fog_enabled:
+		net.call("leave_game")
+		main.queue_free()
+		return "volumetric fog still enabled on FarmSky"
+	var cliff_fog := world.get_node_or_null("Outdoor/EastCliff/CliffFog")
+	if cliff_fog and cliff_fog.get_class() == "FogVolume":
+		net.call("leave_game")
+		main.queue_free()
+		return "CliffFog is still a FogVolume"
+	var world_src := FileAccess.get_file_as_string("res://scenes/Horror/HorrorWorld.tscn")
+	if world_src.contains("FogVolume") or world_src.contains("FogMaterial"):
+		net.call("leave_game")
+		main.queue_free()
+		return "HorrorWorld.tscn still ships FogVolume"
+
 	var spawn_count: int = world.call("get_spawn_point_count")
 	if spawn_count < 4:
 		main.queue_free()
@@ -195,6 +215,10 @@ func _probe() -> String:
 		player.free()
 		main.queue_free()
 		return "life-steal ProgressBars missing"
+	if player.get_node_or_null("HUD/PuppetHud") == null:
+		player.free()
+		main.queue_free()
+		return "Puppet Master HUD overlay missing"
 	var steal_err: String = _CHECK.call("validate_life_steal")
 	if not steal_err.is_empty():
 		player.free()

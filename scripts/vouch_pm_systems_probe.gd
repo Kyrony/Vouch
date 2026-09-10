@@ -65,6 +65,9 @@ func _run() -> void:
 	PSS.server_cut(victim, -1)
 
 	# --- Puppet possession ---
+	var GS := root.get_node("/root/GameState")
+	GS.server_set_puppet_master(pm)
+	_check(not PCS.server_take_puppet(victim), "survivors cannot don the puppet")
 	_check(PCS.server_take_puppet(pm), "PM can don the puppet")
 	_check(PCS.server_has_puppet(pm), "puppet is active")
 	_check(not PCS.server_puppet_grab(pm, victim, 5.0), "puppet can't grab out of range")
