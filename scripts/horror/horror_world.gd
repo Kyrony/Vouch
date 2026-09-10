@@ -22,6 +22,8 @@ func _ready() -> void:
 	call_deferred("_run_semantic_maps")
 	## Drop a sample of every survival item near the first family pad.
 	call_deferred("server_scatter_starter_items")
+	call_deferred("_install_playable_props")
+	call_deferred("_show_child_marker")
 	var clock := get_node_or_null("/root/MatchClock")
 	if clock and clock.has_method("apply_to_world"):
 		clock.call("apply_to_world", self)
@@ -32,41 +34,21 @@ func _ready() -> void:
 
 
 func _ensure_placeholder_gun() -> void:
-	if get_node_or_null("PlaceholderGun") != null:
-		return
-	var mat := StandardMaterial3D.new()
-	mat.albedo_color = Color(0.48, 0.49, 0.52, 1)
-	mat.roughness = 0.55
-	mat.metallic = 0.35
-	var gun := Node3D.new()
-	gun.name = "PlaceholderGun"
-	var spawn := get_family_spawn_transform(0).origin
-	gun.position = spawn + Vector3(1.75, 0.06, 0.55)
-	gun.rotation_degrees = Vector3(8.0, 32.0, 86.0)
-	_add_named_mesh(gun, "Receiver", BoxMesh.new(), Vector3(0.28, 0.085, 0.055), Vector3.ZERO, Vector3.ZERO, mat)
-	_add_named_mesh(gun, "Barrel", CylinderMesh.new(), Vector3(0.016, 0.30, 0.016), Vector3(0.26, 0.01, 0.0), Vector3(0, 0, 90), mat)
-	_add_named_mesh(gun, "Grip", BoxMesh.new(), Vector3(0.07, 0.15, 0.045), Vector3(-0.04, -0.09, 0.0), Vector3(18, 0, 0), mat)
-	_add_named_mesh(gun, "Mag", BoxMesh.new(), Vector3(0.06, 0.09, 0.03), Vector3(0.02, -0.07, 0.0), Vector3(8, 0, 0), mat)
-	add_child(gun)
+	var gun := get_node_or_null("PlaceholderGun") as Node3D
+	if gun:
+		gun.visible = false
+		gun.process_mode = Node.PROCESS_MODE_DISABLED
 
 
-func _add_named_mesh(parent: Node3D, node_name: String, mesh: Mesh, size: Vector3, pos: Vector3, rot_deg: Vector3, mat: Material) -> void:
-	if mesh is BoxMesh:
-		(mesh as BoxMesh).size = size
-	elif mesh is CylinderMesh:
-		var cyl := mesh as CylinderMesh
-		cyl.top_radius = size.x
-		cyl.bottom_radius = size.x
-		cyl.height = size.y
-	if mesh is PrimitiveMesh:
-		(mesh as PrimitiveMesh).material = mat
-	var inst := MeshInstance3D.new()
-	inst.name = node_name
-	inst.mesh = mesh
-	inst.material_override = mat
-	inst.position = pos
-	inst.rotation_degrees = rot_deg
-	parent.add_child(inst)
+func _install_playable_props() -> void:
+	var props: GDScript = load("res://scripts/horror/world/farm_props.gd")
+	props.call("install_on_world", self)
+
+
+func _show_child_marker() -> void:
+	var rng := get_node_or_null("/root/ChildSpawnRNG")
+	if rng and rng.has_method("ensure_marker"):
+		rng.call("ensure_marker", self)
 
 
 func _ensure_terrain_texture() -> void:

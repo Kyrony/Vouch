@@ -18,6 +18,9 @@ const SPAWN_IDS: Array[String] = [
 
 const EXPECTED_COUNT: int = 11
 
+signal child_found(carrier_peer: int)
+signal child_escaped(carrier_peer: int)
+
 var _active_spawn_id: String = ""
 var _active_global_pos: Vector3 = Vector3.ZERO
 var _child_found: bool = false
@@ -29,6 +32,11 @@ func reset() -> void:
 	_active_global_pos = Vector3.ZERO
 	_child_found = false
 	_child_carrier_peer = -1
+	var world := get_tree().get_first_node_in_group("horror_world") if is_inside_tree() else null
+	if world:
+		var marker := world.get_node_or_null("MissingChildMarker")
+		if marker:
+			marker.queue_free()
 
 
 func server_roll(world: Node3D, rng_seed: int = -1) -> String:
@@ -55,7 +63,6 @@ func server_roll(world: Node3D, rng_seed: int = -1) -> String:
 		return ""
 	_active_spawn_id = chosen
 	_active_global_pos = (marker as Node3D).global_position
-	_spawn_visual(world, marker as Marker3D)
 	_client_set_spawn.rpc(_active_spawn_id, _active_global_pos)
 	print("[ChildSpawnRNG] missing child at spawn_id=%s pos=%s" % [_active_spawn_id, _active_global_pos])
 	return _active_spawn_id
@@ -73,6 +80,15 @@ func get_spawn_position() -> Vector3:
 func _client_set_spawn(spawn_id: String, global_pos: Vector3) -> void:
 	_active_spawn_id = spawn_id
 	_active_global_pos = global_pos
+	var world := get_tree().get_first_node_in_group("horror_world")
+	if world is Node3D:
+		ensure_marker(world as Node3D)
+
+
+func ensure_marker(world: Node3D) -> void:
+	if world == null or _active_spawn_id.is_empty() or _child_found:
+		return
+	_spawn_visual(world, _active_global_pos)
 
 
 func server_try_pickup_child(peer_id: int, pickup_pos: Vector3) -> bool:
@@ -95,14 +111,52 @@ func server_try_escape_with_child(peer_id: int) -> bool:
 	if _child_carrier_peer != peer_id:
 		return false
 	var faction := GameState.server_get_faction(peer_id)
-	print("[ChildSpawnRNG] GOAL STUB: family %s escaped with child (spawn was %s)" % [faction, _active_spawn_id])
+	print("[ChildSpawnRNG] family %s escaped with the child (spawn was %s)" % [faction, _active_spawn_id])
+	child_escaped.emit(peer_id)
 	return true
+
+
+func server_is_carrier(peer_id: int) -> bool:
+	return _child_found and _child_carrier_peer == peer_id
+
+
+func server_carrier_peer() -> int:
+	return _child_carrier_peer
 
 
 @rpc("authority", "call_local", "reliable")
 func _client_child_found(carrier_peer: int) -> void:
 	_child_found = true
 	_child_carrier_peer = carrier_peer
+	child_found.emit(carrier_peer)
+	var world := get_tree().get_first_node_in_group("horror_world")
+	if world:
+		var marker := world.get_node_or_null("MissingChildMarker") as Node3D
+		if marker:
+			marker.visible = false
+	_attach_carried_visual(carrier_peer)
+
+
+func _attach_carried_visual(carrier_peer: int) -> void:
+	for node in get_tree().get_nodes_in_group("players"):
+		if str(node.name).to_int() != carrier_peer:
+			continue
+		if node.get_node_or_null("CarriedChild"):
+			return
+		var vis := MeshInstance3D.new()
+		vis.name = "CarriedChild"
+		var box := BoxMesh.new()
+		box.size = Vector3(0.28, 0.42, 0.28)
+		vis.mesh = box
+		vis.position = Vector3(0.22, 1.15, -0.18)
+		var mat := StandardMaterial3D.new()
+		mat.albedo_color = Color(0.85, 0.75, 0.35)
+		mat.emission_enabled = true
+		mat.emission = Color(0.6, 0.5, 0.15)
+		mat.emission_energy_multiplier = 0.45
+		vis.set_surface_override_material(0, mat)
+		node.add_child(vis)
+		return
 
 
 func _find_marker(world: Node3D, spawn_id: String) -> Marker3D:
@@ -114,14 +168,14 @@ func _find_marker(world: Node3D, spawn_id: String) -> Marker3D:
 	return null
 
 
-func _spawn_visual(world: Node3D, marker: Marker3D) -> void:
+func _spawn_visual(world: Node3D, at: Vector3) -> void:
 	var existing := world.get_node_or_null("MissingChildMarker")
 	if existing:
 		existing.queue_free()
 	var visual := Node3D.new()
 	visual.name = "MissingChildMarker"
 	world.add_child(visual)
-	visual.global_position = marker.global_position + Vector3(0, 0.6, 0)
+	visual.global_position = at + Vector3(0, 0.6, 0)
 	var _geom: GDScript = preload("res://scripts/rooms/geometry_util.gd")
 	var mat := StandardMaterial3D.new()
 	mat.albedo_color = Color(0.85, 0.75, 0.35)

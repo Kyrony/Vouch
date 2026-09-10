@@ -132,6 +132,27 @@ func _probe() -> String:
 		main.queue_free()
 		return "no world pickups spawned"
 
+	await process_frame
+	var props := world.get_node_or_null("PlayableProps")
+	if props == null:
+		main.queue_free()
+		return "PlayableProps missing after world init"
+	if world.get_tree().get_nodes_in_group("fuse_boxes").is_empty():
+		main.queue_free()
+		return "no fuse box on the farm"
+	if world.get_tree().get_nodes_in_group("lockables").is_empty():
+		main.queue_free()
+		return "no lockable gate on the farm"
+	if world.get_tree().get_nodes_in_group("dig_sites").is_empty():
+		main.queue_free()
+		return "no dig sites on the farm"
+	if world.get_tree().get_nodes_in_group("rope_anchors").is_empty():
+		main.queue_free()
+		return "no rope anchor on the farm"
+	if world.get_node_or_null("PlaceholderGun") and bool(world.get_node("PlaceholderGun").visible):
+		main.queue_free()
+		return "placeholder gun still visible"
+
 	for node_name in ["FamilyHouses", "PMMansion", "UncleHouse", "RadioTowers"]:
 		if world.get_node_or_null(node_name) != null:
 			main.queue_free()

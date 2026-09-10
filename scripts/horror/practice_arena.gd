@@ -19,10 +19,14 @@ static func ensure(match_node: Node) -> Node3D:
 		match_sun.visible = false
 	var root := Node3D.new()
 	root.name = ARENA_NAME
+	root.set_script(load("res://scripts/horror/practice_world.gd"))
 	root.add_to_group("horror_world")
 	match_node.add_child(root)
 	_build_room(root)
 	_build_dummy(root, not GameState.practice_as_pm)
+	var props: GDScript = load("res://scripts/horror/world/farm_props.gd")
+	props.call("install_on_practice", root)
+	_drop_extra_items(root)
 	return root
 
 
@@ -38,6 +42,21 @@ static func player_spawn_transform() -> Transform3D:
 
 static func dummy_spawn() -> Vector3:
 	return Vector3(0.0, 1.0, -2.4)
+
+
+static func _drop_extra_items(root: Node3D) -> void:
+	if not ResourceLoader.exists("res://scenes/Horror/WorldPickup.tscn"):
+		return
+	var packed: PackedScene = load("res://scenes/Horror/WorldPickup.tscn")
+	var extras: Array = ["key", "fuse", "lockpick", "shovel", "rope", "firearm"]
+	var i := 0
+	for item_id in extras:
+		var pickup: Node3D = packed.instantiate() as Node3D
+		pickup.set("item_id", str(item_id))
+		pickup.position = Vector3(-5.0 + float(i) * 1.6, 0.4, 5.6)
+		pickup.name = "PracticePickup_%s" % item_id
+		root.add_child(pickup)
+		i += 1
 
 
 static func _build_room(root: Node3D) -> void:

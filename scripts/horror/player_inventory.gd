@@ -3,7 +3,7 @@ extends Node
 
 const _CATALOG: GDScript = preload("res://scripts/horror/items/item_catalog.gd")
 
-signal inventory_changed(slots: Array, selected: int)
+signal inventory_changed(peer_id: int, slots: Array, selected: int)
 signal local_inventory_changed(slots: Array, selected: int)
 ## Fired when a survivor begins a timed use (for a HUD progress bar).
 signal _use_started(peer_id: int, item_id: String, duration: float)
@@ -93,6 +93,19 @@ func server_get_slots(peer_id: int) -> Array:
 func server_has_item(peer_id: int, item_id: String) -> bool:
 	for slot in server_get_slots(peer_id):
 		if str(slot) == item_id:
+			return true
+	return false
+
+
+func server_remove_item(peer_id: int, item_id: String) -> bool:
+	if not multiplayer.is_server():
+		return false
+	if not _inventories.has(peer_id):
+		return false
+	var slots: Array = _inventories[peer_id]
+	for i in SLOT_COUNT:
+		if str(slots[i]) == item_id:
+			server_remove_slot(peer_id, i)
 			return true
 	return false
 
@@ -279,6 +292,14 @@ func _apply_use_item(peer_id: int, item_id: String) -> bool:
 		"key", "lockpick", "keycard":
 			var did := _unlock_barrier(peer_id, float(def.get("unlock_range", 3.0)))
 			return did and item_id != "lockpick"  # keys / keycards are one-use
+		"shovel":
+			_use_shovel(peer_id, float(def.get("dig_range", 3.0)))
+			return false
+		"rope":
+			return _use_rope(peer_id, float(def.get("climb_range", 4.0)))
+		"firearm":
+			_use_firearm(peer_id, def)
+			return false
 		"puppet":
 			PuppetControlSystem.server_take_puppet(peer_id)
 			return false  # reusable — the PM wears it
@@ -357,6 +378,60 @@ func _unlock_barrier(peer_id: int, reach: float) -> bool:
 	if barrier and barrier.has_method("server_is_locked") and barrier.call("server_is_locked"):
 		return bool(barrier.call("server_unlock", peer_id))
 	return false
+
+
+func _use_shovel(peer_id: int, reach: float) -> bool:
+	var site := _nearest_in_group(peer_id, "dig_sites", reach)
+	if site and site.has_method("server_dig"):
+		return bool(site.call("server_dig", peer_id))
+	return false
+
+
+func _use_rope(peer_id: int, reach: float) -> bool:
+	var anchor := _nearest_in_group(peer_id, "rope_anchors", reach)
+	if anchor and anchor.has_method("server_attach_rope"):
+		return bool(anchor.call("server_attach_rope", peer_id))
+	return false
+
+
+func _use_firearm(peer_id: int, def: Dictionary) -> void:
+	var reach := float(def.get("stun_range", 18.0))
+	var stun := float(def.get("stun_seconds", 2.5))
+	var dummy := _nearest_in_group(peer_id, "practice_dummy", reach)
+	if dummy and dummy.has_method("apply_event"):
+		dummy.call("apply_event", "damage", 35.0)
+		PuppetMasterSystem.server_stun(stun)
+		return
+	var me := _find_player(peer_id) as Node3D
+	if me == null:
+		return
+	var cam := me.get_node_or_null("Head/Camera3D") as Camera3D
+	var from: Vector3 = cam.global_position if cam else me.global_position + Vector3(0, 1.5, 0)
+	var dir: Vector3 = -cam.global_transform.basis.z if cam else -me.global_transform.basis.z
+	var space := me.get_world_3d().direct_space_state
+	if space != null:
+		var q := PhysicsRayQueryParameters3D.create(from, from + dir * reach)
+		q.exclude = [me.get_rid()] if me is CollisionObject3D else []
+		var hit := space.intersect_ray(q)
+		if not hit.is_empty():
+			var col: Object = hit.get("collider")
+			if col is Node and (col as Node).is_in_group("players"):
+				var pid := str((col as Node).name).to_int()
+				if pid == GameState.puppet_master_peer_id or bool((col as Node).get("is_horror_puppet_master")):
+					PuppetMasterSystem.server_stun(stun)
+					return
+	# Hitscan fallback when the PM pawn has no collider (probes / missing mesh).
+	var pm := GameState.puppet_master_peer_id
+	if pm <= 0:
+		return
+	var pm_node := _find_player(pm) as Node3D
+	if pm_node == null:
+		return
+	var to_pm: Vector3 = pm_node.global_position - from
+	if to_pm.length() > reach or to_pm.length() < 0.05:
+		return
+	if dir.normalized().dot(to_pm.normalized()) >= 0.65:
+		PuppetMasterSystem.server_stun(stun)
 
 
 ## Flare: drop a temporary light at your feet.

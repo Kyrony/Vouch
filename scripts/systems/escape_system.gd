@@ -69,7 +69,12 @@ func server_handle_escape_request(peer_id: int) -> void:
 
 	var room_index: int = GameState.players[peer_id]["room_id"]
 	if HorrorMode.is_horror_mode():
-		pass
+		if not ChildSpawnRNG.server_is_carrier(peer_id):
+			_notify_escape_locked_message(peer_id, "You need the missing child.")
+			return
+		if not ChildSpawnRNG.server_try_escape_with_child(peer_id):
+			_notify_escape_locked_message(peer_id, "You need the missing child.")
+			return
 	elif PuzzleSystem.server_requires_code(room_index) and not PuzzleSystem.server_is_unlocked(room_index):
 		_notify_escape_locked(peer_id)
 		return
@@ -84,6 +89,10 @@ func server_handle_escape_request(peer_id: int) -> void:
 
 	var faction_id: String = GameState.server_get_faction(peer_id)
 	GameState.player_escaped.emit(peer_id, faction_id)
+
+	if HorrorMode.is_horror_mode():
+		_horror_child_home_win()
+		return
 
 	_check_for_win()
 
@@ -114,7 +123,6 @@ func _notify_escaped(peer_id: int) -> void:
 
 func _check_for_win() -> void:
 	if HorrorMode.is_horror_mode():
-		_check_horror_escape_win()
 		return
 	var winning_faction_id := GameState.server_check_for_win()
 	if winning_faction_id.is_empty():
@@ -134,24 +142,23 @@ func _client_escaped() -> void:
 
 @rpc("authority", "call_local", "reliable")
 func _client_faction_won(faction_id: String) -> void:
-	var faction_name: String = FactionData.get_faction_name(faction_id)
-	print("[EscapeSystem] MATCH OVER - %s escaped completely and WON." % faction_name)
+	var faction_name: String = FactionData.get_faction_name(faction_id) if faction_id != "survivors" else "Survivors"
+	print("[EscapeSystem] MATCH OVER - %s WON." % faction_name)
 	match_won.emit(faction_id)
+	var overlay: GDScript = load("res://scripts/horror/ui/match_end_overlay.gd")
+	if faction_id == "survivors":
+		overlay.call("present", "YOU GOT HER HOME", "The missing child is safe. Survivors win.")
+	else:
+		overlay.call("present", "MATCH OVER", "%s escaped completely." % faction_name)
 
 
-func _check_horror_escape_win() -> void:
+func _horror_child_home_win() -> void:
 	if GameState.phase == GameState.Phase.MATCH_OVER:
 		return
-	var survivors_escaped := 0
-	var survivors_total := 0
-	for peer_id in GameState.players.keys():
-		if GameState.players[peer_id].get("is_puppet_master", false):
-			continue
-		survivors_total += 1
-		if GameState.players[peer_id].get("escaped", false):
-			survivors_escaped += 1
-	if survivors_total > 0 and survivors_escaped >= survivors_total:
-		GameState.winning_faction_id = "survivors"
-		GameState.phase = GameState.Phase.MATCH_OVER
-		print("[EscapeSystem] HORROR MATCH OVER - survivors escaped!")
-		_client_faction_won.rpc("survivors")
+	GameState.winning_faction_id = "survivors"
+	GameState.phase = GameState.Phase.MATCH_OVER
+	print("[EscapeSystem] HORROR MATCH OVER - the child is home.")
+	var clock := get_node_or_null("/root/MatchClock")
+	if clock and clock.has_method("stop"):
+		clock.stop()
+	_client_faction_won.rpc("survivors")

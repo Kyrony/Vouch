@@ -213,3 +213,5 @@ func _client_show_eliminated_visual(peer_id: int) -> void:
 @rpc("authority", "call_local", "reliable")
 func _client_pm_won() -> void:
 	print("[PuppetMasterSystem] MATCH OVER - the Puppet Master eliminated everyone and WON.")
+	var overlay: GDScript = load("res://scripts/horror/ui/match_end_overlay.gd")
+	overlay.call("present", "THE HUNT IS OVER", "The Puppet Master took everyone. No one got her home.")

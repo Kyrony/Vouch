@@ -59,10 +59,20 @@ func _mesh_for(id: String) -> Mesh:
 			cyl.bottom_radius = 0.09
 			cyl.height = 0.28
 			return cyl
-		"scissors", "crowbar", "lockpick":
+		"scissors", "crowbar", "lockpick", "shovel":
 			var bar := BoxMesh.new()
 			bar.size = Vector3(0.08, 0.08, 0.42)
 			return bar
+		"rope":
+			var coil := CylinderMesh.new()
+			coil.top_radius = 0.12
+			coil.bottom_radius = 0.12
+			coil.height = 0.16
+			return coil
+		"firearm":
+			var gun := BoxMesh.new()
+			gun.size = Vector3(0.42, 0.12, 0.10)
+			return gun
 		"key", "keycard", "fuse":
 			var slim := BoxMesh.new()
 			slim.size = Vector3(0.22, 0.04, 0.14)

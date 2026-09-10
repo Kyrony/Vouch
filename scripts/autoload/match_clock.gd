@@ -25,6 +25,9 @@ func _ready() -> void:
 
 
 func _on_match_started() -> void:
+	if GameState.practice_mode:
+		stop()
+		return
 	reset_and_start()
 
 
@@ -163,6 +166,9 @@ func _fire_morning() -> void:
 	if GameState.phase == GameState.Phase.IN_MATCH:
 		GameState.phase = GameState.Phase.MATCH_OVER
 		GameState.morning_reached = true
+		if GameState.winning_faction_id.is_empty():
+			GameState.winning_faction_id = "puppet_master"
+			GameState.puppet_master_won = true
 	_client_morning.rpc()
 
 
@@ -180,7 +186,13 @@ func _client_morning() -> void:
 	apply_lighting()
 	clock_updated.emit(1.0, format_clock())
 	morning_reached.emit()
-	_show_overlay()
+	var overlay_script: GDScript = load("res://scripts/horror/ui/match_end_overlay.gd")
+	if GameState.puppet_master_won or GameState.winning_faction_id == "puppet_master":
+		overlay_script.call("present", "MORNING", "The child was not brought home. The Puppet Master wins.")
+	elif GameState.winning_faction_id == "survivors":
+		overlay_script.call("present", "YOU GOT HER HOME", "The missing child is safe. Survivors win.")
+	else:
+		overlay_script.call("present", "MORNING", "6:00 AM — the night is over.")
 	GameState.restore_menu_input()
 
 

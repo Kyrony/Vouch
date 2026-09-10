@@ -208,6 +208,8 @@ func _ready() -> void:
 			PuppetControlSystem.local_puppet_state_changed.connect(_on_puppet_state)
 			if PuppetControlSystem.has_signal("local_body_control_changed"):
 				PuppetControlSystem.local_body_control_changed.connect(_on_body_control)
+			if ChildSpawnRNG.has_signal("child_found"):
+				ChildSpawnRNG.child_found.connect(_on_child_found)
 			if PuppetControlSystem.server_has_puppet(multiplayer.get_unique_id()):
 				_on_puppet_state(true)
 		_pause_menu = get_node_or_null("/root/Main/PauseLayer/PauseMenu")
@@ -587,6 +589,11 @@ func _update_interact_prompt() -> void:
 			_set_highlight(target)
 			return
 	_set_highlight(null)
+	if horror_mode and not is_horror_puppet_master and not ChildSpawnRNG.get("_child_found"):
+		var child_pos: Vector3 = ChildSpawnRNG.get_spawn_position()
+		if child_pos != Vector3.ZERO and global_position.distance_to(child_pos) < 3.5:
+			_set_interact_prompt(true, "[E] · PICK UP CHILD")
+			return
 	if _has_puppet and not _body_taken:
 		var target := _nearest_capture_target()
 		if not target.is_empty():
@@ -705,11 +712,9 @@ func _try_interact() -> void:
 			return
 	if horror_mode and not is_horror_puppet_master:
 		var child_pos := ChildSpawnRNG.get_spawn_position()
-		if child_pos != Vector3.ZERO and global_position.distance_to(child_pos) < 3.5:
+		if child_pos != Vector3.ZERO and not ChildSpawnRNG.get("_child_found") and global_position.distance_to(child_pos) < 3.5:
 			if multiplayer.is_server():
-				if ChildSpawnRNG.server_try_pickup_child(multiplayer.get_unique_id(), global_position):
-					_show_toast("You found the missing child — reach the escape zone!")
-					_show_objective("Reach the escape zone with the child.")
+				ChildSpawnRNG.server_try_pickup_child(multiplayer.get_unique_id(), global_position)
 			else:
 				_rpc_try_child_pickup.rpc_id(1, global_position)
 			return
@@ -1682,10 +1687,6 @@ func _show_toast(text: String) -> void:
 	toast_timer.start(TOAST_DURATION)
 
 
-func _on_toast_timer_timeout() -> void:
-	toast_label.visible = false
-
-
 # --- Horror mode: neon HUD + phone signal --------------------------------
 
 func _build_horror_hud() -> void:
@@ -1773,6 +1774,17 @@ func _on_local_possessed(possessed: bool, struggle: float, needed: float) -> voi
 		_neon_hud.call("set_possessed", possessed, struggle, needed)
 
 
+func _on_child_found(carrier_peer: int) -> void:
+	if carrier_peer == multiplayer.get_unique_id():
+		_show_toast("You found the missing child — get her to the west field.")
+		_show_objective("Reach the escape zone with the child.")
+	elif not is_horror_puppet_master:
+		_show_toast("A teammate has the child. Cover them.")
+		_show_objective("Protect the carrier — get the child home.")
+	else:
+		_show_toast("They found the child. Stop the escape.")
+
+
 func _sync_horror_hud_signal() -> void:
 	if _neon_hud == null:
 		return
@@ -1845,7 +1857,7 @@ func _rpc_try_child_pickup(pos: Vector3) -> void:
 		return
 	var sender := multiplayer.get_remote_sender_id()
 	if ChildSpawnRNG.server_try_pickup_child(sender, pos):
-		pass
+		return
 
 
 func _on_local_inventory_changed(slots: Array, selected: int) -> void:

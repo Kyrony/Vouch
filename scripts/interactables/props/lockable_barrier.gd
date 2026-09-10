@@ -19,6 +19,8 @@ func _ready() -> void:
 	super._ready()
 	add_to_group("barriers")
 	add_to_group("lockables")
+	collision_layer = 1 | 2
+	collision_mask = 0
 	prompt_text = _default_prompt()
 
 
