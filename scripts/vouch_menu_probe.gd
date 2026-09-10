@@ -29,6 +29,15 @@ func _run() -> void:
 		push_error("VOUCH MENU PROBE FAILED: nav overlaps MenuLogo")
 		quit(1)
 		return
+	if lobby.get_node("HomePanel/SidePanel").visible:
+		push_error("VOUCH MENU PROBE FAILED: boot did not keep the side panel closed")
+		quit(1)
+		return
+	lobby.call("_set_nav", "play")
+	if not lobby.get_node("HomePanel/SidePanel/PlayContent").visible:
+		push_error("VOUCH MENU PROBE FAILED: Play did not open modes")
+		quit(1)
+		return
 	lobby.call("_set_nav", "")
 	if lobby.get_node("HomePanel/SidePanel").visible:
 		push_error("VOUCH MENU PROBE FAILED: backdrop/nav-null did not close the side panel")
@@ -37,6 +46,20 @@ func _run() -> void:
 	lobby.call("_set_nav", "play")
 	if not lobby.get_node("HomePanel/SidePanel/PlayContent").visible:
 		push_error("VOUCH MENU PROBE FAILED: Play did not open modes")
+		quit(1)
+		return
+	lobby.call("_set_mode", "practice")
+	var roles := lobby.get_node_or_null("HomePanel/SidePanel/PlayContent/ModeList/PracticeRoles") as Control
+	if roles == null or not roles.visible:
+		push_error("VOUCH MENU PROBE FAILED: Practice did not open the role dropdown")
+		quit(1)
+		return
+	if lobby.get_node("HomePanel/SidePanel/PlayContent/StartButton").visible:
+		push_error("VOUCH MENU PROBE FAILED: START still shown under Practice")
+		quit(1)
+		return
+	if roles.get_node_or_null("PracticeSurvivorButton") == null or roles.get_node_or_null("PracticePmButton") == null:
+		push_error("VOUCH MENU PROBE FAILED: Practice dropdown missing Survivor/Puppet Master")
 		quit(1)
 		return
 	lobby.call("_set_mode", "hardcore")

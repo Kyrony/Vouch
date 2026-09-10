@@ -100,8 +100,13 @@ static func validate_menu(lobby: Control) -> String:
 	if caption == null or caption.text.strip_edges().is_empty():
 		return "Play nav must show visible text"
 	var play_content := lobby.get_node_or_null("HomePanel/SidePanel/PlayContent") as Control
-	if play_content == null or not play_content.visible:
-		return "Play modes panel must be open on boot"
+	if play_content == null:
+		return "Play modes panel missing"
+	var side := lobby.get_node_or_null("HomePanel/SidePanel") as Control
+	if side and side.visible:
+		return "side box must stay closed on boot"
+	if play_content.visible:
+		return "Play modes panel must stay closed on boot"
 	var thumb := lobby.get_node_or_null("HomePanel/SidePanel/PlayContent/ModeThumb")
 	if thumb == null:
 		return "ModeThumb placeholder missing"
@@ -302,7 +307,9 @@ static func validate_hud() -> String:
 	if not hud_src.contains("show_objective") or not hud_src.contains("ObjectiveToast"):
 		return "NeonHud must toast objectives then fade them"
 	if not hud_src.contains("PRESET_BOTTOM_LEFT"):
-		return "PhoneRoot must sit bottom-left so the center view stays clear"
+		return "AbilityCooldown must keep PRESET_BOTTOM_LEFT"
+	if not hud_src.contains("PhoneViewport"):
+		return "NeonHud must render PhoneRoot into PhoneViewport for the 3D phone screen"
 	if not hud_src.contains("MOUSE_FILTER_IGNORE"):
 		return "K7 overlays must use mouse_filter IGNORE"
 	if not hud_src.contains("TEXTURE_FILTER_LINEAR"):

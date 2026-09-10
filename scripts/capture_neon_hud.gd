@@ -32,17 +32,30 @@ func _run() -> void:
 		push_error("HUD RAIL CAPTURE FAILED: ECG lead-II shape r=%.2f flat=%.2f" % [r_peak, tp_flat])
 		quit(1)
 		return
-	var phone := hud.get_node_or_null("PhoneRoot") as Control
+	if hud.get_node_or_null("PhoneRoot") != null:
+		push_error("HUD RAIL CAPTURE FAILED: PhoneRoot must not sit on the canvas")
+		quit(1)
+		return
+	var phone_vp := hud.get_node_or_null("PhoneViewport") as SubViewport
+	if phone_vp == null:
+		push_error("HUD RAIL CAPTURE FAILED: PhoneViewport missing")
+		quit(1)
+		return
+	var phone := phone_vp.get_node_or_null("PhoneRoot") as Control
 	if phone == null:
 		push_error("HUD RAIL CAPTURE FAILED: PhoneRoot missing")
 		quit(1)
 		return
-	if hud.get_node_or_null("PhoneRoot/Vitals/MeterColumn") == null:
+	if phone.get_parent() != phone_vp:
+		push_error("HUD RAIL CAPTURE FAILED: PhoneRoot must live on the 3D phone viewport")
+		quit(1)
+		return
+	if phone_vp.get_node_or_null("PhoneRoot/Vitals/MeterColumn") == null:
 		push_error("HUD RAIL CAPTURE FAILED: PhoneRoot/Vitals/MeterColumn missing")
 		quit(1)
 		return
-	var health := hud.get_node_or_null("PhoneRoot/Vitals/MeterColumn/HealthRow/HealthBar") as TextureProgressBar
-	var stamina := hud.get_node_or_null("PhoneRoot/Vitals/MeterColumn/StaminaRow/StaminaBar") as TextureProgressBar
+	var health := phone_vp.get_node_or_null("PhoneRoot/Vitals/MeterColumn/HealthRow/HealthBar") as TextureProgressBar
+	var stamina := phone_vp.get_node_or_null("PhoneRoot/Vitals/MeterColumn/StaminaRow/StaminaBar") as TextureProgressBar
 	if health == null or stamina == null:
 		push_error("HUD RAIL CAPTURE FAILED: stacked health/stamina bars missing")
 		quit(1)
@@ -103,12 +116,8 @@ func _run() -> void:
 		push_error("HUD RAIL CAPTURE FAILED: fill ratios health=%.2f stamina=%.2f" % [health.value, stamina.value])
 		quit(1)
 		return
-	if phone.global_position.x > 80.0:
-		push_error("HUD RAIL CAPTURE FAILED: PhoneRoot is not on the left")
-		quit(1)
-		return
-	if phone.global_position.x + phone.size.x > 520.0:
-		push_error("HUD RAIL CAPTURE FAILED: PhoneRoot covers the center view")
+	if phone.size.x < 300.0 or phone.size.y < 500.0:
+		push_error("HUD RAIL CAPTURE FAILED: PhoneRoot viewport size is %s" % phone.size)
 		quit(1)
 		return
 	if rail.global_position.x < 1000.0:
@@ -119,7 +128,7 @@ func _run() -> void:
 		push_error("HUD RAIL CAPTURE FAILED: signal band not applied")
 		quit(1)
 		return
-	var frame := hud.get_node_or_null("PhoneRoot/PhoneFrame") as Control
+	var frame := phone.get_node_or_null("PhoneFrame") as Control
 	if frame == null or frame.mouse_filter != Control.MOUSE_FILTER_IGNORE:
 		push_error("HUD RAIL CAPTURE FAILED: PhoneFrame overlay must IGNORE mouse")
 		quit(1)
